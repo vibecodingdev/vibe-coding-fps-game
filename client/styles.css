@@ -1,0 +1,1067 @@
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
+  background-image: linear-gradient(
+      rgba(0, 255, 255, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: matrixGrid 20s linear infinite;
+}
+
+@keyframes matrixGrid {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 50px 50px;
+  }
+}
+
+canvas {
+  display: block;
+}
+
+.info {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  color: #00ffff;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(10, 0, 20, 0.95) 50%,
+    rgba(0, 10, 20, 0.95) 100%
+  );
+  padding: 20px;
+  border-radius: 0;
+  font-size: 16px;
+  z-index: 100;
+  border: 2px solid #00ffff;
+  border-image: linear-gradient(45deg, #00ffff, #ff00ff, #00ff00) 1;
+  min-width: 280px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.5),
+    inset 0 0 30px rgba(0, 255, 255, 0.1), 0 0 60px rgba(255, 0, 255, 0.3);
+  font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
+  position: relative;
+}
+
+.info::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #00ffff, #ff00ff, #00ff00);
+  z-index: -1;
+  animation: neonBorder 3s linear infinite;
+}
+
+@keyframes neonBorder {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* Hide stats when instructions/blocker is active */
+#gameUI #blocker {
+  z-index: 2000;
+}
+
+#gameUI #blocker + .info {
+  display: none;
+}
+
+/* Show stats only when blocker is hidden */
+#gameUI #blocker[style*="display: none"] + .info,
+#gameUI #blocker[style*="display:none"] + .info {
+  display: block;
+}
+
+.info div {
+  margin: 8px 0;
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+  letter-spacing: 1px;
+  color: #00ffff;
+}
+
+.audio-controls {
+  position: absolute;
+  bottom: 25px;
+  right: 25px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(20, 0, 30, 0.95) 50%,
+    rgba(0, 20, 30, 0.95) 100%
+  );
+  padding: 18px 22px;
+  border-radius: 0;
+  color: #ff00ff;
+  border: 2px solid #ff00ff;
+  border-image: linear-gradient(45deg, #ff00ff, #00ffff, #00ff00) 1;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.5),
+    inset 0 0 30px rgba(255, 0, 255, 0.1);
+  font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
+  min-width: 180px;
+}
+
+.audio-controls label {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ff00ff;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+  letter-spacing: 1px;
+}
+
+.audio-controls input[type="range"] {
+  width: 120px;
+  margin-left: 15px;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 0, 255, 0.3) 0%,
+    rgba(0, 255, 255, 0.3) 100%
+  );
+  border-radius: 0;
+  outline: none;
+  border: 1px solid #ff00ff;
+}
+
+.audio-controls input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 0;
+  background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+  cursor: pointer;
+  border: 2px solid #00ff00;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+  transition: all 0.3s ease;
+}
+
+.audio-controls input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+}
+
+.audio-controls input[type="range"]::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 0;
+  background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+  cursor: pointer;
+  border: 2px solid #00ff00;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+  transition: all 0.3s ease;
+}
+
+#blocker {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+#instructions {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 18px;
+  cursor: pointer;
+  color: #00ffff;
+  font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(10, 0, 20, 0.4) 50%,
+    rgba(0, 10, 20, 0.4) 100%
+  );
+  backdrop-filter: blur(8px);
+}
+
+#instructions h1 {
+  font-size: 48px;
+  margin-bottom: 30px;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, #00ffff 0%, #ff00ff 50%, #00ff00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+  animation: cyberpunkGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes cyberpunkGlow {
+  from {
+    text-shadow: 0 0 30px rgba(0, 255, 255, 0.8),
+      0 0 60px rgba(255, 0, 255, 0.5);
+  }
+  to {
+    text-shadow: 0 0 50px rgba(0, 255, 255, 1), 0 0 80px rgba(255, 0, 255, 0.8);
+  }
+}
+
+#instructions p {
+  margin: 15px 0;
+  max-width: 600px;
+  line-height: 1.8;
+  font-size: 20px;
+  font-weight: 400;
+  color: #00ffff;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+}
+
+#instructions .highlight {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 0, 255, 0.2) 0%,
+    rgba(0, 255, 255, 0.2) 100%
+  );
+  border: 1px solid #ff00ff;
+  padding: 6px 12px;
+  border-radius: 0;
+  font-weight: 700;
+  font-family: "Orbitron", "Fira Code", monospace;
+  color: #ff00ff;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+  letter-spacing: 1px;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+}
+
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  z-index: 1000;
+  display: block;
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(0, 255, 255, 0.9);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+  transition: all 0.2s ease;
+}
+
+/* Target lock states */
+#crosshair.target-lock::before,
+#crosshair.target-lock::after {
+  background: rgba(255, 0, 255, 0.9);
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+}
+
+#crosshair.target-lock {
+  animation: targetPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes targetPulse {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+#crosshair::before {
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 2px;
+}
+
+#crosshair::after {
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 10px;
+}
+
+#healthBar {
+  position: fixed;
+  bottom: 25px;
+  left: 25px;
+  width: 250px;
+  height: 28px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(20, 0, 30, 0.95) 100%
+  );
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.5), inset 0 0 30px rgba(0, 255, 0, 0.1);
+  overflow: hidden;
+}
+
+#healthBar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 0, 0.1) 0%,
+    rgba(0, 255, 255, 0.1) 50%,
+    rgba(0, 255, 0, 0.1) 100%
+  );
+  animation: healthBarShimmer 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes healthBarShimmer {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+#healthFill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #ff0080 0%,
+    #ff0040 25%,
+    #00ff80 50%,
+    #00ffff 75%,
+    #0080ff 100%
+  );
+  border-radius: 0;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+#healthFill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: healthGlow 3s ease-in-out infinite;
+}
+
+@keyframes healthGlow {
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+  100% {
+    left: -100%;
+  }
+}
+
+#healthText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #00ffff;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+  letter-spacing: 1px;
+  z-index: 10;
+}
+
+/* Cyberpunk Radar */
+#miniRadar {
+  position: fixed;
+  top: 25px;
+  right: 25px;
+  z-index: 1500;
+}
+
+#radarContainer {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(20, 0, 30, 0.95) 100%
+  );
+  border: 3px solid #00ffff;
+  border-radius: 0;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 40px rgba(0, 255, 255, 0.6),
+    inset 0 0 30px rgba(0, 255, 255, 0.2), 0 0 80px rgba(255, 0, 255, 0.4);
+  overflow: hidden;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 20px) 0,
+    100% 20px,
+    100% 100%,
+    20px 100%,
+    0 calc(100% - 20px)
+  );
+}
+
+/* Radar Grid Lines */
+#radarContainer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 170px;
+  height: 170px;
+  transform: translate(-50%, -50%);
+  background: 
+    /* Horizontal line */ linear-gradient(
+      to right,
+      transparent 49%,
+      rgba(0, 255, 255, 0.4) 50%,
+      transparent 51%
+    ),
+    /* Vertical line */
+      linear-gradient(
+        to bottom,
+        transparent 49%,
+        rgba(0, 255, 255, 0.4) 50%,
+        transparent 51%
+      ),
+    /* Grid lines */
+      repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        rgba(0, 255, 255, 0.1) 1px,
+        transparent 2px,
+        transparent 30px
+      ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      rgba(0, 255, 255, 0.1) 1px,
+      transparent 2px,
+      transparent 30px
+    );
+  pointer-events: none;
+}
+
+#radarCanvas {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: radial-gradient(
+    circle,
+    rgba(0, 255, 255, 0.1) 0%,
+    rgba(255, 0, 255, 0.05) 50%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+}
+
+#radarLabel {
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #00ffff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+  text-transform: uppercase;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  padding: 5px 15px;
+  border: 1px solid #00ffff;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+/* Cyberpunk Radar Sweep */
+#radarContainer::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 150px;
+  height: 150px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 280deg,
+    rgba(0, 255, 255, 0.1) 300deg,
+    rgba(255, 0, 255, 0.3) 320deg,
+    rgba(0, 255, 0, 0.6) 340deg,
+    rgba(255, 255, 0, 0.9) 350deg,
+    rgba(0, 255, 255, 0.6) 360deg
+  );
+  animation: cyberpunkRadarSweep 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Radar Pulse Effect */
+#radarContainer {
+  animation: cyberpunkRadarPulse 2s ease-in-out infinite;
+}
+
+@keyframes cyberpunkRadarSweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cyberpunkRadarPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.6),
+      inset 0 0 30px rgba(0, 255, 255, 0.2), 0 0 80px rgba(255, 0, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(0, 255, 255, 0.8),
+      inset 0 0 40px rgba(0, 255, 255, 0.4), 0 0 120px rgba(255, 0, 255, 0.6);
+  }
+}
+
+/* Menu System Styles - Cyberpunk */
+.menu-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: #00ffff;
+  text-align: center;
+  z-index: 2000;
+  background: linear-gradient(
+      135deg,
+      #000000 0%,
+      #0a0a0a 25%,
+      #1a0033 50%,
+      #000a1a 75%,
+      #000000 100%
+    ),
+    radial-gradient(
+      circle at 30% 70%,
+      rgba(0, 255, 255, 0.1) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 70% 30%,
+      rgba(255, 0, 255, 0.1) 0%,
+      transparent 40%
+    );
+  overflow-y: auto;
+  position: relative;
+  background-image: linear-gradient(
+      rgba(0, 255, 255, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(255, 0, 255, 0.03) 1px, transparent 1px);
+  background-size: 100px 100px;
+}
+
+/* Cyberpunk animated overlay */
+.menu-screen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+      circle at 20% 80%,
+      rgba(0, 255, 255, 0.05) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(255, 0, 255, 0.05) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 255, 0, 0.03) 0%,
+      transparent 40%
+    );
+  animation: cyberpunkBg 8s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes cyberpunkBg {
+  0% {
+    opacity: 0.3;
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    opacity: 0.8;
+    filter: hue-rotate(180deg);
+  }
+}
+
+.menu-screen h1 {
+  font-size: 64px;
+  margin-bottom: 40px;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 6px;
+  background: linear-gradient(
+    135deg,
+    #00ffff 0%,
+    #ff00ff 25%,
+    #00ff00 50%,
+    #ffff00 75%,
+    #ff0080 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 300% 300%;
+  animation: cyberpunkTitle 4s ease-in-out infinite alternate,
+    cyberpunkShimmer 6s ease-in-out infinite;
+  text-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+  position: relative;
+}
+
+@keyframes cyberpunkTitle {
+  0% {
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.8),
+      0 0 20px rgba(255, 0, 255, 0.6), 0 0 30px rgba(0, 255, 0, 0.4);
+  }
+  100% {
+    text-shadow: 0 0 20px rgba(0, 255, 255, 1), 0 0 30px rgba(255, 0, 255, 0.8),
+      0 0 40px rgba(0, 255, 0, 0.6);
+  }
+}
+
+@keyframes cyberpunkShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.menu-screen h2 {
+  font-size: 42px;
+  margin-bottom: 30px;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  font-weight: 700;
+  color: #00ffff;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.menu-button {
+  padding: 18px 35px;
+  font-size: 20px;
+  font-weight: 600;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: linear-gradient(145deg, #000000 0%, #1a1a1a 50%, #000000 100%);
+  color: #00ffff;
+  border: 2px solid #00ffff;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.3),
+    inset 0 0 30px rgba(0, 255, 255, 0.1);
+  min-width: 250px;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  clip-path: polygon(20px 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+}
+
+.menu-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.menu-button:hover::before {
+  left: 100%;
+}
+
+.menu-button:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 0 50px rgba(0, 255, 255, 0.6),
+    inset 0 0 30px rgba(0, 255, 255, 0.2);
+  background: linear-gradient(145deg, #001a1a 0%, #003333 50%, #001a1a 100%);
+  border-color: #00ffff;
+  color: #00ffff;
+  text-shadow: 0 0 15px rgba(0, 255, 255, 1);
+}
+
+.menu-button.danger {
+  background: linear-gradient(145deg, #1a0010 0%, #330020 50%, #1a0010 100%);
+  border-color: #ff0080;
+  color: #ff0080;
+  box-shadow: 0 0 30px rgba(255, 0, 128, 0.3),
+    inset 0 0 30px rgba(255, 0, 128, 0.1);
+  text-shadow: 0 0 10px rgba(255, 0, 128, 0.8);
+}
+
+.menu-button.danger:hover {
+  background: linear-gradient(145deg, #330020 0%, #660040 50%, #330020 100%);
+  border-color: #ff0080;
+  box-shadow: 0 0 50px rgba(255, 0, 128, 0.6),
+    inset 0 0 30px rgba(255, 0, 128, 0.2);
+  text-shadow: 0 0 15px rgba(255, 0, 128, 1);
+}
+
+.menu-button.success {
+  background: linear-gradient(145deg, #001a10 0%, #003320 50%, #001a10 100%);
+  border-color: #00ff80;
+  color: #00ff80;
+  box-shadow: 0 0 30px rgba(0, 255, 128, 0.3),
+    inset 0 0 30px rgba(0, 255, 128, 0.1);
+  text-shadow: 0 0 10px rgba(0, 255, 128, 0.8);
+}
+
+.menu-button.success:hover {
+  background: linear-gradient(145deg, #003320 0%, #006640 50%, #003320 100%);
+  border-color: #00ff80;
+  box-shadow: 0 0 50px rgba(0, 255, 128, 0.6),
+    inset 0 0 30px rgba(0, 255, 128, 0.2);
+  text-shadow: 0 0 15px rgba(0, 255, 128, 1);
+}
+
+.stats {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(10, 0, 20, 0.95) 100%
+  );
+  padding: 35px;
+  border-radius: 0;
+  margin: 30px 0;
+  border: 2px solid #ff00ff;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 0 40px rgba(255, 0, 255, 0.4),
+    inset 0 0 40px rgba(255, 0, 255, 0.1);
+  clip-path: polygon(20px 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+}
+
+.stats p {
+  font-size: 24px;
+  margin: 20px 0;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  font-weight: 600;
+  color: #ff00ff;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+}
+
+.instructions-content {
+  max-width: 700px;
+  max-height: 70vh;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(10, 0, 20, 0.95) 100%
+  );
+  padding: 30px;
+  border-radius: 0;
+  border: 2px solid #00ffff;
+  backdrop-filter: blur(15px);
+  overflow-y: auto;
+  box-shadow: 0 0 40px rgba(0, 255, 255, 0.4),
+    inset 0 0 40px rgba(0, 255, 255, 0.1);
+  clip-path: polygon(20px 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+}
+
+.instructions-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.instructions-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.instructions-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+}
+
+.instructions-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 0, 255, 0.8);
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.6);
+}
+
+.instructions-content h3 {
+  color: #00ffff;
+  margin-bottom: 20px;
+  margin-top: 25px;
+  font-size: 28px;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+  border-bottom: 2px solid #00ffff;
+  padding-bottom: 10px;
+}
+
+.instructions-content h3:first-of-type {
+  margin-top: 0;
+}
+
+.instructions-content p {
+  margin: 15px 0;
+  line-height: 1.8;
+  font-size: 18px;
+  font-family: "Rajdhani", "Space Mono", monospace;
+  color: #00ffff;
+  font-weight: 300;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+.instructions-content .key {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 0, 255, 0.2) 0%,
+    rgba(0, 255, 255, 0.2) 100%
+  );
+  border: 1px solid #ff00ff;
+  padding: 6px 12px;
+  border-radius: 0;
+  font-weight: 600;
+  font-family: "Orbitron", "Fira Code", monospace;
+  color: #ff00ff;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+  font-size: 16px;
+  letter-spacing: 1px;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+}
+
+#pauseOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+}
+
+/* Hide screens by default */
+.menu-screen {
+  display: none;
+}
+
+.menu-screen.active {
+  display: flex;
+}
+
+/* Cyberpunk Social Media Icons */
+.social-icons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 2001;
+}
+
+.social-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid #00ffff;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00ffff;
+  text-decoration: none;
+  font-size: 18px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.social-icon:hover {
+  background: rgba(0, 255, 255, 0.2);
+  border-color: #ff00ff;
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.6);
+  color: #ff00ff;
+}
+
+.social-icon.github:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+}
+.social-icon.instagram:hover {
+  background: linear-gradient(45deg, #ff0080, #ff8000, #8000ff);
+  border-color: #ff0080;
+  color: #ffffff;
+  box-shadow: 0 0 30px rgba(255, 0, 128, 0.6);
+}
+.social-icon.linkedin:hover {
+  background: rgba(0, 128, 255, 0.2);
+  border-color: #0080ff;
+  color: #0080ff;
+  box-shadow: 0 0 30px rgba(0, 128, 255, 0.6);
+}
+.social-icon.twitter:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+}
+.social-icon.youtube:hover {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: #ff0000;
+  color: #ff0000;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+}
+
+.made-by {
+  margin-top: 20px;
+  font-size: 16px;
+  color: #00ffff;
+  text-align: center;
+  font-weight: 400;
+  letter-spacing: 2px;
+  opacity: 0.8;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+}
+
+/* Style for "Built with Three.js" text */
+.menu-screen p {
+  font-family: "Rajdhani", "Space Mono", monospace;
+  font-size: 16px;
+  color: #00ffff;
+  opacity: 0.8;
+  letter-spacing: 1px;
+  font-weight: 300;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+/* Cyberpunk particles animation */
+@keyframes cyberpunkParticles {
+  0% {
+    background-position: 0% 0%;
+    opacity: 0.2;
+  }
+  50% {
+    background-position: 100% 100%;
+    opacity: 0.4;
+  }
+  100% {
+    background-position: 0% 0%;
+    opacity: 0.2;
+  }
+}
+
+.menu-screen::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+      1px 1px at 20px 30px,
+      rgba(0, 255, 255, 0.4),
+      transparent
+    ),
+    radial-gradient(1px 1px at 40px 70px, rgba(255, 0, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(0, 255, 0, 0.2), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 0, 0.4), transparent),
+    radial-gradient(1px 1px at 160px 30px, rgba(255, 0, 128, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: cyberpunkParticles 10s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
