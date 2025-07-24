@@ -1,5 +1,6 @@
 import express from "express";
 import * as http from "http";
+import * as os from "os";
 import { Server as SocketIO } from "socket.io";
 import { GAME_EVENTS } from "./events";
 import cors from "cors";
@@ -7,7 +8,10 @@ import cors from "cors";
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = ["http://localhost:5173", "http://localhost:8080", "http://localhost:3000"];
+// Allow connections from any origin for LAN play
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? ["http://localhost:5173", "http://localhost:8080", "http://localhost:3000"]
+  : true; // Allow all origins in development for LAN access
 
 // Configure CORS for Express
 app.use(
@@ -27,6 +31,7 @@ const io = new SocketIO(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
 
 type Player = {
   id: string;
@@ -88,8 +93,29 @@ function getPlayersByRoom(roomId: string): Player[] {
   return room ? room.players : [];
 }
 
-server.listen(PORT, () => {
-  console.log(`✅ Doom Protocol Server listening on port ${PORT}`);
+server.listen(Number(PORT), HOST, () => {
+  console.log(`✅ Doom Protocol Server listening on ${HOST}:${PORT}`);
+  console.log(`🌐 LAN Access: Connect clients to http://<your-ip>:${PORT}`);
+  
+  // Try to display the actual IP address
+  const networkInterfaces = os.networkInterfaces();
+  const lanIPs: string[] = [];
+  
+  for (const interfaceName of Object.keys(networkInterfaces)) {
+    const networkInterface = networkInterfaces[interfaceName];
+    if (networkInterface) {
+      for (const address of networkInterface) {
+        if (address.family === 'IPv4' && !address.internal) {
+          lanIPs.push(address.address);
+        }
+      }
+    }
+  }
+  
+  if (lanIPs.length > 0) {
+    console.log(`🏠 Your LAN IP(s): ${lanIPs.join(', ')}`);
+    console.log(`🎮 Players can connect to: http://${lanIPs[0]}:${PORT}`);
+  }
 });
 
 app.get("/", (req, res) => {

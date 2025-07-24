@@ -82,6 +82,30 @@
         <div id="connectionStatus">🔴 Disconnected from Hell</div>
       </div>
 
+      <!-- Server Configuration -->
+      <div class="server-config">
+        <h3>🌐 SERVER CONNECTION</h3>
+        <div class="server-options">
+          <div class="server-option">
+            <input type="radio" id="localServer" name="serverType" value="local" checked />
+            <label for="localServer">🏠 Local Server (localhost:3000)</label>
+          </div>
+          <div class="server-option">
+            <input type="radio" id="lanServer" name="serverType" value="lan" />
+            <label for="lanServer">🌐 LAN Server</label>
+            <input type="text" id="lanServerIP" placeholder="192.168.1.100:3000" disabled />
+          </div>
+          <div class="server-option">
+            <input type="radio" id="customServer" name="serverType" value="custom" />
+            <label for="customServer">⚙️ Custom Server</label>
+            <input type="text" id="customServerIP" placeholder="server-ip:port" disabled />
+          </div>
+        </div>
+        <button class="menu-button" onclick="connectToServer()">
+          🔗 CONNECT TO HELL
+        </button>
+      </div>
+
       <!-- Room Management -->
       <div class="lobby-content">
         <div class="lobby-section">
@@ -227,6 +251,7 @@
     <div id="gameUI" style="display: none">
       <div id="blocker">
         <div id="instructions">
+          <button id="closeInterface" class="close-button" onclick="hideInstructions()">&times;</button>
           <h1>Doom Combat Interface</h1>
           <p>
             Move: <span class="highlight">WASD</span> or
@@ -238,7 +263,6 @@
           <p>
             <strong>Click to enter Hell</strong>
           </p>
-          <p>Press <span class="highlight">ESC</span> to exit targeting system</p>
         </div>
       </div>
 

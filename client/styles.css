@@ -830,6 +830,74 @@ canvas {
   }
 }
 
+/* Server Configuration Styles */
+.server-config {
+  background: rgba(139, 0, 0, 0.1);
+  border: 2px solid #ff6600;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+  width: 100%;
+  max-width: 500px;
+}
+
+.server-config h3 {
+  margin: 0 0 15px 0;
+  color: #ff6600;
+  text-shadow: 0 0 10px #ff6600;
+}
+
+.server-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.server-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+  border: 1px solid rgba(255, 102, 0, 0.3);
+}
+
+.server-option input[type="radio"] {
+  accent-color: #ff6600;
+  transform: scale(1.2);
+}
+
+.server-option label {
+  color: #ff9933;
+  font-weight: bold;
+  cursor: pointer;
+  flex: 1;
+}
+
+.server-option input[type="text"] {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid #ff6600;
+  border-radius: 5px;
+  padding: 8px 12px;
+  color: #ff6600;
+  font-family: inherit;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.server-option input[type="text"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.server-option input[type="text"]:focus {
+  outline: none;
+  border-color: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.3);
+}
+
 /* Game Over Screen */
 #gameOver {
   background: linear-gradient(
@@ -903,4 +971,32 @@ canvas {
   padding: 0.2rem 0.5rem;
   font-weight: 600;
   border: 1px solid #ff6600;
+}
+
+/* Close button for interfaces */
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  color: #ff6600;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.close-button:hover {
+  color: #ffffff;
+  background: rgba(255, 102, 0, 0.2);
+  border-radius: 50%;
+  transform: scale(1.1);
 }

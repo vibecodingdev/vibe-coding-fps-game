@@ -3044,10 +3044,10 @@ function initControls() {
       return;
     }
 
-    // Handle ENTER key to toggle interface visibility while staying in game
+    // Handle ENTER key for chat in multiplayer mode
     if (event.code === "Enter") {
-      if (gameState === "playing") {
-        toggleInterface();
+      if (gameState === "playing" && isMultiplayer) {
+        toggleGameChat();
       }
       return;
     }
@@ -3384,6 +3384,19 @@ function shoot() {
 
   // Update weapon display to show new ammo count
   updateWeaponDisplay();
+}
+
+// Hide instructions interface
+function hideInstructions() {
+  const blocker = document.getElementById("blocker");
+  if (blocker) {
+    blocker.style.display = "none";
+  }
+  
+  // If game is ready, try to lock controls
+  if (gameState === "playing" && controls) {
+    controls.lock();
+  }
 }
 
 // Create and fire a bullet
@@ -4295,7 +4308,9 @@ function startGame() {
   }
 
   // Request pointer lock to enable mouse controls
-  document.body.requestPointerLock();
+  setTimeout(() => {
+    requestPointerLockWithRetry();
+  }, 100); // Small delay to ensure UI is ready
 
   console.log("Starting game");
 }
@@ -4344,7 +4359,9 @@ function resumeGame() {
   document.getElementById("gameUI").style.display = "block";
 
   // Request pointer lock to continue playing
-  document.body.requestPointerLock();
+  setTimeout(() => {
+    requestPointerLockWithRetry();
+  }, 100); // Small delay to ensure UI is ready
 
   console.log("Game resumed");
 }
@@ -4511,7 +4528,38 @@ window.addEventListener("load", () => {
   // Start animation loop immediately for any visual effects
   animate();
   // Don't initialize the game immediately, wait for user to click start
+  
+  // Set up server configuration event listeners
+  setupServerConfigListeners();
 });
+
+function setupServerConfigListeners() {
+  const serverRadios = document.querySelectorAll('input[name="serverType"]');
+  const lanServerIP = document.getElementById("lanServerIP");
+  const customServerIP = document.getElementById("customServerIP");
+  
+  serverRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      // Enable/disable IP input fields based on selection
+      if (lanServerIP) {
+        lanServerIP.disabled = e.target.value !== 'lan';
+      }
+      if (customServerIP) {
+        customServerIP.disabled = e.target.value !== 'custom';
+      }
+    });
+  });
+  
+  // Auto-connect when switching to local server
+  const localRadio = document.getElementById("localServer");
+  if (localRadio) {
+    localRadio.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        setTimeout(() => connectToServer(), 100);
+      }
+    });
+  }
+}
 
 // Master volume control function
 function updateMasterVolume(value) {
@@ -4549,6 +4597,8 @@ window.resumeGame = resumeGame;
 window.quitToMainMenu = quitToMainMenu;
 window.restartGame = restartGame;
 window.updateMasterVolume = updateMasterVolume;
+window.connectToServer = connectToServer;
+window.toggleReady = toggleReady;
 
 // UI Management Functions
 function showMainMenu() {
@@ -4569,13 +4619,14 @@ function showMultiplayerLobby() {
   gameState = "multiplayerLobby";
 
   if (!socket) {
-    initializeNetworking();
+    // Try to connect to the currently selected server
+    connectToServer();
   }
 
   // Auto-refresh rooms
   setTimeout(() => {
     if (isConnected) refreshRooms();
-  }, 500);
+  }, 1000); // Increased delay to allow connection to establish
 }
 
 function showPartyRoom() {
@@ -4625,6 +4676,45 @@ function hideAllMenus() {
 }
 
 // Networking functions
+let currentServerURL = "http://localhost:3000";
+
+function getServerURL() {
+  const serverType = document.querySelector('input[name="serverType"]:checked')?.value;
+  
+  switch (serverType) {
+    case "local":
+      return "http://localhost:3000";
+    case "lan":
+      const lanIP = document.getElementById("lanServerIP")?.value?.trim();
+      if (lanIP) {
+        return lanIP.startsWith("http") ? lanIP : `http://${lanIP}`;
+      }
+      return "http://localhost:3000";
+    case "custom":
+      const customIP = document.getElementById("customServerIP")?.value?.trim();
+      if (customIP) {
+        return customIP.startsWith("http") ? customIP : `http://${customIP}`;
+      }
+      return "http://localhost:3000";
+    default:
+      return "http://localhost:3000";
+  }
+}
+
+function connectToServer() {
+  // Disconnect existing connection if any
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  
+  currentServerURL = getServerURL();
+  console.log(`🌐 Attempting to connect to: ${currentServerURL}`);
+  updateConnectionStatus("🔄 Connecting to Hell...");
+  
+  initializeNetworking();
+}
+
 function initializeNetworking() {
   if (socket) return;
 
@@ -4636,7 +4726,10 @@ function initializeNetworking() {
   }
 
   try {
-    socket = io("http://localhost:3000");
+    socket = io(currentServerURL, {
+      timeout: 10000, // 10 second timeout
+      transports: ['websocket', 'polling'] // Try websocket first, fallback to polling
+    });
   } catch (error) {
     console.error("Failed to initialize Socket.IO:", error);
     updateConnectionStatus("🔴 Connection failed");
@@ -4644,15 +4737,32 @@ function initializeNetworking() {
   }
 
   socket.on("connect", () => {
-    console.log("🔥 Connected to Hell Server");
+    console.log(`🔥 Connected to Hell Server: ${currentServerURL}`);
     isConnected = true;
-    updateConnectionStatus("🟢 Connected to Hell");
+    updateConnectionStatus(`🟢 Connected to Hell (${currentServerURL})`);
   });
 
   socket.on("disconnect", () => {
     console.log("💀 Disconnected from Hell Server");
     isConnected = false;
     updateConnectionStatus("🔴 Disconnected from Hell");
+  });
+
+  socket.on("connect_error", (error) => {
+    console.error("❌ Connection error:", error);
+    isConnected = false;
+    updateConnectionStatus(`🔴 Connection failed: ${error.message || 'Unknown error'}`);
+  });
+
+  socket.on("reconnect", (attemptNumber) => {
+    console.log(`🔄 Reconnected after ${attemptNumber} attempts`);
+    isConnected = true;
+    updateConnectionStatus(`🟢 Reconnected to Hell (${currentServerURL})`);
+  });
+
+  socket.on("reconnect_error", (error) => {
+    console.error("❌ Reconnection failed:", error);
+    updateConnectionStatus("🔴 Reconnection failed");
   });
 
   // Room events
@@ -5068,14 +5178,28 @@ function toggleGameChat() {
 function initializeMultiplayerGame(gameData) {
   console.log("🎮 Initializing multiplayer game:", gameData);
 
+  // Set multiplayer flag
+  isMultiplayer = true;
+
   // Hide menu and show game
   hideAllMenus();
   document.getElementById("gameUI").style.display = "block";
+
+  // Enter fullscreen mode (optional for multiplayer)
+  enterFullscreen();
 
   // Initialize the game if not already done
   if (!gameInitialized) {
     init();
     gameInitialized = true;
+  } else {
+    // Reset and restart if already initialized (same as single-player)
+    resetGameState();
+  }
+
+  // Always ensure wave system is started for multiplayer
+  if (!waveInProgress) {
+    startWaveSystem();
   }
 
   // Set game state
@@ -5099,8 +5223,62 @@ function initializeMultiplayerGame(gameData) {
   // Start position sync
   startPositionSync();
 
-  // Enable pointer lock
-  document.body.requestPointerLock();
+  // Enable pointer lock with better error handling and timing
+  setTimeout(() => {
+    requestPointerLockWithRetry();
+  }, 100); // Small delay to ensure UI is ready
+
+  console.log("🔥 Multiplayer game initialized successfully");
+}
+
+// Helper function to request pointer lock with retry logic and error handling
+function requestPointerLockWithRetry(retryCount = 0) {
+  const maxRetries = 3;
+  
+  if (!document.body.requestPointerLock) {
+    console.error("Pointer lock not supported by this browser");
+    return;
+  }
+
+  const pointerLockPromise = document.body.requestPointerLock();
+  
+  if (pointerLockPromise) {
+    // Modern browsers return a promise
+    pointerLockPromise.then(() => {
+      console.log("✅ Pointer lock successfully acquired for multiplayer");
+    }).catch((error) => {
+      console.warn(`⚠️ Pointer lock failed (attempt ${retryCount + 1}):`, error);
+      
+      if (retryCount < maxRetries) {
+        setTimeout(() => {
+          requestPointerLockWithRetry(retryCount + 1);
+        }, 1000); // Wait 1 second before retry
+      } else {
+        console.error("❌ Failed to acquire pointer lock after maximum retries");
+        // Show user-friendly message
+        alert("🎮 Please click anywhere in the game area to enable mouse controls!");
+        
+        // Add a one-time click listener to retry pointer lock
+        const retryOnClick = () => {
+          document.body.requestPointerLock();
+          document.removeEventListener('click', retryOnClick);
+        };
+        document.addEventListener('click', retryOnClick);
+      }
+    });
+  } else {
+    // Older browsers don't return a promise
+    console.log("🔄 Requesting pointer lock (older browser)");
+    
+    // For older browsers, we can't easily detect failure, so just try once more if it's the first attempt
+    if (retryCount === 0) {
+      setTimeout(() => {
+        if (!controls.isLocked) {
+          requestPointerLockWithRetry(1);
+        }
+      }, 1000);
+    }
+  }
 }
 
 function createRemotePlayer(playerData) {
@@ -5188,8 +5366,5 @@ document.addEventListener("keydown", (event) => {
       sendChatMessage();
     }
   }
-
-  if (gameState === "playing" && event.key === "Enter") {
-    toggleGameChat();
-  }
+  // Note: In-game Enter key handling is now done in the main controls listener
 });
