@@ -29,6 +29,16 @@ let demonModel = null;
 let loader = null;
 const DEMON_COUNT = 10;
 
+// =================== BASIC VOICE CHAT SUPPORT ===================
+// Basic voice chat object for pause menu settings (simplified version)
+let voiceChat = {
+  settings: {
+    mode: "disabled", // 'speech-to-text', 'voice-transmission', 'disabled'
+    pushToTalkKey: "KeyT",
+    voiceVolume: 80,
+  },
+};
+
 // Initialize loader with error handling (currently disabled for performance)
 function initializeLoader() {
   // GLTFLoader disabled - using optimized built-in demon models
@@ -472,6 +482,9 @@ function init() {
 
   // Initialize radar
   initRadar();
+
+  // Initialize pause menu settings
+  initializePauseMenuSettings();
 
   // Start animation loop
   animate();
@@ -3160,8 +3173,8 @@ function initControls() {
   controls.addEventListener("unlock", function () {
     console.log("🔓 Pointer lock released, gameState:", gameState);
     if (gameState === "playing") {
-      document.getElementById("gameUI").style.display = "none";
-      showMainMenu();
+      // When pointer lock is lost during gameplay, pause the game
+      pauseGame();
     }
   });
 
@@ -4527,10 +4540,17 @@ function pauseGame() {
     document.exitPointerLock();
   }
 
-  // Hide game UI temporarily
-  document.getElementById("gameUI").style.display = "none";
+  // Show/hide voice chat settings based on multiplayer mode
+  const voiceChatSettings = document.getElementById("pauseVoiceChatSettings");
+  if (voiceChatSettings) {
+    voiceChatSettings.style.display = isMultiplayer ? "block" : "none";
+  }
 
-  console.log("Game paused - press ESC again to resume");
+  // Show pause menu
+  hideAllMenus();
+  document.getElementById("pauseMenu").classList.add("active");
+
+  console.log("Game paused - press ESC again or click Resume to continue");
 }
 
 function resumeGame() {
@@ -4542,7 +4562,7 @@ function resumeGame() {
 
   // Request pointer lock to continue playing
   setTimeout(() => {
-    requestPointerLockWithRetry();
+    requestPointerLock();
   }, 100); // Small delay to ensure UI is ready
 
   console.log("Game resumed");
@@ -4867,6 +4887,15 @@ function updateMasterVolume(value) {
 
   // Update all sound effect volumes
   updateSoundVolumes();
+
+  // Update display
+  const masterVolumeDisplay = document.getElementById("masterVolumeDisplay");
+  if (masterVolumeDisplay) {
+    masterVolumeDisplay.textContent = value + "%";
+  }
+
+  // Save setting
+  localStorage.setItem("masterVolume", value);
 }
 
 // Remove the duplicate UI management functions since they'll be defined earlier
@@ -4889,6 +4918,7 @@ window.resumeGame = resumeGame;
 window.quitToMainMenu = quitToMainMenu;
 window.restartGame = restartGame;
 window.updateMasterVolume = updateMasterVolume;
+window.updateVoiceVolume = updateVoiceVolume;
 window.connectToServer = connectToServer;
 window.toggleReady = toggleReady;
 
@@ -6301,4 +6331,140 @@ function createPlayerModel(colorScheme, playerName) {
   playerGroup.userData.colorScheme = colorScheme;
 
   return playerGroup;
+}
+
+// Helper function to request pointer lock with error handling
+function requestPointerLock() {
+  if (!controls) {
+    console.warn("⚠️ Controls not initialized");
+    return;
+  }
+
+  try {
+    const lockPromise = document.body.requestPointerLock();
+
+    if (lockPromise) {
+      lockPromise
+        .then(() => {
+          console.log("✅ Pointer lock acquired");
+        })
+        .catch((error) => {
+          console.warn("⚠️ Pointer lock failed:", error);
+        });
+    } else {
+      console.log("✅ Pointer lock requested (legacy API)");
+    }
+  } catch (error) {
+    console.warn("⚠️ Pointer lock request failed:", error);
+  }
+}
+
+// =================== PAUSE MENU SETTINGS FUNCTIONS ===================
+
+// Initialize pause menu settings and event listeners
+function initializePauseMenuSettings() {
+  // Load settings from localStorage
+  loadPauseMenuSettings();
+
+  // Setup event listeners for pause menu controls
+  setupPauseMenuEventListeners();
+}
+
+// Load settings from localStorage
+function loadPauseMenuSettings() {
+  // Load voice chat settings
+  const savedVoiceSettings = localStorage.getItem("voiceChatSettings");
+  if (savedVoiceSettings) {
+    const settings = JSON.parse(savedVoiceSettings);
+    voiceChat.settings = { ...voiceChat.settings, ...settings };
+  }
+
+  // Load master volume
+  const savedMasterVolume = localStorage.getItem("masterVolume");
+  if (savedMasterVolume) {
+    const pauseMasterVolume = document.getElementById("pauseMasterVolume");
+    if (pauseMasterVolume) {
+      pauseMasterVolume.value = savedMasterVolume;
+    }
+  }
+
+  // Update pause menu UI elements
+  updatePauseMenuUI();
+}
+
+// Update pause menu UI with current settings
+function updatePauseMenuUI() {
+  const pauseVoiceChatMode = document.getElementById("pauseVoiceChatMode");
+  const pauseVoiceVolume = document.getElementById("pauseVoiceVolume");
+  const pausePushToTalkKey = document.getElementById("pausePushToTalkKey");
+
+  if (pauseVoiceChatMode) pauseVoiceChatMode.value = voiceChat.settings.mode;
+  if (pauseVoiceVolume) pauseVoiceVolume.value = voiceChat.settings.voiceVolume;
+  if (pausePushToTalkKey)
+    pausePushToTalkKey.value = voiceChat.settings.pushToTalkKey;
+
+  // Update volume displays
+  const masterVolumeDisplay = document.getElementById("masterVolumeDisplay");
+  const voiceVolumeDisplay = document.getElementById("voiceVolumeDisplay");
+  const pauseMasterVolume = document.getElementById("pauseMasterVolume");
+
+  if (masterVolumeDisplay && pauseMasterVolume) {
+    masterVolumeDisplay.textContent = pauseMasterVolume.value + "%";
+  }
+  if (voiceVolumeDisplay) {
+    voiceVolumeDisplay.textContent = voiceChat.settings.voiceVolume + "%";
+  }
+}
+
+// Setup event listeners for pause menu controls
+function setupPauseMenuEventListeners() {
+  const pauseVoiceChatMode = document.getElementById("pauseVoiceChatMode");
+  const pauseVoiceVolume = document.getElementById("pauseVoiceVolume");
+  const pausePushToTalkKey = document.getElementById("pausePushToTalkKey");
+
+  if (pauseVoiceChatMode) {
+    pauseVoiceChatMode.addEventListener("change", (e) => {
+      voiceChat.settings.mode = e.target.value;
+      saveVoiceChatSettings();
+      console.log("Voice chat mode changed:", e.target.value);
+    });
+  }
+
+  if (pauseVoiceVolume) {
+    pauseVoiceVolume.addEventListener("input", (e) => {
+      voiceChat.settings.voiceVolume = parseInt(e.target.value);
+      saveVoiceChatSettings();
+
+      // Update display
+      const display = document.getElementById("voiceVolumeDisplay");
+      if (display) display.textContent = e.target.value + "%";
+
+      console.log("Voice volume changed:", e.target.value);
+    });
+  }
+
+  if (pausePushToTalkKey) {
+    pausePushToTalkKey.addEventListener("change", (e) => {
+      voiceChat.settings.pushToTalkKey = e.target.value;
+      saveVoiceChatSettings();
+      console.log("Push-to-talk key changed:", e.target.value);
+    });
+  }
+}
+
+// Save voice chat settings to localStorage
+function saveVoiceChatSettings() {
+  localStorage.setItem("voiceChatSettings", JSON.stringify(voiceChat.settings));
+}
+
+// Update voice volume (placeholder function)
+function updateVoiceVolume(value) {
+  voiceChat.settings.voiceVolume = parseInt(value);
+  saveVoiceChatSettings();
+
+  // Update display
+  const display = document.getElementById("voiceVolumeDisplay");
+  if (display) display.textContent = value + "%";
+
+  console.log("Voice volume updated:", value);
 }
