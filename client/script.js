@@ -674,7 +674,7 @@ function initSpeechRecognition() {
 
     voiceChat.recognition.continuous = false;
     voiceChat.recognition.interimResults = false;
-    voiceChat.recognition.lang = "en-US";
+    voiceChat.recognition.lang = navigator.language || "en-US"; // Auto-detect language
     voiceChat.recognition.maxAlternatives = 1;
 
     voiceChat.recognition.onresult = (event) => {
@@ -829,6 +829,16 @@ function startVoiceTransmission() {
 
 // Send voice message (text or audio data)
 function sendVoiceMessage(message, type) {
+  const playerName = document.getElementById("playerName")?.value || "Player";
+
+  // In single player mode, just show the message locally for testing
+  if (!isMultiplayer) {
+    console.log("🎤 Voice message (single player):", message);
+    addGameChatMessage("voice", message, playerName);
+    return;
+  }
+
+  // In multiplayer mode, send to server
   if (!socket || !socket.connected) {
     console.warn("Not connected to server");
     return;
@@ -838,7 +848,7 @@ function sendVoiceMessage(message, type) {
     type: type,
     message: message,
     playerId: socket.id,
-    playerName: document.getElementById("playerName").value || "Anonymous",
+    playerName: playerName,
     timestamp: Date.now(),
   };
 
@@ -850,6 +860,24 @@ function sendVoiceMessage(message, type) {
 
 // Send voice audio data
 function sendVoiceData(audioBlob) {
+  const playerName = document.getElementById("playerName")?.value || "Player";
+
+  // In single player mode, just show a test message
+  if (!isMultiplayer) {
+    console.log(
+      "🎤 Voice audio recorded (single player):",
+      audioBlob.size,
+      "bytes"
+    );
+    addGameChatMessage(
+      "voice",
+      "🎤 Voice recording test (audio mode)",
+      playerName
+    );
+    return;
+  }
+
+  // In multiplayer mode, send to server
   if (!socket || !socket.connected) {
     console.warn("Not connected to server");
     return;
@@ -861,7 +889,7 @@ function sendVoiceData(audioBlob) {
       type: "voice-transmission",
       audioData: reader.result,
       playerId: socket.id,
-      playerName: document.getElementById("playerName").value || "Anonymous",
+      playerName: playerName,
       timestamp: Date.now(),
     };
 
@@ -981,6 +1009,24 @@ function debugVoiceChat() {
 
 // Make debug function globally accessible
 window.debugVoiceChat = debugVoiceChat;
+
+// Test function for single player voice chat
+function testSinglePlayerVoiceChat() {
+  console.log("🎤 Testing Single Player Voice Chat:");
+  console.log("- Press and hold T to test speech-to-text");
+  console.log("- Check voice status indicator bottom-left");
+  console.log("- Voice messages will appear in chat area");
+  console.log("- Current mode:", voiceChat.settings.mode);
+
+  if (voiceChat.settings.mode === "disabled") {
+    console.log("⚠️ Voice chat is disabled. Enable it in pause menu (ESC)");
+  }
+
+  debugVoiceChat();
+}
+
+// Make test function globally accessible
+window.testSinglePlayerVoiceChat = testSinglePlayerVoiceChat;
 
 // Create ground plane
 function createGround() {
@@ -3710,7 +3756,6 @@ function initControls() {
 
       if (
         gameState === "playing" &&
-        isMultiplayer &&
         !voiceChat.isPushToTalkPressed &&
         voiceChat.settings.mode !== "disabled"
       ) {
@@ -4999,6 +5044,13 @@ function startGame() {
   // Set game state AFTER initialization
   gameState = "playing";
 
+  // Show voice chat hint for single player
+  if (voiceChat.settings.mode !== "disabled") {
+    console.log(
+      "🎤 Voice chat enabled! Press and hold T to test speech-to-text in single player mode."
+    );
+  }
+
   // Request pointer lock to enable mouse controls with error handling
   setTimeout(() => {
     console.log("🎯 Requesting pointer lock for single player...");
@@ -5062,10 +5114,10 @@ function pauseGame() {
     document.exitPointerLock();
   }
 
-  // Show/hide voice chat settings based on multiplayer mode
+  // Show voice chat settings (always available for testing)
   const voiceChatSettings = document.getElementById("pauseVoiceChatSettings");
   if (voiceChatSettings) {
-    voiceChatSettings.style.display = isMultiplayer ? "block" : "none";
+    voiceChatSettings.style.display = "block";
   }
 
   // Update pause menu UI with current settings

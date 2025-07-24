@@ -810,6 +810,7 @@ canvas {
   max-height: 200px;
   overflow-y: auto;
   margin-bottom: 0.5rem;
+  bottom: 20px;
 }
 
 .game-chat-message {
@@ -1366,8 +1367,8 @@ canvas {
 /* Voice Chat Status Indicator */
 .voice-chat-status {
   position: absolute;
-  bottom: 10px;
-  right: 150px;
+  bottom: 0px;
+  left: 0px;
   z-index: 15;
 }
 
