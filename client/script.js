@@ -2900,6 +2900,11 @@ function updateRadar() {
   // Draw demons as dots
   drawDemonsOnRadar(playerPos, centerX, centerY);
 
+  // Draw remote players if in multiplayer mode
+  if (isMultiplayer) {
+    drawRemotePlayersOnRadar(playerPos, centerX, centerY);
+  }
+
   // Draw player as center dot
   drawPlayerOnRadar(centerX, centerY);
 
@@ -3040,6 +3045,79 @@ function drawDemonsOnRadar(playerPos, centerX, centerY) {
       radarContext.fillStyle = demonColor.replace("0.8", pulseAlpha.toString());
       radarContext.beginPath();
       radarContext.arc(radarX, radarY, demonSize + 2, 0, Math.PI * 2);
+      radarContext.fill();
+    }
+  });
+}
+
+// Draw remote players on radar
+function drawRemotePlayersOnRadar(playerPos, centerX, centerY) {
+  remotePlayers.forEach((player, playerId) => {
+    if (!player.mesh || !player.mesh.position) return;
+
+    // Calculate relative position
+    const dx = player.mesh.position.x - playerPos.x;
+    const dz = player.mesh.position.z - playerPos.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+
+    // Only show players within radar range
+    if (distance > RADAR_RANGE) return;
+
+    // Convert world coordinates to radar coordinates
+    const scale = RADAR_SIZE / 2 / RADAR_RANGE;
+    const radarX = centerX + dx * scale;
+    const radarY = centerY + dz * scale;
+
+    // Skip if outside radar circle
+    const radarDistance = Math.sqrt(
+      (radarX - centerX) ** 2 + (radarY - centerY) ** 2
+    );
+    if (radarDistance > RADAR_SIZE / 2) return;
+
+    // Get player color scheme
+    const colorScheme = player.colorScheme || getPlayerColor(0); // Fallback color
+    const playerColor = `#${colorScheme.body.toString(16).padStart(6, "0")}`;
+    const eyeColor = `#${colorScheme.eyes.toString(16).padStart(6, "0")}`;
+
+    // Draw player base (larger than demons)
+    radarContext.fillStyle = playerColor;
+    radarContext.beginPath();
+    radarContext.arc(radarX, radarY, 4, 0, Math.PI * 2);
+    radarContext.fill();
+
+    // Draw player eye glow (inner circle)
+    radarContext.fillStyle = eyeColor;
+    radarContext.beginPath();
+    radarContext.arc(radarX, radarY, 2, 0, Math.PI * 2);
+    radarContext.fill();
+
+    // Draw player outline to distinguish from demons
+    radarContext.strokeStyle = "#ffffff";
+    radarContext.lineWidth = 1;
+    radarContext.beginPath();
+    radarContext.arc(radarX, radarY, 5, 0, Math.PI * 2);
+    radarContext.stroke();
+
+    // Add team marker (small square)
+    const markerSize = 2;
+    radarContext.fillStyle = eyeColor;
+    radarContext.fillRect(
+      radarX - markerSize / 2,
+      radarY - 8,
+      markerSize,
+      markerSize
+    );
+
+    // Add pulsing effect for very close players (friendly identification)
+    if (distance < 8) {
+      const pulseAlpha = 0.4 + 0.4 * Math.sin(Date.now() * 0.008);
+      radarContext.fillStyle =
+        eyeColor +
+        Math.floor(pulseAlpha * 255)
+          .toString(16)
+          .padStart(2, "0");
+      radarContext.beginPath();
+      radarContext.arc(radarX, radarY, 7, 0, Math.PI * 2);
       radarContext.fill();
     }
   });
@@ -5768,26 +5846,47 @@ function hitDemon(demon, demonIndex) {
 }
 
 function createRemotePlayer(playerData) {
-  // Create a simple representation for remote players using CylinderGeometry (compatible with Three.js r128)
-  const geometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
-  const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-  const playerMesh = new THREE.Mesh(geometry, material);
+  // Generate a unique color for this player based on their ID or index
+  const playerIndex = Array.from(remotePlayers.keys()).length;
+  const colorScheme = getPlayerColor(playerIndex);
 
-  // Add name tag
+  // Create a demon-style player model with unique colors
+  const playerMesh = createPlayerModel(colorScheme, playerData.name);
+
+  // Enhanced name tag with player color and emoji
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  canvas.width = 256;
-  canvas.height = 64;
-  context.fillStyle = "#ffffff";
-  context.font = "24px Arial";
+  canvas.width = 320;
+  canvas.height = 80;
+
+  // Background with player color
+  context.fillStyle = `#${colorScheme.body.toString(16).padStart(6, "0")}`;
+  context.globalAlpha = 0.8;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Text with white outline for better readability
+  context.globalAlpha = 1.0;
+  context.fillStyle = "#000000";
+  context.font = "bold 24px Arial";
   context.textAlign = "center";
-  context.fillText(playerData.name, 128, 40);
+  context.fillText(`${colorScheme.emoji} ${playerData.name}`, 162, 32);
+  context.fillText(`${colorScheme.emoji} ${playerData.name}`, 158, 32);
+  context.fillText(`${colorScheme.emoji} ${playerData.name}`, 160, 30);
+  context.fillText(`${colorScheme.emoji} ${playerData.name}`, 160, 34);
+
+  context.fillStyle = "#ffffff";
+  context.fillText(`${colorScheme.emoji} ${playerData.name}`, 160, 32);
+
+  // Color name subtitle
+  context.font = "16px Arial";
+  context.fillStyle = "#ffffff";
+  context.fillText(colorScheme.name, 160, 55);
 
   const texture = new THREE.CanvasTexture(canvas);
   const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
   const nameSprite = new THREE.Sprite(spriteMaterial);
-  nameSprite.position.set(0, 1.5, 0);
-  nameSprite.scale.set(2, 0.5, 1);
+  nameSprite.position.set(0, 2.8, 0); // Higher position for better visibility
+  nameSprite.scale.set(2.5, 0.6, 1);
 
   playerMesh.add(nameSprite);
   playerMesh.position.set(
@@ -5796,11 +5895,19 @@ function createRemotePlayer(playerData) {
     playerData.position.z
   );
 
+  // Scale player model to be slightly larger than demons for visibility
+  playerMesh.scale.setScalar(1.2);
+
   scene.add(playerMesh);
   remotePlayers.set(playerData.id, {
     mesh: playerMesh,
     data: playerData,
+    colorScheme: colorScheme,
   });
+
+  console.log(
+    `👤 Created remote player ${playerData.name} with ${colorScheme.name} color scheme`
+  );
 }
 
 function updateRemotePlayerPosition(data) {
@@ -5892,3 +5999,203 @@ document.addEventListener("keydown", (event) => {
   }
   // Note: In-game Enter key handling is now done in the main controls listener
 });
+
+// Player color system for multiplayer
+const PLAYER_COLORS = [
+  {
+    name: "Cyber Blue",
+    body: 0x0066ff,
+    head: 0x0044cc,
+    eyes: 0x00ffff,
+    weapon: 0x0088ff,
+    emoji: "🤖",
+  },
+  {
+    name: "Hell Fire",
+    body: 0xff3300,
+    head: 0xcc2200,
+    eyes: 0xffff00,
+    weapon: 0xff6600,
+    emoji: "🔥",
+  },
+  {
+    name: "Toxic Green",
+    body: 0x00ff44,
+    head: 0x00cc33,
+    eyes: 0x44ff44,
+    weapon: 0x00ff88,
+    emoji: "☢️",
+  },
+  {
+    name: "Shadow Purple",
+    body: 0x8800ff,
+    head: 0x6600cc,
+    eyes: 0xaa00ff,
+    weapon: 0x9944ff,
+    emoji: "🌙",
+  },
+  {
+    name: "Golden Warrior",
+    body: 0xffaa00,
+    head: 0xcc8800,
+    eyes: 0xffdd00,
+    weapon: 0xffcc00,
+    emoji: "👑",
+  },
+  {
+    name: "Ice Crystal",
+    body: 0x00aaff,
+    head: 0x0088cc,
+    eyes: 0x88ddff,
+    weapon: 0x44bbff,
+    emoji: "❄️",
+  },
+  {
+    name: "Blood Red",
+    body: 0x880000,
+    head: 0x660000,
+    eyes: 0xff0000,
+    weapon: 0xaa0000,
+    emoji: "🩸",
+  },
+  {
+    name: "Electric Yellow",
+    body: 0xffff00,
+    head: 0xcccc00,
+    eyes: 0xffff88,
+    weapon: 0xffff44,
+    emoji: "⚡",
+  },
+];
+
+// Function to get player color by index
+function getPlayerColor(playerIndex) {
+  return PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
+}
+
+// Check if an object is a player rather than a demon
+function isPlayerObject(object) {
+  return object && object.userData && object.userData.isPlayer === true;
+}
+
+// Create a player model based on demon style with custom colors
+function createPlayerModel(colorScheme, playerName) {
+  const playerGroup = new THREE.Group();
+
+  // Body (main torso)
+  const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.3);
+  const bodyMaterial = new THREE.MeshLambertMaterial({
+    color: colorScheme.body,
+    emissive: colorScheme.body,
+    emissiveIntensity: 0.1,
+  });
+  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+  body.position.y = 0.6;
+  playerGroup.add(body);
+
+  // Head
+  const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+  const headMaterial = new THREE.MeshLambertMaterial({
+    color: colorScheme.head,
+    emissive: colorScheme.head,
+    emissiveIntensity: 0.1,
+  });
+  const head = new THREE.Mesh(headGeometry, headMaterial);
+  head.position.y = 1.4;
+  playerGroup.add(head);
+
+  // Eyes (glowing to indicate it's a player)
+  const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+  const eyeMaterial = new THREE.MeshBasicMaterial({
+    color: colorScheme.eyes,
+    emissive: colorScheme.eyes,
+    emissiveIntensity: 0.8, // Brighter than demons
+  });
+
+  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  leftEye.position.set(-0.1, 1.45, 0.25);
+  playerGroup.add(leftEye);
+
+  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  rightEye.position.set(0.1, 1.45, 0.25);
+  playerGroup.add(rightEye);
+
+  // Arms
+  const armGeometry = new THREE.BoxGeometry(0.15, 0.7, 0.15);
+  const armMaterial = new THREE.MeshLambertMaterial({
+    color: colorScheme.head,
+  });
+
+  const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+  leftArm.position.set(-0.45, 0.8, 0);
+  leftArm.rotation.z = 0.3;
+  playerGroup.add(leftArm);
+
+  const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+  rightArm.position.set(0.45, 0.8, 0);
+  rightArm.rotation.z = -0.3;
+  playerGroup.add(rightArm);
+
+  // Legs
+  const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+  const legMaterial = new THREE.MeshLambertMaterial({
+    color: colorScheme.body,
+  });
+
+  const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+  leftLeg.position.set(-0.15, -0.4, 0);
+  playerGroup.add(leftLeg);
+
+  const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+  rightLeg.position.set(0.15, -0.4, 0);
+  playerGroup.add(rightLeg);
+
+  // Player identification features
+  // Add a weapon to distinguish from demons
+  const weaponGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.8);
+  const weaponMaterial = new THREE.MeshLambertMaterial({
+    color: colorScheme.weapon,
+    emissive: colorScheme.weapon,
+    emissiveIntensity: 0.2,
+  });
+  const weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
+  weapon.position.set(0.5, 0.7, -0.4);
+  weapon.rotation.x = -0.2;
+  playerGroup.add(weapon);
+
+  // Add a helmet/headgear to make players more distinct
+  const helmetGeometry = new THREE.BoxGeometry(0.45, 0.15, 0.45);
+  const helmetMaterial = new THREE.MeshLambertMaterial({
+    color: colorScheme.weapon,
+    metalness: 0.5,
+  });
+  const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+  helmet.position.y = 1.6;
+  playerGroup.add(helmet);
+
+  // Add team identification antenna/marker
+  const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6);
+  const antennaMaterial = new THREE.MeshBasicMaterial({
+    color: colorScheme.eyes,
+    emissive: colorScheme.eyes,
+    emissiveIntensity: 1.0,
+  });
+  const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+  antenna.position.y = 1.9;
+  playerGroup.add(antenna);
+
+  // Enable shadows
+  playerGroup.traverse(function (child) {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  // Store player info in the model
+  playerGroup.userData.isPlayer = true;
+  playerGroup.userData.playerName = playerName;
+  playerGroup.userData.colorScheme = colorScheme;
+
+  return playerGroup;
+}

@@ -4,4 +4,4 @@ globs:
 alwaysApply: true
 ---
 
-0: Only use english in this game project.(UI & all messages & all logs)
+0: Ensure exclusive use of English in this game project, encompassing UI, documentation, all messages, and all logs.

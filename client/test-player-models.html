@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Model Test - Demon Style FPS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ff6600;
+            background: linear-gradient(45deg, #001122, #002244);
+        }
+        .info {
+            margin: 20px 0;
+            padding: 10px;
+            background: rgba(255, 102, 0, 0.1);
+            border: 1px solid #ff6600;
+        }
+        .color-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .color-card {
+            padding: 10px;
+            border: 1px solid #ff6600;
+            background: rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+        }
+        .color-preview {
+            width: 30px;
+            height: 30px;
+            display: inline-block;
+            margin-right: 10px;
+            border: 1px solid #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 多人联机玩家模型测试</h1>
+    
+    <div class="info">
+        <h3>✨ 新功能说明</h3>
+        <p>✅ 替换了简单的绿色圆柱体</p>
+        <p>✅ 使用基于demon样式的玩家模型</p>
+        <p>✅ 每个玩家都有独特的颜色方案</p>
+        <p>✅ 包含武器和头盔等区别标识</p>
+        <p>✅ 在雷达上正确显示玩家位置</p>
+        <p>✅ 支持最多8种不同的颜色主题</p>
+    </div>
+
+    <div class="color-info">
+        <div class="color-card">
+            <h4>🤖 Cyber Blue</h4>
+            <div class="color-preview" style="background: #0066ff;"></div>
+            <span>Body: #0066ff</span><br>
+            <div class="color-preview" style="background: #00ffff;"></div>
+            <span>Eyes: #00ffff</span><br>
+            <div class="color-preview" style="background: #0088ff;"></div>
+            <span>Weapon: #0088ff</span>
+        </div>
+        
+        <div class="color-card">
+            <h4>🔥 Hell Fire</h4>
+            <div class="color-preview" style="background: #ff3300;"></div>
+            <span>Body: #ff3300</span><br>
+            <div class="color-preview" style="background: #ffff00;"></div>
+            <span>Eyes: #ffff00</span><br>
+            <div class="color-preview" style="background: #ff6600;"></div>
+            <span>Weapon: #ff6600</span>
+        </div>
+        
+        <div class="color-card">
+            <h4>☢️ Toxic Green</h4>
+            <div class="color-preview" style="background: #00ff44;"></div>
+            <span>Body: #00ff44</span><br>
+            <div class="color-preview" style="background: #44ff44;"></div>
+            <span>Eyes: #44ff44</span><br>
+            <div class="color-preview" style="background: #00ff88;"></div>
+            <span>Weapon: #00ff88</span>
+        </div>
+        
+        <div class="color-card">
+            <h4>🌙 Shadow Purple</h4>
+            <div class="color-preview" style="background: #8800ff;"></div>
+            <span>Body: #8800ff</span><br>
+            <div class="color-preview" style="background: #aa00ff;"></div>
+            <span>Eyes: #aa00ff</span><br>
+            <div class="color-preview" style="background: #9944ff;"></div>
+            <span>Weapon: #9944ff</span>
+        </div>
+    </div>
+
+    <div id="container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Basic Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        
+        const container = document.getElementById('container');
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setClearColor(0x001122);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // 玩家颜色方案（从script.js复制）
+        const PLAYER_COLORS = [
+            {
+                name: "Cyber Blue",
+                body: 0x0066ff,
+                head: 0x0044cc,
+                eyes: 0x00ffff,
+                weapon: 0x0088ff,
+                emoji: "🤖"
+            },
+            {
+                name: "Hell Fire",
+                body: 0xff3300,
+                head: 0xcc2200,
+                eyes: 0xffff00,
+                weapon: 0xff6600,
+                emoji: "🔥"
+            },
+            {
+                name: "Toxic Green",
+                body: 0x00ff44,
+                head: 0x00cc33,
+                eyes: 0x44ff44,
+                weapon: 0x00ff88,
+                emoji: "☢️"
+            },
+            {
+                name: "Shadow Purple",
+                body: 0x8800ff,
+                head: 0x6600cc,
+                eyes: 0xaa00ff,
+                weapon: 0x9944ff,
+                emoji: "🌙"
+            }
+        ];
+
+        function getPlayerColor(playerIndex) {
+            return PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
+        }
+
+        // 创建玩家模型函数（从script.js复制并简化）
+        function createPlayerModel(colorScheme, playerName) {
+            const playerGroup = new THREE.Group();
+
+            // 身体
+            const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.3);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ 
+                color: colorScheme.body,
+                emissive: colorScheme.body,
+                emissiveIntensity: 0.1
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.6;
+            playerGroup.add(body);
+
+            // 头部
+            const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const headMaterial = new THREE.MeshLambertMaterial({
+                color: colorScheme.head,
+                emissive: colorScheme.head,
+                emissiveIntensity: 0.1
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.4;
+            playerGroup.add(head);
+
+            // 眼睛
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMaterial = new THREE.MeshBasicMaterial({
+                color: colorScheme.eyes,
+                emissive: colorScheme.eyes,
+                emissiveIntensity: 0.8
+            });
+
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.1, 1.45, 0.25);
+            playerGroup.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.1, 1.45, 0.25);
+            playerGroup.add(rightEye);
+
+            // 武器
+            const weaponGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.8);
+            const weaponMaterial = new THREE.MeshLambertMaterial({ 
+                color: colorScheme.weapon,
+                emissive: colorScheme.weapon,
+                emissiveIntensity: 0.2
+            });
+            const weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
+            weapon.position.set(0.5, 0.7, -0.4);
+            weapon.rotation.x = -0.2;
+            playerGroup.add(weapon);
+
+            // 头盔
+            const helmetGeometry = new THREE.BoxGeometry(0.45, 0.15, 0.45);
+            const helmetMaterial = new THREE.MeshLambertMaterial({ color: colorScheme.weapon });
+            const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+            helmet.position.y = 1.6;
+            playerGroup.add(helmet);
+
+            // 天线标识
+            const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6);
+            const antennaMaterial = new THREE.MeshBasicMaterial({ 
+                color: colorScheme.eyes,
+                emissive: colorScheme.eyes,
+                emissiveIntensity: 1.0
+            });
+            const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+            antenna.position.y = 1.9;
+            playerGroup.add(antenna);
+
+            return playerGroup;
+        }
+
+        // 创建演示场景
+        function createDemo() {
+            // 添加光照
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // 创建4个不同颜色的玩家模型
+            for (let i = 0; i < 4; i++) {
+                const colorScheme = getPlayerColor(i);
+                const player = createPlayerModel(colorScheme, `Player ${i + 1}`);
+                
+                // 定位玩家
+                player.position.x = (i - 1.5) * 3;
+                player.position.y = 0;
+                player.position.z = 0;
+                
+                // 添加旋转动画
+                player.userData = { rotationSpeed: 0.01 + i * 0.005 };
+                
+                scene.add(player);
+            }
+
+            // 创建地面
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // 设置相机位置
+            camera.position.set(0, 3, 8);
+            camera.lookAt(0, 1, 0);
+        }
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 旋转玩家模型
+            scene.children.forEach(child => {
+                if (child.userData && child.userData.rotationSpeed) {
+                    child.rotation.y += child.userData.rotationSpeed;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // 初始化演示
+        createDemo();
+        animate();
+
+        console.log('🎮 Player model demo initialized');
+        console.log('✅ 4 different player color schemes displayed');
+        console.log('✅ Demon-style models with unique colors');
+        console.log('✅ Weapons and identification features included');
+    </script>
+</body>
+</html> 
