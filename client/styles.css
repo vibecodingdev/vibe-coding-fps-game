@@ -1360,3 +1360,356 @@ canvas {
   border-radius: 50%;
   transform: scale(1.1);
 }
+
+/* =================== VOICE CHAT STYLES =================== */
+
+/* Voice Chat Status Indicator */
+.voice-chat-status {
+  position: absolute;
+  bottom: 10px;
+  right: 150px;
+  z-index: 15;
+}
+
+.voice-status-indicator,
+.voice-recording-indicator {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ff6600;
+  border-radius: 25px;
+  padding: 8px 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Orbitron", monospace;
+  font-size: 12px;
+  color: #ff6600;
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.3);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.voice-recording-indicator {
+  border-color: #ff0000;
+  color: #ff0000;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+  animation: recordingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes recordingPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+  }
+}
+
+.voice-status-indicator i,
+.voice-recording-indicator i {
+  font-size: 14px;
+}
+
+.recording-animation {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  margin-left: 5px;
+}
+
+.pulse {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff0000;
+  animation: pulseEffect 1s ease-in-out infinite;
+}
+
+@keyframes pulseEffect {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Voice Chat Settings */
+.voice-chat-settings {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #ff6600;
+  border-radius: 10px;
+  backdrop-filter: blur(5px);
+}
+
+.voice-chat-settings label {
+  display: block;
+  margin-bottom: 10px;
+  color: #ff6600;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.voice-chat-settings select,
+.voice-chat-settings input[type="range"] {
+  width: 100%;
+  margin-top: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #ff6600;
+  border-radius: 5px;
+  color: #ff6600;
+  font-family: "Orbitron", monospace;
+}
+
+.voice-chat-settings select {
+  padding: 5px;
+  font-size: 11px;
+}
+
+.voice-chat-settings select:focus {
+  outline: none;
+  border-color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.voice-chat-settings input[type="range"] {
+  -webkit-appearance: none;
+  height: 4px;
+  background: rgba(255, 102, 0, 0.3);
+  cursor: pointer;
+}
+
+.voice-chat-settings input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ff6600;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.voice-chat-settings input[type="range"]::-webkit-slider-thumb:hover {
+  background: #ffffff;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+  transform: scale(1.2);
+}
+
+/* Voice Activity Indicator for Remote Players */
+.voice-activity-indicator {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  background: #00ff00;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  animation: voiceActivity 0.5s ease-in-out infinite alternate;
+  z-index: 20;
+}
+
+@keyframes voiceActivity {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Voice Chat Message Styling */
+.chat-message.voice-message,
+.game-chat-message.voice-message {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 0, 0.1),
+    rgba(0, 255, 0, 0.05)
+  );
+  border-left: 3px solid #00ff00;
+  position: relative;
+}
+
+.chat-message.voice-message::before,
+.game-chat-message.voice-message::before {
+  content: "🎤";
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+}
+
+/* Responsive Design for Voice Chat */
+@media (max-width: 1024px) {
+  .voice-chat-status {
+    right: 8px;
+    bottom: 100px;
+  }
+}
+
+/* =================== PAUSE MENU SETTINGS STYLES =================== */
+
+/* Pause Settings Container */
+.pause-settings {
+  width: 100%;
+  max-width: 500px;
+  margin: 20px auto;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ff6600;
+  border-radius: 15px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(255, 102, 0, 0.3);
+}
+
+.settings-section h3 {
+  color: #ff6600;
+  font-family: "Orbitron", monospace;
+  font-size: 18px;
+  margin: 0 0 15px 0;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.settings-section h4 {
+  color: #ffffff;
+  font-family: "Orbitron", monospace;
+  font-size: 16px;
+  margin: 15px 0 10px 0;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
+/* Setting Groups */
+.setting-group {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(139, 0, 0, 0.3);
+  border: 1px solid #8b0000;
+  border-radius: 8px;
+}
+
+.setting-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #ffffff;
+  font-family: "Orbitron", monospace;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  gap: 10px;
+}
+
+/* Range Input Styling */
+.setting-group input[type="range"] {
+  flex: 1;
+  max-width: 150px;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+  margin: 0 10px;
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ff6600;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb:hover {
+  background: #ffffff;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+  transform: scale(1.1);
+}
+
+.setting-group input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ff6600;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+/* Select Styling */
+.setting-group select {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ff6600;
+  border-radius: 5px;
+  color: #ffffff;
+  font-family: "Orbitron", monospace;
+  font-size: 12px;
+  padding: 5px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.setting-group select:hover,
+.setting-group select:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.setting-group select option {
+  background: #000000;
+  color: #ffffff;
+  padding: 5px;
+}
+
+/* Volume Display */
+.setting-group span {
+  min-width: 40px;
+  text-align: right;
+  color: #ff6600;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* Voice Chat Settings in Pause Menu */
+.pause-settings .voice-chat-settings {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #666;
+}
+
+/* Responsive Design for Pause Settings */
+@media (max-width: 768px) {
+  .pause-settings {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  .setting-group label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .setting-group input[type="range"] {
+    max-width: 100%;
+    margin: 5px 0;
+  }
+}

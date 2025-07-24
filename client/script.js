@@ -4583,6 +4583,12 @@ function quitToMainMenu() {
 function hideAllMenus() {
   const menus = document.querySelectorAll(".menu-screen");
   menus.forEach((menu) => menu.classList.remove("active"));
+
+  // Also ensure pauseMenu is hidden by ID for backup
+  const pauseMenu = document.getElementById("pauseMenu");
+  if (pauseMenu) {
+    pauseMenu.classList.remove("active");
+  }
 }
 
 // Enhanced game over function
@@ -4952,6 +4958,7 @@ function hideAllMenus() {
     "partyRoom",
     "instructions",
     "gameOver",
+    "pauseMenu", // 添加缺失的pauseMenu
   ];
   menus.forEach((menuId) => {
     const element = document.getElementById(menuId);
@@ -5186,6 +5193,15 @@ function initializeNetworking() {
 
   socket.on("combat:damage", (data) => {
     handleDemonDamage(data);
+  });
+
+  // Voice chat events
+  socket.on("voice:message", (data) => {
+    handleVoiceMessage(data);
+  });
+
+  socket.on("voice:data", (data) => {
+    handleVoiceData(data);
   });
 }
 
@@ -5456,6 +5472,11 @@ function addGameChatMessage(type, message, playerName = null) {
   const messageDiv = document.createElement("div");
   messageDiv.className = `game-chat-message ${type}`;
 
+  // Add voice message styling
+  if (type === "voice") {
+    messageDiv.classList.add("voice-message");
+  }
+
   const timestamp = new Date().toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -5463,6 +5484,8 @@ function addGameChatMessage(type, message, playerName = null) {
 
   if (type === "system") {
     messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="system-msg">🔥 ${message}</span>`;
+  } else if (type === "voice") {
+    messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="player-name">${playerName}:</span> ${message}`;
   } else {
     messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="player-name">${playerName}:</span> ${message}`;
   }
@@ -5985,6 +6008,86 @@ function startPositionSync() {
       });
     }
   }, 50); // 20 FPS position updates
+}
+
+// Handle received voice message
+function handleVoiceMessage(data) {
+  console.log("🎤 Received voice message:", data);
+  if (data.type === "speech-to-text" && data.message) {
+    // Display the message in game chat - avoid duplicating local user's messages
+    if (data.playerId !== socket?.id) {
+      addGameChatMessage("voice", data.message, data.playerName);
+    }
+  }
+}
+
+// Handle received voice data
+async function handleVoiceData(data) {
+  if (data.type === "voice-transmission" && data.audioData) {
+    try {
+      // Check if audio context is available and ready
+      if (!voiceChat.audioContext) {
+        console.warn("AudioContext not available for voice playback");
+        return;
+      }
+
+      // Resume audio context if suspended
+      if (voiceChat.audioContext.state === "suspended") {
+        await voiceChat.audioContext.resume();
+      }
+
+      // Create audio buffer from received data
+      const audioBuffer = await voiceChat.audioContext.decodeAudioData(
+        data.audioData
+      );
+
+      // Play the audio
+      const source = voiceChat.audioContext.createBufferSource();
+      const gainNode = voiceChat.audioContext.createGain();
+
+      source.buffer = audioBuffer;
+      gainNode.gain.value = voiceChat.settings.voiceVolume / 100;
+
+      source.connect(gainNode);
+      gainNode.connect(voiceChat.audioContext.destination);
+
+      source.start();
+
+      // Show voice activity indicator for the sender
+      showVoiceActivity(data.playerId);
+
+      // Add visual indication in chat
+      addGameChatMessage("voice", "🎤 Voice message", data.playerName);
+    } catch (error) {
+      console.error("Failed to play voice data:", error);
+      // Fallback: just show text indication
+      addGameChatMessage(
+        "voice",
+        "🎤 Voice message (audio playback failed)",
+        data.playerName
+      );
+    }
+  }
+}
+
+// Show voice activity indicator for a player
+function showVoiceActivity(playerId) {
+  // Find the remote player object
+  const remotePlayer = remotePlayers.get(playerId);
+  if (remotePlayer && remotePlayer.mesh) {
+    // Add voice activity indicator
+    const indicator = document.createElement("div");
+    indicator.className = "voice-activity-indicator";
+    indicator.style.position = "absolute";
+
+    // Position indicator above player (this would need proper world-to-screen conversion)
+    // For now, just show a temporary indicator
+    setTimeout(() => {
+      if (indicator.parentNode) {
+        indicator.parentNode.removeChild(indicator);
+      }
+    }, 1000);
+  }
 }
 
 // Event listeners for chat

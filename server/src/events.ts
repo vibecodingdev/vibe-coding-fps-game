@@ -31,6 +31,10 @@ export const GAME_EVENTS = {
     GAME_MESSAGE: "chat:game_message",
     SYSTEM_MESSAGE: "chat:system_message",
   },
+  VOICE: {
+    MESSAGE: "voice:message",
+    DATA: "voice:data",
+  },
   PLAYER: {
     SPAWN: "player:spawn",
     POSITION: "player:position",

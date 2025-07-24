@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Chat Test - DOOM PROTOCOL</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #ff6600;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ff6600;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .test-section h2 {
+            color: #ffffff;
+            margin-top: 0;
+        }
+        
+        button {
+            background: #ff6600;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #ff8800;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #00ff00;
+        }
+        
+        .error {
+            border-left-color: #ff0000;
+            color: #ff9999;
+        }
+        
+        select, input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #ff6600;
+            color: #ff6600;
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .recording {
+            background: #ff0000 !important;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .transcript {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 DOOM PROTOCOL - Voice Chat Test</h1>
+    
+    <div class="test-section">
+        <h2>🔊 Browser Compatibility Check</h2>
+        <div id="compatibilityStatus"></div>
+        <button onclick="checkCompatibility()">Check Browser Support</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎙️ Microphone Access Test</h2>
+        <div id="microphoneStatus"></div>
+        <button onclick="requestMicrophone()">Request Microphone Access</button>
+        <button onclick="stopMicrophone()" disabled id="stopMicBtn">Stop Microphone</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>🗣️ Speech-to-Text Test</h2>
+        <div id="speechStatus"></div>
+        <div class="controls">
+            <select id="speechLang">
+                <option value="en-US">English (US)</option>
+                <option value="zh-CN">中文</option>
+                <option value="es-ES">Español</option>
+                <option value="fr-FR">Français</option>
+            </select>
+            <button onclick="startSpeechRecognition()" id="speechBtn">Start Speech Recognition</button>
+            <button onclick="stopSpeechRecognition()" disabled id="stopSpeechBtn">Stop</button>
+        </div>
+        <div id="transcriptOutput"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📹 Audio Recording Test</h2>
+        <div id="recordingStatus"></div>
+        <div class="controls">
+            <button onclick="startRecording()" id="recordBtn">Start Recording</button>
+            <button onclick="stopRecording()" disabled id="stopRecordBtn">Stop Recording</button>
+            <button onclick="playRecording()" disabled id="playBtn">Play Recording</button>
+        </div>
+        <audio id="audioPlayback" controls style="width: 100%; margin: 10px 0;"></audio>
+    </div>
+    
+    <div class="test-section">
+        <h2>⌨️ Push-to-Talk Test</h2>
+        <div id="pttStatus"></div>
+        <div class="controls">
+            <label>Push-to-Talk Key:</label>
+            <select id="pttKey">
+                <option value="KeyT">T</option>
+                <option value="KeyV">V</option>
+                <option value="KeyB">B</option>
+                <option value="KeyG">G</option>
+            </select>
+            <button onclick="enablePushToTalk()" id="pttBtn">Enable Push-to-Talk</button>
+        </div>
+        <div id="pttInstructions">Press the selected key to test push-to-talk functionality</div>
+    </div>
+
+    <script>
+        let audioStream = null;
+        let recognition = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let pttEnabled = false;
+        let currentPttKey = 'KeyT';
+
+        function updateStatus(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${isError ? 'error' : ''}">${message}</div>`;
+        }
+
+        function checkCompatibility() {
+            const features = {
+                'MediaDevices API': !!navigator.mediaDevices,
+                'getUserMedia': !!navigator.mediaDevices?.getUserMedia,
+                'MediaRecorder': !!window.MediaRecorder,
+                'Web Speech API': !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+                'AudioContext': !!window.AudioContext || !!window.webkitAudioContext
+            };
+
+            let html = '<ul>';
+            for (const [feature, supported] of Object.entries(features)) {
+                html += `<li>${supported ? '✅' : '❌'} ${feature}</li>`;
+            }
+            html += '</ul>';
+
+            const allSupported = Object.values(features).every(Boolean);
+            updateStatus('compatibilityStatus', 
+                `Browser Compatibility: ${allSupported ? 'EXCELLENT' : 'PARTIAL'}<br>${html}`, 
+                !allSupported);
+        }
+
+        async function requestMicrophone() {
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        sampleRate: 44100
+                    }
+                });
+                
+                updateStatus('microphoneStatus', '✅ Microphone access granted successfully!');
+                document.getElementById('stopMicBtn').disabled = false;
+                
+                // Show audio level visualization
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                const microphone = audioContext.createMediaStreamSource(audioStream);
+                microphone.connect(analyser);
+                
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                function updateAudioLevel() {
+                    analyser.getByteFrequencyData(dataArray);
+                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                    const level = Math.round((average / 255) * 100);
+                    
+                    updateStatus('microphoneStatus', 
+                        `✅ Microphone active - Audio level: ${level}%<br>
+                        <div style="width: 100%; background: #333; height: 10px; border-radius: 5px;">
+                            <div style="width: ${level}%; background: #00ff00; height: 100%; border-radius: 5px;"></div>
+                        </div>`);
+                    
+                    if (audioStream && audioStream.active) {
+                        requestAnimationFrame(updateAudioLevel);
+                    }
+                }
+                updateAudioLevel();
+                
+            } catch (error) {
+                updateStatus('microphoneStatus', `❌ Failed to access microphone: ${error.message}`, true);
+            }
+        }
+
+        function stopMicrophone() {
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+                updateStatus('microphoneStatus', '🔇 Microphone stopped');
+                document.getElementById('stopMicBtn').disabled = true;
+            }
+        }
+
+        function startSpeechRecognition() {
+            if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+                updateStatus('speechStatus', '❌ Speech recognition not supported in this browser', true);
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = document.getElementById('speechLang').value;
+            
+            let finalTranscript = '';
+            
+            recognition.onstart = () => {
+                updateStatus('speechStatus', '🎙️ Speech recognition started - please speak...');
+                document.getElementById('speechBtn').disabled = true;
+                document.getElementById('speechBtn').classList.add('recording');
+                document.getElementById('stopSpeechBtn').disabled = false;
+            };
+            
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                document.getElementById('transcriptOutput').innerHTML = 
+                    `<div class="transcript">
+                        <strong>Final:</strong> ${finalTranscript}<br>
+                        <strong>Interim:</strong> <em>${interimTranscript}</em>
+                    </div>`;
+            };
+            
+            recognition.onerror = (event) => {
+                updateStatus('speechStatus', `❌ Speech recognition error: ${event.error}`, true);
+                stopSpeechRecognition();
+            };
+            
+            recognition.onend = () => {
+                updateStatus('speechStatus', '✅ Speech recognition ended');
+                document.getElementById('speechBtn').disabled = false;
+                document.getElementById('speechBtn').classList.remove('recording');
+                document.getElementById('stopSpeechBtn').disabled = true;
+            };
+            
+            recognition.start();
+        }
+
+        function stopSpeechRecognition() {
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+
+        function startRecording() {
+            if (!audioStream) {
+                updateStatus('recordingStatus', '❌ Please grant microphone access first', true);
+                return;
+            }
+
+            audioChunks = [];
+            
+            try {
+                mediaRecorder = new MediaRecorder(audioStream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audioElement = document.getElementById('audioPlayback');
+                    audioElement.src = audioUrl;
+                    
+                    updateStatus('recordingStatus', '✅ Recording completed successfully!');
+                    document.getElementById('recordBtn').disabled = false;
+                    document.getElementById('recordBtn').classList.remove('recording');
+                    document.getElementById('stopRecordBtn').disabled = true;
+                    document.getElementById('playBtn').disabled = false;
+                };
+
+                mediaRecorder.start(100);
+                updateStatus('recordingStatus', '🔴 Recording in progress...');
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('stopRecordBtn').disabled = false;
+                
+            } catch (error) {
+                updateStatus('recordingStatus', `❌ Failed to start recording: ${error.message}`, true);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }
+
+        function playRecording() {
+            const audioElement = document.getElementById('audioPlayback');
+            audioElement.play();
+        }
+
+        function enablePushToTalk() {
+            currentPttKey = document.getElementById('pttKey').value;
+            pttEnabled = true;
+            
+            updateStatus('pttStatus', `✅ Push-to-Talk enabled for key: ${getPttKeyName()}`);
+            document.getElementById('pttInstructions').innerHTML = 
+                `<strong>Hold ${getPttKeyName()} to activate speech recognition</strong>`;
+        }
+
+        function getPttKeyName() {
+            const keyMap = {
+                'KeyT': 'T',
+                'KeyV': 'V', 
+                'KeyB': 'B',
+                'KeyG': 'G'
+            };
+            return keyMap[currentPttKey] || 'T';
+        }
+
+        // Push-to-talk event handlers
+        document.addEventListener('keydown', (event) => {
+            if (pttEnabled && event.code === currentPttKey && !event.repeat) {
+                updateStatus('pttStatus', `🎙️ ${getPttKeyName()} pressed - Starting speech recognition...`);
+                startSpeechRecognition();
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (pttEnabled && event.code === currentPttKey) {
+                updateStatus('pttStatus', `✅ ${getPttKeyName()} released - Stopping speech recognition`);
+                stopSpeechRecognition();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkCompatibility();
+            updateStatus('pttStatus', 'Push-to-Talk disabled - click "Enable Push-to-Talk" to activate');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopMicrophone();
+            stopSpeechRecognition();
+            stopRecording();
+        });
+    </script>
+</body>
+</html> 

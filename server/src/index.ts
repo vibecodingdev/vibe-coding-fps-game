@@ -9,9 +9,14 @@ const app = express();
 const server = http.createServer(app);
 
 // Allow connections from any origin for LAN play
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? ["http://localhost:5173", "http://localhost:8080", "http://localhost:3000"]
-  : true; // Allow all origins in development for LAN access
+const allowedOrigins =
+  process.env.NODE_ENV === "production"
+    ? [
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:3000",
+      ]
+    : true; // Allow all origins in development for LAN access
 
 // Configure CORS for Express
 app.use(
@@ -31,7 +36,7 @@ const io = new SocketIO(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
+const HOST = process.env.HOST || "0.0.0.0"; // Listen on all network interfaces
 
 type Player = {
   id: string;
@@ -95,8 +100,8 @@ function generateRoomId(): string {
 
 function getRoomsList() {
   return Array.from(rooms.values())
-    .filter(room => room.isActive && !room.gameStarted)
-    .map(room => ({
+    .filter((room) => room.isActive && !room.gameStarted)
+    .map((room) => ({
       id: room.id,
       name: room.name,
       players: room.players.length,
@@ -106,8 +111,25 @@ function getRoomsList() {
     }));
 }
 
-function broadcastToRoom(roomId: string, event: string, data: any) {
-  io.to(roomId).emit(event, data);
+function broadcastToRoom(
+  roomId: string,
+  event: string,
+  data: any,
+  excludeSocket?: string
+) {
+  if (excludeSocket) {
+    // Broadcast to all sockets in room except the excluded one
+    const room = io.sockets.adapter.rooms.get(roomId);
+    if (room) {
+      room.forEach((socketId) => {
+        if (socketId !== excludeSocket) {
+          io.to(socketId).emit(event, data);
+        }
+      });
+    }
+  } else {
+    io.to(roomId).emit(event, data);
+  }
 }
 
 // Demon type definitions (matching client-side)
@@ -121,7 +143,7 @@ const DEMON_TYPES = {
     attackDamage: 10,
   },
   DEMON: {
-    name: "Demon", 
+    name: "Demon",
     health: 2,
     speed: 1.8,
     scale: 0.9,
@@ -162,22 +184,30 @@ function getRandomSpawnPosition(): { x: number; y: number; z: number } {
 
 function selectDemonType(waveNumber: number): string {
   const availableTypes = [];
-  
+
   // Add demons based on wave progression
-  if (waveNumber >= 1) availableTypes.push(...Array(DEMON_TYPES.IMP.spawnWeight).fill('IMP'));
-  if (waveNumber >= 2) availableTypes.push(...Array(DEMON_TYPES.DEMON.spawnWeight).fill('DEMON'));
-  if (waveNumber >= 4) availableTypes.push(...Array(DEMON_TYPES.CACODEMON.spawnWeight).fill('CACODEMON'));
-  if (waveNumber >= 7) availableTypes.push(...Array(DEMON_TYPES.BARON.spawnWeight).fill('BARON'));
-  
-  return availableTypes[Math.floor(Math.random() * availableTypes.length)] || 'IMP';
+  if (waveNumber >= 1)
+    availableTypes.push(...Array(DEMON_TYPES.IMP.spawnWeight).fill("IMP"));
+  if (waveNumber >= 2)
+    availableTypes.push(...Array(DEMON_TYPES.DEMON.spawnWeight).fill("DEMON"));
+  if (waveNumber >= 4)
+    availableTypes.push(
+      ...Array(DEMON_TYPES.CACODEMON.spawnWeight).fill("CACODEMON")
+    );
+  if (waveNumber >= 7)
+    availableTypes.push(...Array(DEMON_TYPES.BARON.spawnWeight).fill("BARON"));
+
+  return (
+    availableTypes[Math.floor(Math.random() * availableTypes.length)] || "IMP"
+  );
 }
 
 function spawnDemon(room: Room): Demon | null {
   if (!room.gameState) return null;
-  
+
   const demonType = selectDemonType(room.gameState.currentWave);
   const typeData = DEMON_TYPES[demonType as keyof typeof DEMON_TYPES];
-  
+
   const demon: Demon = {
     id: generateDemonId(),
     type: demonType,
@@ -188,10 +218,10 @@ function spawnDemon(room: Room): Demon | null {
     isAlive: true,
     spawnTime: Date.now(),
   };
-  
+
   room.gameState.demons.set(demon.id, demon);
   room.gameState.demonsSpawnedThisWave++;
-  
+
   return demon;
 }
 
@@ -208,29 +238,32 @@ function initializeGameState(room: Room): void {
 
 function startWave(room: Room): void {
   if (!room.gameState) return;
-  
+
   room.gameState.waveInProgress = true;
   room.gameState.waveStartTime = Date.now();
   room.gameState.demonsSpawnedThisWave = 0;
   room.gameState.demonsKilledThisWave = 0;
-  
+
   // Calculate demons for this wave
   const demonsThisWave = Math.min(5 + room.gameState.currentWave * 2, 20);
-  
+
   // Broadcast wave start
   broadcastToRoom(room.id, GAME_EVENTS.WORLD.WAVE_START, {
     wave: room.gameState.currentWave,
     demonsCount: demonsThisWave,
   });
-  
+
   // Spawn demons over time
   const spawnInterval = setInterval(() => {
-    if (!room.gameState || !room.gameState.waveInProgress || 
-        room.gameState.demonsSpawnedThisWave >= demonsThisWave) {
+    if (
+      !room.gameState ||
+      !room.gameState.waveInProgress ||
+      room.gameState.demonsSpawnedThisWave >= demonsThisWave
+    ) {
       clearInterval(spawnInterval);
       return;
     }
-    
+
     const demon = spawnDemon(room);
     if (demon) {
       broadcastToRoom(room.id, GAME_EVENTS.WORLD.DEMON_SPAWN, {
@@ -245,7 +278,7 @@ function startWave(room: Room): void {
       });
     }
   }, 2000); // Spawn every 2 seconds
-  
+
   // Start demon AI update loop for this room
   startDemonAI(room);
 }
@@ -258,63 +291,67 @@ function getPlayersByRoom(roomId: string): Player[] {
 // Server-side demon AI system
 function startDemonAI(room: Room): void {
   if (!room.gameState || room.gameState.aiInterval) return;
-  
+
   // Update demon AI every 100ms
   room.gameState.aiInterval = setInterval(() => {
-    if (!room.gameState || !room.gameState.waveInProgress || room.players.length === 0) {
+    if (
+      !room.gameState ||
+      !room.gameState.waveInProgress ||
+      room.players.length === 0
+    ) {
       return;
     }
-    
+
     updateDemonAI(room);
   }, 100);
 }
 
 function updateDemonAI(room: Room): void {
   if (!room.gameState) return;
-  
+
   const players = room.players;
   if (players.length === 0) return;
-  
+
   room.gameState.demons.forEach((demon, demonId) => {
     if (!demon.isAlive) return;
-    
+
     // Find closest player
     let closestPlayer = null;
     let closestDistance = Infinity;
-    
+
     for (const player of players) {
       const dx = player.position.x - demon.position.x;
       const dz = player.position.z - demon.position.z;
       const distance = Math.sqrt(dx * dx + dz * dz);
-      
+
       if (distance < closestDistance) {
         closestDistance = distance;
         closestPlayer = player;
       }
     }
-    
+
     if (!closestPlayer) return;
-    
+
     const typeData = DEMON_TYPES[demon.type as keyof typeof DEMON_TYPES];
     const detectRange = typeData ? 60 : 60; // Default detection range
     const attackRange = typeData ? 3.5 : 3.5; // Default attack range
     const speed = typeData ? typeData.speed * 0.02 : 0.02; // Movement speed
-    
+
     // If player is within detection range
     if (closestDistance < detectRange) {
       // Calculate direction to player
       const dx = closestPlayer.position.x - demon.position.x;
       const dz = closestPlayer.position.z - demon.position.z;
       const direction = Math.atan2(dx, dz);
-      
+
       // Update demon rotation to face player
       demon.rotation.y = direction;
-      
+
       // If within attack range, deal damage
       if (closestDistance < attackRange) {
         // Attack player (damage handling will be done client-side)
         const attackDamage = typeData ? typeData.attackDamage || 10 : 10;
-        
+
         // Broadcast demon attack to all clients
         broadcastToRoom(room.id, GAME_EVENTS.COMBAT.DAMAGE, {
           demonId: demon.id,
@@ -327,15 +364,15 @@ function updateDemonAI(room: Room): void {
         // Move towards player
         const normalizedX = dx / closestDistance;
         const normalizedZ = dz / closestDistance;
-        
+
         demon.position.x += normalizedX * speed;
         demon.position.z += normalizedZ * speed;
-        
+
         // Keep demon within bounds
         demon.position.x = Math.max(-45, Math.min(45, demon.position.x));
         demon.position.z = Math.max(-45, Math.min(45, demon.position.z));
       }
-      
+
       // Broadcast position update to all clients
       broadcastToRoom(room.id, GAME_EVENTS.WORLD.DEMON_UPDATE, {
         demonId: demon.id,
@@ -357,24 +394,24 @@ function stopDemonAI(room: Room): void {
 server.listen(Number(PORT), HOST, () => {
   console.log(`✅ Doom Protocol Server listening on ${HOST}:${PORT}`);
   console.log(`🌐 LAN Access: Connect clients to http://<your-ip>:${PORT}`);
-  
+
   // Try to display the actual IP address
   const networkInterfaces = os.networkInterfaces();
   const lanIPs: string[] = [];
-  
+
   for (const interfaceName of Object.keys(networkInterfaces)) {
     const networkInterface = networkInterfaces[interfaceName];
     if (networkInterface) {
       for (const address of networkInterface) {
-        if (address.family === 'IPv4' && !address.internal) {
+        if (address.family === "IPv4" && !address.internal) {
           lanIPs.push(address.address);
         }
       }
     }
   }
-  
+
   if (lanIPs.length > 0) {
-    console.log(`🏠 Your LAN IP(s): ${lanIPs.join(', ')}`);
+    console.log(`🏠 Your LAN IP(s): ${lanIPs.join(", ")}`);
     console.log(`🎮 Players can connect to: http://${lanIPs[0]}:${PORT}`);
   }
 });
@@ -451,7 +488,7 @@ io.on("connection", (socket) => {
   socket.on(GAME_EVENTS.ROOM.CREATE, (payload) => {
     const roomId = generateRoomId();
     const player = activePlayers.get(socket.id);
-    
+
     if (!player) return;
 
     const room: Room = {
@@ -517,7 +554,7 @@ io.on("connection", (socket) => {
         mapType: room.mapType,
       },
       isLeader: room.leaderId === socket.id,
-      players: room.players.map(p => ({
+      players: room.players.map((p) => ({
         id: p.id,
         name: p.name,
         ready: p.ready,
@@ -550,7 +587,7 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     // Remove player from room
-    room.players = room.players.filter(p => p.id !== socket.id);
+    room.players = room.players.filter((p) => p.id !== socket.id);
     socket.leave(player.roomId);
 
     // Notify other players
@@ -603,6 +640,45 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Voice chat system
+  socket.on(GAME_EVENTS.VOICE.MESSAGE, (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    // Broadcast voice message to all other players in the room
+    broadcastToRoom(
+      player.roomId,
+      GAME_EVENTS.VOICE.MESSAGE,
+      {
+        playerId: socket.id,
+        playerName: player.name,
+        type: payload.type,
+        message: payload.message,
+        timestamp: new Date(),
+      },
+      socket.id
+    ); // Exclude sender
+  });
+
+  socket.on(GAME_EVENTS.VOICE.DATA, (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    // Broadcast voice data to all other players in the room
+    broadcastToRoom(
+      player.roomId,
+      GAME_EVENTS.VOICE.DATA,
+      {
+        playerId: socket.id,
+        playerName: player.name,
+        type: payload.type,
+        audioData: payload.audioData,
+        timestamp: new Date(),
+      },
+      socket.id
+    ); // Exclude sender
+  });
+
   // Player ready state
   socket.on(GAME_EVENTS.PLAYER.READY, () => {
     const player = activePlayers.get(socket.id);
@@ -618,7 +694,7 @@ io.on("connection", (socket) => {
     });
 
     // Check if all players are ready
-    const allReady = room.players.every(p => p.ready);
+    const allReady = room.players.every((p) => p.ready);
     if (allReady && room.players.length >= 2) {
       broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.ALL_READY, {
         canStart: true,
@@ -646,14 +722,14 @@ io.on("connection", (socket) => {
     if (!room || room.leaderId !== socket.id) return;
 
     room.gameStarted = true;
-    
+
     // Initialize game state
     initializeGameState(room);
-    
+
     broadcastToRoom(player.roomId, GAME_EVENTS.GAME.START, {
       roomId: player.roomId,
       mapType: room.mapType,
-      players: room.players.map(p => ({
+      players: room.players.map((p) => ({
         id: p.id,
         name: p.name,
         position: p.position,
@@ -662,7 +738,7 @@ io.on("connection", (socket) => {
     });
 
     console.log(`🎮 Game started in room ${player.roomId}`);
-    
+
     // Start first wave after a short delay
     setTimeout(() => {
       if (room.gameState) {
@@ -725,7 +801,7 @@ io.on("connection", (socket) => {
     if (demon && demon.isAlive) {
       demon.isAlive = false;
       room.gameState.demonsKilledThisWave++;
-      
+
       // Update player stats
       player.kills++;
       player.score += 100;
@@ -744,11 +820,11 @@ io.on("connection", (socket) => {
         // Wave complete
         room.gameState.waveInProgress = false;
         room.gameState.currentWave++;
-        
+
         broadcastToRoom(player.roomId, GAME_EVENTS.WORLD.WAVE_COMPLETE, {
           wave: room.gameState.currentWave - 1,
           nextWave: room.gameState.currentWave,
-          playersStats: room.players.map(p => ({
+          playersStats: room.players.map((p) => ({
             id: p.id,
             name: p.name,
             kills: p.kills,
@@ -778,7 +854,7 @@ io.on("connection", (socket) => {
     if (demon && demon.isAlive) {
       demon.position = payload.position;
       demon.rotation = payload.rotation;
-      
+
       // Broadcast to other players (but not the sender)
       socket.to(player.roomId).emit(GAME_EVENTS.WORLD.DEMON_UPDATE, {
         demonId: payload.demonId,
@@ -798,8 +874,8 @@ io.on("connection", (socket) => {
       const room = rooms.get(player.roomId);
       if (room) {
         // Remove player from room
-        room.players = room.players.filter(p => p.id !== socket.id);
-        
+        room.players = room.players.filter((p) => p.id !== socket.id);
+
         // Notify other players
         socket.to(player.roomId).emit(GAME_EVENTS.PARTY.MEMBER_LEFT, {
           playerId: socket.id,
@@ -835,8 +911,10 @@ setInterval(() => {
   const now = Date.now();
   for (const [roomId, room] of rooms.entries()) {
     // Remove rooms that are empty for more than 5 minutes
-    if (room.players.length === 0 && 
-        now - room.createdAt.getTime() > 5 * 60 * 1000) {
+    if (
+      room.players.length === 0 &&
+      now - room.createdAt.getTime() > 5 * 60 * 1000
+    ) {
       rooms.delete(roomId);
       console.log(`🧹 Cleaned up empty room: ${roomId}`);
     }

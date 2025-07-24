@@ -159,6 +159,92 @@
       </div>
     </div>
 
+    <!-- Pause Menu -->
+    <div id="pauseMenu" class="menu-screen">
+      <h1>⏸️ GAME PAUSED</h1>
+      
+      <!-- Game Settings Section -->
+      <div class="pause-settings">
+        <div class="settings-section">
+          <h3>🎛️ GAME SETTINGS</h3>
+          
+          <!-- Audio Settings -->
+          <div class="setting-group">
+            <label>
+              🔊 Master Volume:
+              <input
+                type="range"
+                id="pauseMasterVolume"
+                min="0"
+                max="100"
+                value="100"
+                oninput="updateMasterVolume(this.value)"
+              />
+              <span id="masterVolumeDisplay">100%</span>
+            </label>
+          </div>
+          
+          <!-- Voice Chat Settings (only show in multiplayer) -->
+          <div id="pauseVoiceChatSettings" class="voice-chat-settings" style="display: none;">
+            <h4>🎤 VOICE CHAT</h4>
+            
+            <div class="setting-group">
+              <label>
+                Voice Chat Mode:
+                <select id="pauseVoiceChatMode">
+                  <option value="speech-to-text">Speech to Text</option>
+                  <option value="voice-transmission">Direct Voice</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </label>
+            </div>
+            
+            <div class="setting-group">
+              <label>
+                Voice Volume:
+                <input
+                  type="range"
+                  id="pauseVoiceVolume"
+                  min="0"
+                  max="100"
+                  value="80"
+                  oninput="updateVoiceVolume(this.value)"
+                />
+                <span id="voiceVolumeDisplay">80%</span>
+              </label>
+            </div>
+            
+            <div class="setting-group">
+              <label>
+                Push-to-Talk Key:
+                <select id="pausePushToTalkKey">
+                  <option value="KeyT">T</option>
+                  <option value="KeyV">V</option>
+                  <option value="KeyB">B</option>
+                  <option value="KeyG">G</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="menu-buttons">
+        <button class="menu-button success" onclick="resumeGame()">
+          ▶️ RESUME BATTLE
+        </button>
+        <button class="menu-button" onclick="showInstructions()">
+          📖 COMBAT MANUAL
+        </button>
+        <button class="menu-button danger" onclick="quitToMainMenu()">
+          🚪 QUIT TO MAIN MENU
+        </button>
+      </div>
+      <p style="margin-top: 20px; opacity: 0.7; text-align: center;">
+        Press ESC again to resume the hellish combat
+      </p>
+    </div>
+
     <!-- Party Room Screen -->
     <div id="partyRoom" class="menu-screen">
       <h1 id="roomTitle">🔥 HELLISH CHAMBER 🔥</h1>
@@ -211,6 +297,7 @@
             <p><span class="key">Right Click</span> - Switch weapon</p>
             <p><span class="key">ESC</span> - Pause / Exit targeting</p>
             <p><span class="key">Enter</span> - Open chat (multiplayer)</p>
+            <p><span class="key">T</span> - Hold to speak (voice chat)</p>
           </div>
 
           <div class="instruction-section">
@@ -307,20 +394,24 @@
           <input type="text" id="gameChatInput" placeholder="Type to your demon allies..." maxlength="200" />
           <button onclick="sendGameChatMessage()">📨</button>
         </div>
+        
+        <!-- Voice Chat Status Indicator -->
+        <div id="voiceChatStatus" class="voice-chat-status">
+          <div class="voice-status-indicator">
+            <i class="fas fa-microphone-slash"></i>
+            <span>Hold T to speak</span>
+          </div>
+          <div class="voice-recording-indicator" style="display: none;">
+            <i class="fas fa-microphone recording"></i>
+            <span>Recording...</span>
+            <div class="recording-animation">
+              <div class="pulse"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="audio-controls">
-        <label
-          >🔊 Hell Audio:
-          <input
-            type="range"
-            id="masterVolume"
-            min="0"
-            max="100"
-            value="100"
-            oninput="updateMasterVolume(this.value)"
-        /></label>
-      </div>
+      <!-- Audio controls removed from game UI - now in pause menu -->
 
       <div id="crosshair"></div>
 
