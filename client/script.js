@@ -1872,7 +1872,11 @@ function checkAmmoPackCollision() {
   const chaingun = WEAPONS.chaingun;
 
   // Don't collect if both weapons are at max ammo
-  if (shotgun.currentAmmo >= shotgun.maxAmmo && chaingun.currentAmmo >= chaingun.maxAmmo) return;
+  if (
+    shotgun.currentAmmo >= shotgun.maxAmmo &&
+    chaingun.currentAmmo >= chaingun.maxAmmo
+  )
+    return;
 
   ammoPacks.forEach((ammoPack, index) => {
     if (!ammoPack) return;
@@ -2309,13 +2313,13 @@ function spawnDemons() {
 function startWaveSystem() {
   console.log("Starting wave system...");
   updateWaveDisplay();
-  
+
   // In multiplayer, waves are controlled by the server
   if (isMultiplayer) {
     console.log("🌐 Multiplayer mode: Wave system controlled by server");
     return;
   }
-  
+
   startWave();
 }
 
@@ -2473,7 +2477,7 @@ function spawnSingleDemon() {
 
 function checkWaveComplete() {
   if (!waveInProgress || isGameOver) return;
-  
+
   // In multiplayer, wave completion is handled by server
   if (isMultiplayer) return;
 
@@ -3443,7 +3447,7 @@ function hideInstructions() {
   if (blocker) {
     blocker.style.display = "none";
   }
-  
+
   // If game is ready, try to lock controls
   if (gameState === "playing" && controls) {
     controls.lock();
@@ -4498,15 +4502,20 @@ function gameOver() {
   }
 
   // Update final stats
-  document.getElementById("finalWave").textContent = currentWave - 1;
-  document.getElementById("finalKills").textContent = demonKills;
-  document.getElementById("finalHealthPacks").textContent =
-    healthPacksCollected;
-  document.getElementById("finalHealth").textContent = playerHealth;
+  const finalWavesElement = document.getElementById("finalWaves");
+  const finalKillsElement = document.getElementById("finalKills");
+  const finalTimeElement = document.getElementById("finalTime");
+
+  if (finalWavesElement) finalWavesElement.textContent = currentWave - 1;
+  if (finalKillsElement) finalKillsElement.textContent = demonKills;
+  if (finalTimeElement) finalTimeElement.textContent = "0:00"; // TODO: Add time tracking
 
   // Show game over screen
   hideAllMenus();
-  document.getElementById("gameOverScreen").classList.add("active");
+  const gameOverElement = document.getElementById("gameOver");
+  if (gameOverElement) {
+    gameOverElement.classList.add("active");
+  }
   document.getElementById("gameUI").style.display = "none";
 
   // Exit pointer lock
@@ -4606,7 +4615,7 @@ window.addEventListener("load", () => {
   // Start animation loop immediately for any visual effects
   animate();
   // Don't initialize the game immediately, wait for user to click start
-  
+
   // Set up server configuration event listeners
   setupServerConfigListeners();
 });
@@ -4615,23 +4624,23 @@ function setupServerConfigListeners() {
   const serverRadios = document.querySelectorAll('input[name="serverType"]');
   const lanServerIP = document.getElementById("lanServerIP");
   const customServerIP = document.getElementById("customServerIP");
-  
-  serverRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
+
+  serverRadios.forEach((radio) => {
+    radio.addEventListener("change", (e) => {
       // Enable/disable IP input fields based on selection
       if (lanServerIP) {
-        lanServerIP.disabled = e.target.value !== 'lan';
+        lanServerIP.disabled = e.target.value !== "lan";
       }
       if (customServerIP) {
-        customServerIP.disabled = e.target.value !== 'custom';
+        customServerIP.disabled = e.target.value !== "custom";
       }
     });
   });
-  
+
   // Auto-connect when switching to local server
   const localRadio = document.getElementById("localServer");
   if (localRadio) {
-    localRadio.addEventListener('change', (e) => {
+    localRadio.addEventListener("change", (e) => {
       if (e.target.checked) {
         setTimeout(() => connectToServer(), 100);
       }
@@ -4645,25 +4654,28 @@ function setupServerConfigListeners() {
 function setupUsernameInput() {
   const usernameInput = document.getElementById("playerName");
   const usernameHelper = document.getElementById("usernameHelper");
-  
+
   if (!usernameInput || !usernameHelper) return;
 
   // Load saved username
-  const savedUsername = localStorage.getItem('demonUsername');
+  const savedUsername = localStorage.getItem("demonUsername");
   if (savedUsername) {
     usernameInput.value = savedUsername;
   }
 
   // Real-time validation and feedback
-  usernameInput.addEventListener('input', (e) => {
+  usernameInput.addEventListener("input", (e) => {
     const value = e.target.value;
     const length = value.length;
-    
+
     // Update helper text based on input
     if (length === 0) {
-      usernameHelper.textContent = "👹 Choose your demonic identity (2-20 characters)";
+      usernameHelper.textContent =
+        "👹 Choose your demonic identity (2-20 characters)";
     } else if (length < 2) {
-      usernameHelper.textContent = `⚠️ Too short! Need ${2 - length} more character${2 - length > 1 ? 's' : ''}`;
+      usernameHelper.textContent = `⚠️ Too short! Need ${
+        2 - length
+      } more character${2 - length > 1 ? "s" : ""}`;
     } else if (length > 20) {
       usernameHelper.textContent = "⚠️ Too long! Maximum 20 characters";
     } else if (!/^[A-Za-z0-9_-]+$/.test(value)) {
@@ -4671,38 +4683,54 @@ function setupUsernameInput() {
     } else {
       usernameHelper.textContent = `✅ Perfect demon name! (${length}/20 characters)`;
       // Save valid username
-      localStorage.setItem('demonUsername', value);
+      localStorage.setItem("demonUsername", value);
     }
   });
 
   // Enhanced focus/blur effects
-  usernameInput.addEventListener('focus', () => {
-    usernameInput.parentElement.style.transform = 'scale(1.02)';
-    usernameInput.parentElement.style.boxShadow = '0 0 40px rgba(255, 102, 0, 0.7)';
+  usernameInput.addEventListener("focus", () => {
+    usernameInput.parentElement.style.transform = "scale(1.02)";
+    usernameInput.parentElement.style.boxShadow =
+      "0 0 40px rgba(255, 102, 0, 0.7)";
   });
 
-  usernameInput.addEventListener('blur', () => {
-    usernameInput.parentElement.style.transform = 'scale(1)';
-    usernameInput.parentElement.style.boxShadow = '0 0 30px rgba(255, 102, 0, 0.5)';
+  usernameInput.addEventListener("blur", () => {
+    usernameInput.parentElement.style.transform = "scale(1)";
+    usernameInput.parentElement.style.boxShadow =
+      "0 0 30px rgba(255, 102, 0, 0.5)";
   });
 
   // Auto-generate username suggestion
-  usernameInput.addEventListener('dblclick', () => {
+  usernameInput.addEventListener("dblclick", () => {
     if (!usernameInput.value) {
       const demonNames = [
-        'HellSpawn', 'DoomSlayer', 'InfernoWalker', 'ShadowDemon', 'BlazeFury',
-        'DarkReaper', 'FireStorm', 'VoidHunter', 'CrimsonBeast', 'NightTerror',
-        'BurningSkull', 'DeathBringer', 'HellRaiser', 'DemonLord', 'SoulEater'
+        "HellSpawn",
+        "DoomSlayer",
+        "InfernoWalker",
+        "ShadowDemon",
+        "BlazeFury",
+        "DarkReaper",
+        "FireStorm",
+        "VoidHunter",
+        "CrimsonBeast",
+        "NightTerror",
+        "BurningSkull",
+        "DeathBringer",
+        "HellRaiser",
+        "DemonLord",
+        "SoulEater",
       ];
-      const randomName = demonNames[Math.floor(Math.random() * demonNames.length)];
+      const randomName =
+        demonNames[Math.floor(Math.random() * demonNames.length)];
       const randomNum = Math.floor(Math.random() * 999) + 1;
       usernameInput.value = `${randomName}${randomNum}`;
-      usernameInput.dispatchEvent(new Event('input'));
-      
+      usernameInput.dispatchEvent(new Event("input"));
+
       // Show suggestion hint
-      usernameHelper.textContent = "🎲 Random demon name generated! Double-click again for another";
+      usernameHelper.textContent =
+        "🎲 Random demon name generated! Double-click again for another";
       setTimeout(() => {
-        usernameInput.dispatchEvent(new Event('input'));
+        usernameInput.dispatchEvent(new Event("input"));
       }, 2000);
     }
   });
@@ -4826,8 +4854,10 @@ function hideAllMenus() {
 let currentServerURL = "http://localhost:3000";
 
 function getServerURL() {
-  const serverType = document.querySelector('input[name="serverType"]:checked')?.value;
-  
+  const serverType = document.querySelector(
+    'input[name="serverType"]:checked'
+  )?.value;
+
   switch (serverType) {
     case "local":
       return "http://localhost:3000";
@@ -4854,11 +4884,11 @@ function connectToServer() {
     socket.disconnect();
     socket = null;
   }
-  
+
   currentServerURL = getServerURL();
   console.log(`🌐 Attempting to connect to: ${currentServerURL}`);
   updateConnectionStatus("🔄 Connecting to Hell...");
-  
+
   initializeNetworking();
 }
 
@@ -4875,7 +4905,7 @@ function initializeNetworking() {
   try {
     socket = io(currentServerURL, {
       timeout: 10000, // 10 second timeout
-      transports: ['websocket', 'polling'] // Try websocket first, fallback to polling
+      transports: ["websocket", "polling"], // Try websocket first, fallback to polling
     });
   } catch (error) {
     console.error("Failed to initialize Socket.IO:", error);
@@ -4898,7 +4928,9 @@ function initializeNetworking() {
   socket.on("connect_error", (error) => {
     console.error("❌ Connection error:", error);
     isConnected = false;
-    updateConnectionStatus(`🔴 Connection failed: ${error.message || 'Unknown error'}`);
+    updateConnectionStatus(
+      `🔴 Connection failed: ${error.message || "Unknown error"}`
+    );
   });
 
   socket.on("reconnect", (attemptNumber) => {
@@ -5494,11 +5526,11 @@ function requestPointerLockFallback() {
 function handleServerWaveStart(data) {
   currentWave = data.wave;
   waveInProgress = true;
-  
+
   // Clear existing demons if any
   demons.forEach((demon) => scene.remove(demon));
   demons = [];
-  
+
   // Reset demon type counts
   demonTypeCounts = {
     IMP: 0,
@@ -5506,23 +5538,33 @@ function handleServerWaveStart(data) {
     CACODEMON: 0,
     BARON: 0,
   };
-  
+
   updateWaveDisplay();
-  console.log(`🌊 Starting server-synchronized wave ${data.wave} with ${data.demonsCount} demons`);
+  console.log(
+    `🌊 Starting server-synchronized wave ${data.wave} with ${data.demonsCount} demons`
+  );
 }
 
 function handleServerDemonSpawn(data) {
   const demon = createDemonModel(data.demon.type);
   if (!demon) return;
-  
+
   // Set position and rotation from server
-  demon.position.set(data.demon.position.x, data.demon.position.y, data.demon.position.z);
-  demon.rotation.set(data.demon.rotation.x, data.demon.rotation.y, data.demon.rotation.z);
-  
+  demon.position.set(
+    data.demon.position.x,
+    data.demon.position.y,
+    data.demon.position.z
+  );
+  demon.rotation.set(
+    data.demon.rotation.x,
+    data.demon.rotation.y,
+    data.demon.rotation.z
+  );
+
   // Get demon type data for proper initialization
   const demonType = data.demon.type;
   const typeData = DEMON_TYPES[demonType];
-  
+
   // Initialize complete userData for server demons (matching client demon structure)
   demon.userData = {
     serverId: data.demon.id,
@@ -5530,7 +5572,7 @@ function handleServerDemonSpawn(data) {
     maxHealth: data.demon.maxHealth,
     isServerControlled: true,
     demonType: demonType,
-    
+
     // AI properties needed for client-side behavior
     walkSpeed: typeData.speed * 0.3,
     rotationSpeed: 0.01 + Math.random() * 0.02,
@@ -5541,73 +5583,84 @@ function handleServerDemonSpawn(data) {
     hasAttacked: false,
     originalScale: typeData.scale,
     attackScaleSet: false,
-    
+
     // Type-specific properties
     detectRange: typeData.detectRange,
     attackRange: typeData.attackRange,
     chaseRange: typeData.chaseRange,
     attackDamage: typeData.attackDamage,
-    
+
     // State flags
     isDead: false,
     isFalling: false,
-    fallSpeed: 0
+    fallSpeed: 0,
   };
-  
+
   // Set proper scale
   demon.scale.setScalar(typeData.scale);
-  
+
   // Add to scene and demons array
   scene.add(demon);
   demons.push(demon);
-  
+
   // Update demon type counts
   if (demonTypeCounts[demonType] !== undefined) {
     demonTypeCounts[demonType]++;
   }
-  
-  console.log(`👹 Spawned server demon ${data.demon.id} of type ${data.demon.type} at (${data.demon.position.x.toFixed(2)}, ${data.demon.position.z.toFixed(2)})`);
+
+  console.log(
+    `👹 Spawned server demon ${data.demon.id} of type ${
+      data.demon.type
+    } at (${data.demon.position.x.toFixed(2)}, ${data.demon.position.z.toFixed(
+      2
+    )})`
+  );
 }
 
 function handleServerDemonDeath(data) {
   // Find the demon by server ID
-  const demonIndex = demons.findIndex(demon => 
-    demon.userData.serverId === data.demonId
+  const demonIndex = demons.findIndex(
+    (demon) => demon.userData.serverId === data.demonId
   );
-  
+
   if (demonIndex !== -1) {
     const demon = demons[demonIndex];
-    
+
     // Create death effects
     createWoundedEffect(demon.position);
     createHitEffect(demon.position);
-    
+
     // Update demon type counts
     const demonType = demon.userData.demonType;
-    if (demonTypeCounts[demonType] !== undefined && demonTypeCounts[demonType] > 0) {
+    if (
+      demonTypeCounts[demonType] !== undefined &&
+      demonTypeCounts[demonType] > 0
+    ) {
       demonTypeCounts[demonType]--;
     }
-    
+
     // Remove from scene and array
     scene.remove(demon);
     demons.splice(demonIndex, 1);
-    
+
     // Update kill count if this player killed it
     if (data.killerId === socket?.id) {
       demonKills++;
       updateKillCount();
     }
-    
-    console.log(`💀 Removed server demon ${data.demonId}, killed by ${data.killerName}`);
+
+    console.log(
+      `💀 Removed server demon ${data.demonId}, killed by ${data.killerName}`
+    );
   }
 }
 
 function handleServerDemonUpdate(data) {
   // Find the demon by server ID
-  const demon = demons.find(demon => 
-    demon.userData.serverId === data.demonId
+  const demon = demons.find(
+    (demon) => demon.userData.serverId === data.demonId
   );
-  
+
   if (demon) {
     // Update position and rotation from server
     demon.position.set(data.position.x, data.position.y, data.position.z);
@@ -5618,18 +5671,20 @@ function handleServerDemonUpdate(data) {
 function handleServerWaveComplete(data) {
   waveInProgress = false;
   currentWave = data.nextWave;
-  
+
   // Show wave completion message
   const waveMessage = `🌊 Wave ${data.wave} Complete! Next wave: ${data.nextWave}`;
   console.log(waveMessage);
-  
+
   // Update UI
   updateWaveDisplay();
-  
+
   // Show player stats if available
   if (data.playersStats) {
-    data.playersStats.forEach(player => {
-      console.log(`👹 ${player.name}: ${player.kills} kills, ${player.score} score`);
+    data.playersStats.forEach((player) => {
+      console.log(
+        `👹 ${player.name}: ${player.kills} kills, ${player.score} score`
+      );
     });
   }
 }
@@ -5646,10 +5701,13 @@ function hitDemon(demon, demonIndex) {
     // Don't remove the demon here - wait for server confirmation
     return;
   }
-  
+
   // Single player logic (original)
   const demonType = demon.userData.demonType;
-  if (demonTypeCounts[demonType] !== undefined && demonTypeCounts[demonType] > 0) {
+  if (
+    demonTypeCounts[demonType] !== undefined &&
+    demonTypeCounts[demonType] > 0
+  ) {
     demonTypeCounts[demonType]--;
   }
 
@@ -5739,34 +5797,36 @@ function handleDemonDamage(data) {
   // Only apply damage if this is the target player
   if (data.playerId === socket?.id) {
     const currentTime = Date.now();
-    
+
     // Check for damage invulnerability
     if (currentTime - lastDamageTime < damageInvulnerabilityTime) {
       return; // Still invulnerable
     }
-    
+
     // Apply damage
     takeDamage(data.damage);
     lastDamageTime = currentTime;
-    
+
     // Create damage effect
     createDamageEffect();
-    
+
     // Find the demon that attacked for visual feedback
-    const attackingDemon = demons.find(demon => 
-      demon.userData && demon.userData.serverId === data.demonId
+    const attackingDemon = demons.find(
+      (demon) => demon.userData && demon.userData.serverId === data.demonId
     );
-    
+
     if (attackingDemon) {
       // Create attack effect at demon position
       createDemonAttackEffect(attackingDemon.position);
-      
+
       // Play attack sound
       playDemonAttackSound();
-      
+
       const demonType = attackingDemon.userData.demonType || "IMP";
       const typeData = DEMON_TYPES[demonType];
-      console.log(`${typeData.emoji} Server ${typeData.name} dealt ${data.damage} damage!`);
+      console.log(
+        `${typeData.emoji} Server ${typeData.name} dealt ${data.damage} damage!`
+      );
     }
   }
 }

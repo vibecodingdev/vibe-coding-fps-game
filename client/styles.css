@@ -58,13 +58,16 @@ canvas {
 }
 
 /* Specific layout adjustments for different menu types */
-#mainMenu, #instructions, #gameOver {
+#mainMenu,
+#instructions,
+#gameOver {
   justify-content: center;
   padding: 1rem;
   overflow: hidden;
 }
 
-#multiplayerLobby, #partyRoom {
+#multiplayerLobby,
+#partyRoom {
   justify-content: flex-start;
   padding: 1rem;
   overflow-y: auto;
@@ -206,7 +209,8 @@ canvas {
 .player-info input:focus {
   outline: none;
   border-color: #ff4400;
-  box-shadow: 0 0 25px rgba(255, 102, 0, 0.7), inset 0 0 30px rgba(255, 102, 0, 0.4);
+  box-shadow: 0 0 25px rgba(255, 102, 0, 0.7),
+    inset 0 0 30px rgba(255, 102, 0, 0.4);
   transform: scale(1.02);
 }
 
@@ -402,27 +406,27 @@ canvas {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
-  
+
   .player-info {
     position: relative;
     top: auto;
   }
-  
+
   .player-info input {
     min-width: 280px;
     font-size: 1.1rem;
   }
-  
+
   .server-config {
     padding: 1rem;
   }
-  
+
   .server-option {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .server-option input[type="text"] {
     min-width: 100%;
   }
@@ -660,24 +664,25 @@ canvas {
 /* Game UI Styles */
 .info {
   position: absolute;
-  top: 15px;
-  left: 15px;
+  top: 10px;
+  left: 10px;
   color: #ff6600;
   background: linear-gradient(
     135deg,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(139, 0, 0, 0.3) 50%,
-    rgba(0, 0, 0, 0.95) 100%
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(139, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.9) 100%
   );
-  padding: 20px;
+  padding: 12px;
   border-radius: 0;
-  font-size: 16px;
+  font-size: 14px;
   z-index: 100;
   border: 2px solid #ff6600;
-  min-width: 280px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 30px rgba(255, 102, 0, 0.5),
-    inset 0 0 30px rgba(255, 102, 0, 0.1), 0 0 60px rgba(255, 68, 0, 0.3);
+  min-width: 240px;
+  max-width: 280px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4),
+    inset 0 0 20px rgba(255, 102, 0, 0.08), 0 0 40px rgba(255, 68, 0, 0.2);
   font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
   position: relative;
 }
@@ -704,30 +709,36 @@ canvas {
 }
 
 .info div {
-  margin: 8px 0;
+  margin: 6px 0;
   font-weight: 600;
-  text-shadow: 0 0 10px rgba(255, 102, 0, 0.8);
-  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(255, 102, 0, 0.8);
+  letter-spacing: 0.5px;
   color: #ff6600;
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 /* Multiplayer Players Info */
 .players-info {
   position: absolute;
-  top: 15px;
-  right: 15px;
+  top: 10px;
+  right: 10px;
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid #ff6600;
-  padding: 1rem;
-  min-width: 200px;
+  padding: 0.8rem;
+  min-width: 180px;
+  max-width: 220px;
   z-index: 100;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
 
 .players-info h4 {
   color: #ff6600;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.8rem 0;
   text-align: center;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .player-item {
@@ -753,9 +764,9 @@ canvas {
 /* In-game Chat */
 .game-chat {
   position: absolute;
-  bottom: 150px;
-  left: 15px;
-  width: 400px;
+  bottom: 140px;
+  left: 10px;
+  width: 360px;
   z-index: 100;
 }
 
@@ -811,40 +822,44 @@ canvas {
 /* Weapon Info */
 .weapon-info {
   position: absolute;
-  bottom: 15px;
-  right: 15px;
+  bottom: 10px;
+  right: 10px;
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid #ff6600;
-  padding: 1rem;
+  padding: 0.8rem;
   text-align: center;
-  min-width: 150px;
+  min-width: 140px;
   z-index: 100;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
 
 #weaponName {
   color: #ff6600;
   font-weight: 600;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
 }
 
 #ammoCount {
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 /* Audio Controls */
 .audio-controls {
   position: absolute;
-  bottom: 25px;
-  left: 15px;
+  bottom: 10px;
+  left: 10px;
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid #ff6600;
-  padding: 15px;
-  font-size: 14px;
+  padding: 12px;
+  font-size: 13px;
   z-index: 100;
   color: #ff6600;
   font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
 
 .audio-controls label {
@@ -868,34 +883,68 @@ canvas {
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border: 2px solid #ff6600;
-  background: transparent;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 3px solid #ff6600;
+  background: rgba(0, 0, 0, 0.1);
   z-index: 1000;
   pointer-events: none;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(255, 102, 0, 0.8);
+  box-shadow: 0 0 15px rgba(255, 102, 0, 0.9),
+    inset 0 0 10px rgba(255, 102, 0, 0.3);
+  border-radius: 2px;
+}
+
+#crosshair::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 2px;
+  background: #ff6600;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(255, 102, 0, 0.8);
+}
+
+#crosshair::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  background: #ff6600;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(255, 102, 0, 0.8);
 }
 
 #crosshair.targeting {
   border-color: #ff0000;
-  box-shadow: 0 0 15px rgba(255, 0, 0, 1);
-  transform: scale(1.2);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 1), inset 0 0 15px rgba(255, 0, 0, 0.4);
+  transform: scale(1.3);
+}
+
+#crosshair.targeting::before,
+#crosshair.targeting::after {
+  background: #ff0000;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 1);
 }
 
 /* Health Bar */
 #healthBar {
   position: absolute;
-  bottom: 80px;
-  left: 15px;
-  width: 300px;
-  height: 25px;
+  bottom: 70px;
+  left: 10px;
+  width: 280px;
+  height: 22px;
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid #ff6600;
   z-index: 100;
   overflow: hidden;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
 
 #healthFill {
@@ -920,28 +969,32 @@ canvas {
 /* Mini Radar */
 #miniRadar {
   position: absolute;
-  bottom: 15px;
-  left: 350px;
+  bottom: 100px;
+  right: 10px;
   z-index: 100;
 }
 
 #radarContainer {
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid #ff6600;
-  padding: 10px;
+  padding: 8px;
   text-align: center;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
 
 #radarCanvas {
   background: rgba(139, 0, 0, 0.2);
   border: 1px solid #ff4400;
+  width: 100px;
+  height: 100px;
 }
 
 #radarLabel {
   color: #ff6600;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  margin-top: 5px;
+  margin-top: 4px;
   text-shadow: 0 0 5px rgba(255, 102, 0, 0.8);
 }
 
@@ -1002,21 +1055,79 @@ canvas {
   }
 
   .info {
-    left: 10px;
-    top: 10px;
-    min-width: 200px;
-    padding: 15px;
+    left: 8px;
+    top: 8px;
+    min-width: 180px;
+    max-width: 240px;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .info div {
+    margin: 4px 0;
+    font-size: 11px;
   }
 
   .players-info {
-    right: 10px;
-    top: 10px;
-    min-width: 150px;
+    right: 8px;
+    top: 8px;
+    min-width: 140px;
+    max-width: 180px;
+    padding: 0.6rem;
+  }
+
+  .players-info h4 {
+    font-size: 0.8rem;
+    margin: 0 0 0.6rem 0;
   }
 
   .game-chat {
-    width: 300px;
-    left: 10px;
+    width: 280px;
+    left: 8px;
+    bottom: 120px;
+  }
+
+  #healthBar {
+    left: 8px;
+    bottom: 60px;
+    width: 250px;
+    height: 20px;
+  }
+
+  .audio-controls {
+    left: 8px;
+    bottom: 8px;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .weapon-info {
+    right: 8px;
+    bottom: 8px;
+    padding: 0.6rem;
+    min-width: 120px;
+  }
+
+  #weaponName {
+    font-size: 0.9rem;
+  }
+
+  #ammoCount {
+    font-size: 0.8rem;
+  }
+
+  #miniRadar {
+    right: 8px;
+    bottom: 80px;
+  }
+
+  #radarCanvas {
+    width: 80px;
+    height: 80px;
+  }
+
+  #radarLabel {
+    font-size: 10px;
   }
 }
 

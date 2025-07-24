@@ -1,0 +1,7 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+0: Only use english in this game project.(UI & all messages & all logs)
