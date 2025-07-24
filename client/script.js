@@ -3178,47 +3178,47 @@ function createGun() {
 
   gun = new THREE.Group();
 
-  // Main gun body (rectangular block)
-  const bodyGeometry = new THREE.BoxGeometry(2.0, 0.6, 0.4);
+  // Main gun body (rectangular block) - oriented forward along Z-axis
+  const bodyGeometry = new THREE.BoxGeometry(0.4, 0.6, 2.0);
   const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
   body.position.set(0, 0, 0);
   gun.add(body);
 
-  // Gun barrel (cylinder extending forward)
+  // Gun barrel (cylinder extending forward along Z-axis)
   const barrelGeometry = new THREE.CylinderGeometry(0.08, 0.12, 1.0, 8);
   const barrelMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
   const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-  barrel.rotation.z = Math.PI / 2; // Rotate to point forward
-  barrel.position.set(1.2, 0.1, 0);
+  barrel.rotation.x = Math.PI / 2; // Rotate to point forward along Z-axis
+  barrel.position.set(0, 0.1, -1.2);
   gun.add(barrel);
 
   // Gun handle/grip
   const handleGeometry = new THREE.BoxGeometry(0.3, 0.8, 0.3);
   const handleMaterial = new THREE.MeshBasicMaterial({ color: 0x444444 });
   const handle = new THREE.Mesh(handleGeometry, handleMaterial);
-  handle.position.set(-0.4, -0.6, 0);
+  handle.position.set(0, -0.6, 0.4);
   gun.add(handle);
 
   // Gun stock (back part)
-  const stockGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.3);
+  const stockGeometry = new THREE.BoxGeometry(0.3, 0.4, 0.6);
   const stockMaterial = new THREE.MeshBasicMaterial({ color: 0x8b4513 }); // Brown wood color
   const stock = new THREE.Mesh(stockGeometry, stockMaterial);
-  stock.position.set(-1.0, 0, 0);
+  stock.position.set(0, 0, 1.0);
   gun.add(stock);
 
   // Front sight
   const sightGeometry = new THREE.BoxGeometry(0.04, 0.2, 0.04);
   const sightMaterial = new THREE.MeshBasicMaterial({ color: 0x666666 });
   const sight = new THREE.Mesh(sightGeometry, sightMaterial);
-  sight.position.set(1.8, 0.4, 0);
+  sight.position.set(0, 0.4, -1.8);
   gun.add(sight);
 
   // Trigger
-  const triggerGeometry = new THREE.BoxGeometry(0.06, 0.16, 0.04);
+  const triggerGeometry = new THREE.BoxGeometry(0.04, 0.16, 0.06);
   const triggerMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
   const trigger = new THREE.Mesh(triggerGeometry, triggerMaterial);
-  trigger.position.set(-0.2, -0.2, 0);
+  trigger.position.set(0, -0.2, 0.2);
   gun.add(trigger);
 
   // Position gun at bottom center of screen (like user is holding it)
@@ -3228,7 +3228,7 @@ function createGun() {
 
   // Create muzzle flash light (initially off)
   muzzleFlashLight = new THREE.PointLight(0xffaa00, 0, 10); // Orange light
-  muzzleFlashLight.position.set(1.8, 0.1, 0); // At barrel tip
+  muzzleFlashLight.position.set(0, 0.1, -1.8); // At barrel tip
   gun.add(muzzleFlashLight); // Attach to gun so it moves with recoil
 
   // Add gun directly to scene (not camera)
@@ -3243,27 +3243,27 @@ function createMachineGun() {
 
   machineGun = new THREE.Group();
 
-  // Main gun body - larger and more robust
-  const bodyGeometry = new THREE.BoxGeometry(2.5, 0.8, 0.6);
+  // Main gun body - larger and more robust, oriented forward along Z-axis
+  const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 2.5);
   const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a }); // Darker
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
   body.position.set(0, 0, 0);
   machineGun.add(body);
 
-  // Heavy barrel - thicker and longer
+  // Heavy barrel - thicker and longer, extending forward along Z-axis
   const barrelGeometry = new THREE.CylinderGeometry(0.12, 0.15, 1.5, 12);
   const barrelMaterial = new THREE.MeshBasicMaterial({ color: 0x0f0f0f }); // Almost black
   const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-  barrel.rotation.z = Math.PI / 2;
-  barrel.position.set(1.5, 0.1, 0);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.set(0, 0.1, -1.5);
   machineGun.add(barrel);
 
   // Barrel cooling vents
   for (let i = 0; i < 6; i++) {
-    const ventGeometry = new THREE.BoxGeometry(0.05, 0.3, 0.02);
+    const ventGeometry = new THREE.BoxGeometry(0.02, 0.3, 0.05);
     const ventMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
     const vent = new THREE.Mesh(ventGeometry, ventMaterial);
-    vent.position.set(1.2 + i * 0.1, 0.25, 0);
+    vent.position.set(0, 0.25, -1.2 - i * 0.1);
     machineGun.add(vent);
   }
 
@@ -3272,49 +3272,49 @@ function createMachineGun() {
   const bipodMaterial = new THREE.MeshBasicMaterial({ color: 0x666666 });
 
   const leftBipod = new THREE.Mesh(bipodGeometry, bipodMaterial);
-  leftBipod.position.set(0.8, -0.8, -0.3);
-  leftBipod.rotation.z = 0.3;
+  leftBipod.position.set(-0.3, -0.8, -0.8);
+  leftBipod.rotation.x = 0.3;
   machineGun.add(leftBipod);
 
   const rightBipod = new THREE.Mesh(bipodGeometry, bipodMaterial);
-  rightBipod.position.set(0.8, -0.8, 0.3);
-  rightBipod.rotation.z = -0.3;
+  rightBipod.position.set(0.3, -0.8, -0.8);
+  rightBipod.rotation.x = -0.3;
   machineGun.add(rightBipod);
 
   // Ammunition belt/box
-  const ammoBoxGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.8);
+  const ammoBoxGeometry = new THREE.BoxGeometry(0.8, 0.4, 0.6);
   const ammoBoxMaterial = new THREE.MeshBasicMaterial({ color: 0x4a4a00 }); // Olive drab
   const ammoBox = new THREE.Mesh(ammoBoxGeometry, ammoBoxMaterial);
-  ammoBox.position.set(-0.8, 0.3, 0.4);
+  ammoBox.position.set(0.4, 0.3, 0.8);
   machineGun.add(ammoBox);
 
   // Heavy stock - reinforced
-  const stockGeometry = new THREE.BoxGeometry(0.8, 0.6, 0.4);
+  const stockGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.8);
   const stockMaterial = new THREE.MeshBasicMaterial({ color: 0x2d1b0e }); // Dark brown
   const stock = new THREE.Mesh(stockGeometry, stockMaterial);
-  stock.position.set(-1.2, 0, 0);
+  stock.position.set(0, 0, 1.2);
   machineGun.add(stock);
 
   // Large front sight
   const sightGeometry = new THREE.BoxGeometry(0.06, 0.25, 0.06);
   const sightMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
   const sight = new THREE.Mesh(sightGeometry, sightMaterial);
-  sight.position.set(2.2, 0.5, 0);
+  sight.position.set(0, 0.5, -2.2);
   machineGun.add(sight);
 
   // Heavy trigger assembly
-  const triggerGeometry = new THREE.BoxGeometry(0.08, 0.2, 0.06);
+  const triggerGeometry = new THREE.BoxGeometry(0.06, 0.2, 0.08);
   const triggerMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
   const trigger = new THREE.Mesh(triggerGeometry, triggerMaterial);
-  trigger.position.set(-0.3, -0.3, 0);
+  trigger.position.set(0, -0.3, 0.3);
   machineGun.add(trigger);
 
   // Muzzle brake/flash hider
   const muzzleBrakeGeometry = new THREE.CylinderGeometry(0.18, 0.16, 0.3, 8);
   const muzzleBrakeMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
   const muzzleBrake = new THREE.Mesh(muzzleBrakeGeometry, muzzleBrakeMaterial);
-  muzzleBrake.rotation.z = Math.PI / 2;
-  muzzleBrake.position.set(2.4, 0.1, 0);
+  muzzleBrake.rotation.x = Math.PI / 2;
+  muzzleBrake.position.set(0, 0.1, -2.4);
   machineGun.add(muzzleBrake);
 
   // Position machine gun at same base position as rifle
@@ -3328,7 +3328,7 @@ function createMachineGun() {
 
   // Create separate muzzle flash light for machine gun
   const machineGunFlashLight = new THREE.PointLight(0xffaa00, 0, 10);
-  machineGunFlashLight.position.set(2.4, 0.1, 0); // At muzzle brake
+  machineGunFlashLight.position.set(0, 0.1, -2.4); // At muzzle brake
   machineGun.add(machineGunFlashLight);
   machineGun.userData.muzzleFlashLight = machineGunFlashLight;
 
