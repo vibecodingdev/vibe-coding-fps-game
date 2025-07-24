@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Mouse Lock Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        .error {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff0000;
+        }
+        .success {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.2);
+        }
+        .test-btn {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            cursor: pointer;
+        }
+        .test-btn:hover {
+            background: rgba(0, 255, 0, 0.1);
+        }
+        .log {
+            background: #000;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Multiplayer Mouse Lock Fix Test</h1>
+    
+    <div class="status">
+        <h3>Test Status</h3>
+        <div id="testStatus">Ready to test...</div>
+    </div>
+
+    <div>
+        <h3>Test Actions</h3>
+        <button class="test-btn" onclick="testSinglePlayer()">Test Single Player Mode</button>
+        <button class="test-btn" onclick="testMultiplayerMode()">Test Multiplayer Mode (Simulated)</button>
+        <button class="test-btn" onclick="testPointerLockSupport()">Check Pointer Lock Support</button>
+        <button class="test-btn" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div>
+        <h3>Debug Log</h3>
+        <div id="debugLog" class="log"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="script.js"></script>
+    <script>
+        function log(message, isError = false) {
+            const debugLog = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.color = isError ? '#ff0000' : '#00ff00';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            debugLog.appendChild(logEntry);
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('testStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : 'success';
+        }
+
+        function testPointerLockSupport() {
+            log("Testing pointer lock support...");
+            
+            if (typeof checkPointerLockSupport === 'function') {
+                const hasSupport = checkPointerLockSupport();
+                if (hasSupport) {
+                    log("✅ Pointer lock is supported");
+                    updateStatus("Pointer lock is supported", false);
+                } else {
+                    log("❌ Pointer lock is NOT supported", true);
+                    updateStatus("Pointer lock is NOT supported", true);
+                }
+            } else {
+                log("⚠️ checkPointerLockSupport function not found", true);
+                updateStatus("Check function not found", true);
+            }
+        }
+
+        function testSinglePlayer() {
+            log("Testing single player mode...");
+            updateStatus("Testing single player...");
+            
+            try {
+                if (typeof startSinglePlayer === 'function') {
+                    log("🎮 Starting single player mode...");
+                    startSinglePlayer();
+                    
+                    setTimeout(() => {
+                        if (gameState === 'playing') {
+                            log("✅ Single player mode started successfully");
+                            updateStatus("Single player mode working", false);
+                        } else {
+                            log("⚠️ Single player mode may not have started correctly", true);
+                            updateStatus("Single player mode issue", true);
+                        }
+                    }, 1000);
+                } else {
+                    log("❌ startSinglePlayer function not found", true);
+                    updateStatus("Single player function not found", true);
+                }
+            } catch (error) {
+                log(`❌ Error in single player test: ${error.message}`, true);
+                updateStatus("Single player test failed", true);
+            }
+        }
+
+        function testMultiplayerMode() {
+            log("Testing multiplayer mode simulation...");
+            updateStatus("Testing multiplayer...");
+            
+            try {
+                // First test if THREE.CylinderGeometry works (to test the fix)
+                log("🔧 Testing Three.js CylinderGeometry compatibility...");
+                try {
+                    const testGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
+                    log("✅ CylinderGeometry is working (fix successful)");
+                } catch (geoError) {
+                    log(`❌ CylinderGeometry error: ${geoError.message}`, true);
+                    updateStatus("Geometry compatibility issue", true);
+                    return;
+                }
+                
+                if (typeof initializeMultiplayerGame === 'function') {
+                    log("🎮 Simulating multiplayer game initialization...");
+                    
+                    // Simulate multiplayer game data with position data
+                    const mockGameData = {
+                        players: [
+                            { 
+                                id: 'mock-player-1', 
+                                name: 'Test Player',
+                                position: { x: 5, y: 2, z: 5 }
+                            }
+                        ]
+                    };
+                    
+                    // Set multiplayer flag
+                    isMultiplayer = true;
+                    
+                    initializeMultiplayerGame(mockGameData);
+                    
+                    setTimeout(() => {
+                        if (gameState === 'playing') {
+                            log("✅ Multiplayer mode started successfully");
+                            updateStatus("Multiplayer mode working", false);
+                        } else {
+                            log("⚠️ Multiplayer mode may not have started correctly", true);
+                            updateStatus("Multiplayer mode issue", true);
+                        }
+                    }, 1000);
+                } else {
+                    log("❌ initializeMultiplayerGame function not found", true);
+                    updateStatus("Multiplayer function not found", true);
+                }
+            } catch (error) {
+                log(`❌ Error in multiplayer test: ${error.message}`, true);
+                log(`Stack trace: ${error.stack}`, true);
+                updateStatus("Multiplayer test failed", true);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = '';
+            updateStatus("Log cleared");
+        }
+
+        // Override console.log to capture game logs
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            if (args.length > 0 && typeof args[0] === 'string') {
+                const message = args.join(' ');
+                if (message.includes('🎯') || message.includes('✅') || message.includes('⚠️') || message.includes('❌')) {
+                    log(`Game: ${message}`);
+                }
+            }
+        };
+
+        // Initialize test
+        window.addEventListener('load', () => {
+            log("Test page loaded");
+            updateStatus("Ready for testing");
+        });
+    </script>
+</body>
+</html> 

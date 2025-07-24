@@ -2992,6 +2992,12 @@ function drawDemonsOnRadar(playerPos, centerX, centerY) {
 
 // Initialize FPS controls
 function initControls() {
+  // Ensure camera exists before creating controls
+  if (!camera) {
+    console.warn("⚠️ Camera not found, cannot initialize controls yet");
+    return;
+  }
+
   // Create pointer lock controls
   controls = new THREE.PointerLockControls(camera, document.body);
 
@@ -3009,14 +3015,17 @@ function initControls() {
   }
 
   controls.addEventListener("lock", function () {
+    console.log("🔒 Pointer lock acquired, gameState:", gameState);
     if (gameState === "playing") {
       hideAllMenus();
       if (blocker) blocker.style.display = "none";
       document.getElementById("gameUI").style.display = "block";
+      console.log("✅ Mouse controls enabled");
     }
   });
 
   controls.addEventListener("unlock", function () {
+    console.log("🔓 Pointer lock released, gameState:", gameState);
     if (gameState === "playing") {
       document.getElementById("gameUI").style.display = "none";
       showMainMenu();
@@ -4290,7 +4299,6 @@ function showInstructions() {
 }
 
 function startGame() {
-  gameState = "playing";
   hideAllMenus();
   document.getElementById("gameUI").style.display = "block";
 
@@ -4307,10 +4315,38 @@ function startGame() {
     startWaveSystem();
   }
 
-  // Request pointer lock to enable mouse controls
+  // Set game state AFTER initialization
+  gameState = "playing";
+
+  // Request pointer lock to enable mouse controls with error handling
   setTimeout(() => {
-    requestPointerLockWithRetry();
-  }, 100); // Small delay to ensure UI is ready
+    console.log("🎯 Requesting pointer lock for single player...");
+
+    // Check if controls are properly initialized
+    if (!controls) {
+      console.warn("⚠️ Controls not initialized, reinitializing...");
+      initControls();
+    }
+
+    try {
+      const lockPromise = document.body.requestPointerLock();
+
+      // Handle promise-based pointer lock API
+      if (lockPromise) {
+        lockPromise
+          .then(() => {
+            console.log("✅ Pointer lock acquired for single player");
+          })
+          .catch((error) => {
+            console.warn("⚠️ Pointer lock failed in single player:", error);
+          });
+      } else {
+        console.log("✅ Pointer lock requested for single player (legacy API)");
+      }
+    } catch (error) {
+      console.warn("⚠️ Pointer lock request failed:", error);
+    }
+  }, 50); // Small delay to ensure proper initialization
 
   console.log("Starting game");
 }
@@ -5185,7 +5221,7 @@ function initializeMultiplayerGame(gameData) {
   hideAllMenus();
   document.getElementById("gameUI").style.display = "block";
 
-  // Enter fullscreen mode (optional for multiplayer)
+  // Enter fullscreen mode (IMPORTANT for pointer lock)
   enterFullscreen();
 
   // Initialize the game if not already done
@@ -5193,16 +5229,12 @@ function initializeMultiplayerGame(gameData) {
     init();
     gameInitialized = true;
   } else {
-    // Reset and restart if already initialized (same as single-player)
+    // Reset and restart if already initialized
     resetGameState();
-  }
-
-  // Always ensure wave system is started for multiplayer
-  if (!waveInProgress) {
     startWaveSystem();
   }
 
-  // Set game state
+  // Set game state AFTER initialization
   gameState = "playing";
 
   // Update room info
@@ -5223,67 +5255,104 @@ function initializeMultiplayerGame(gameData) {
   // Start position sync
   startPositionSync();
 
-  // Enable pointer lock with better error handling and timing
+  // Ensure UI is properly initialized for multiplayer
   setTimeout(() => {
-    requestPointerLockWithRetry();
-  }, 100); // Small delay to ensure UI is ready
+    if (typeof initializeUI === "function") {
+      initializeUI();
+      console.log("🖥️ UI reinitialized for multiplayer mode");
+    }
+  }, 25);
+
+  // Add delay and error handling for pointer lock in multiplayer mode
+  setTimeout(() => {
+    console.log("🎯 Requesting pointer lock for multiplayer...");
+
+    // Check if controls are properly initialized
+    if (!controls) {
+      console.warn("⚠️ Controls not initialized, reinitializing...");
+      initControls();
+    }
+
+    // Request pointer lock with error handling
+    try {
+      const lockPromise = document.body.requestPointerLock();
+
+      // Handle promise-based pointer lock API
+      if (lockPromise) {
+        lockPromise
+          .then(() => {
+            console.log("✅ Pointer lock acquired for multiplayer");
+          })
+          .catch((error) => {
+            console.warn("⚠️ Pointer lock failed in multiplayer:", error);
+            // Try alternative approach
+            requestPointerLockFallback();
+          });
+      } else {
+        console.log("✅ Pointer lock requested for multiplayer (legacy API)");
+      }
+    } catch (error) {
+      console.warn("⚠️ Pointer lock request failed:", error);
+      requestPointerLockFallback();
+    }
+  }, 100); // Small delay to ensure proper initialization
 
   console.log("🔥 Multiplayer game initialized successfully");
 }
 
-// Helper function to request pointer lock with retry logic and error handling
-function requestPointerLockWithRetry(retryCount = 0) {
-  const maxRetries = 3;
-  
-  if (!document.body.requestPointerLock) {
-    console.error("Pointer lock not supported by this browser");
+// Check if pointer lock is supported and working
+function checkPointerLockSupport() {
+  const hasPointerLock =
+    "requestPointerLock" in document.body ||
+    "mozRequestPointerLock" in document.body ||
+    "webkitRequestPointerLock" in document.body;
+
+  console.log("🔍 Pointer lock support:", hasPointerLock);
+  console.log("🔍 Current game state:", gameState);
+  console.log("🔍 Controls initialized:", !!controls);
+  console.log("🔍 Is multiplayer:", isMultiplayer);
+
+  return hasPointerLock;
+}
+
+// Fallback function for pointer lock issues
+function requestPointerLockFallback() {
+  console.log("🔧 Attempting pointer lock fallback...");
+
+  // Check support first
+  if (!checkPointerLockSupport()) {
+    console.error("❌ Pointer lock not supported in this browser");
     return;
   }
 
-  const pointerLockPromise = document.body.requestPointerLock();
-  
-  if (pointerLockPromise) {
-    // Modern browsers return a promise
-    pointerLockPromise.then(() => {
-      console.log("✅ Pointer lock successfully acquired for multiplayer");
-    }).catch((error) => {
-      console.warn(`⚠️ Pointer lock failed (attempt ${retryCount + 1}):`, error);
-      
-      if (retryCount < maxRetries) {
-        setTimeout(() => {
-          requestPointerLockWithRetry(retryCount + 1);
-        }, 1000); // Wait 1 second before retry
-      } else {
-        console.error("❌ Failed to acquire pointer lock after maximum retries");
-        // Show user-friendly message
-        alert("🎮 Please click anywhere in the game area to enable mouse controls!");
-        
-        // Add a one-time click listener to retry pointer lock
-        const retryOnClick = () => {
-          document.body.requestPointerLock();
-          document.removeEventListener('click', retryOnClick);
-        };
-        document.addEventListener('click', retryOnClick);
-      }
-    });
-  } else {
-    // Older browsers don't return a promise
-    console.log("🔄 Requesting pointer lock (older browser)");
-    
-    // For older browsers, we can't easily detect failure, so just try once more if it's the first attempt
-    if (retryCount === 0) {
-      setTimeout(() => {
-        if (!controls.isLocked) {
-          requestPointerLockWithRetry(1);
-        }
-      }, 1000);
-    }
+  // Try clicking anywhere to enable pointer lock
+  const instructionsElement = document.getElementById("instructions");
+  if (instructionsElement) {
+    instructionsElement.style.display = "block";
+    instructionsElement.innerHTML = `
+      <h1>🎮 Multiplayer Controls</h1>
+      <p><strong>Click anywhere to enable mouse controls</strong></p>
+      <p>Move: WASD | Look: Mouse | Shoot: Left Click</p>
+      <p>Press ESC to pause</p>
+    `;
   }
+
+  // Add one-time click listener to request pointer lock
+  const handleClick = () => {
+    console.log("👆 User clicked, requesting pointer lock...");
+    document.body.requestPointerLock();
+    if (instructionsElement) {
+      instructionsElement.style.display = "none";
+    }
+    document.removeEventListener("click", handleClick);
+  };
+
+  document.addEventListener("click", handleClick);
 }
 
 function createRemotePlayer(playerData) {
-  // Create a simple representation for remote players
-  const geometry = new THREE.CapsuleGeometry(0.5, 2, 4, 8);
+  // Create a simple representation for remote players using CylinderGeometry (compatible with Three.js r128)
+  const geometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
   const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
   const playerMesh = new THREE.Mesh(geometry, material);
 
