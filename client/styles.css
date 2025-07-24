@@ -564,6 +564,7 @@ canvas {
 .chat-message {
   margin-bottom: 0.8rem;
   line-height: 1.4;
+  color: #ffffff;
 }
 
 .chat-message .timestamp {
@@ -817,6 +818,7 @@ canvas {
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   transition: opacity 0.3s ease;
+  color: #ffffff;
 }
 
 .game-chat-message .timestamp {
@@ -1367,8 +1369,8 @@ canvas {
 /* Voice Chat Status Indicator */
 .voice-chat-status {
   position: absolute;
-  bottom: 0px;
-  left: 0px;
+  bottom: 100px;
+  left: 10px;
   z-index: 15;
 }
 
@@ -1554,8 +1556,8 @@ canvas {
 /* Responsive Design for Voice Chat */
 @media (max-width: 1024px) {
   .voice-chat-status {
-    right: 8px;
-    bottom: 100px;
+    left: 8px;
+    bottom: 90px;
   }
 }
 
