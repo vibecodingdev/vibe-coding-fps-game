@@ -431,6 +431,15 @@ function init() {
   renderer.setClearColor(0x87ceeb); // Sky blue background
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Ensure canvas takes full screen
+  renderer.domElement.style.position = "fixed";
+  renderer.domElement.style.top = "0";
+  renderer.domElement.style.left = "0";
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
+  renderer.domElement.style.zIndex = "1";
+
   document.body.appendChild(renderer.domElement);
 
   // Initialize audio system
@@ -673,9 +682,9 @@ function createBurnedBuildings() {
       ctx.fillText("FOLLOW ON:", canvas.width / 2, 80);
 
       ctx.font = "bold 32px Arial";
-      ctx.fillText("GitHub: apoorvdarshan", canvas.width / 2, 150);
-      ctx.fillText("LinkedIn: apoorvdarshan", canvas.width / 2, 200);
-      ctx.fillText("X: @apoorvdarshan", canvas.width / 2, 250);
+      ctx.fillText("GitHub: yournamehere", canvas.width / 2, 150);
+      ctx.fillText("LinkedIn: yournamehere", canvas.width / 2, 200);
+      ctx.fillText("X: @yournamehere", canvas.width / 2, 250);
 
       ctx.font = "bold 28px Arial";
       ctx.fillText("FOLLOW FOR UPDATES!", canvas.width / 2, 320);
@@ -685,8 +694,8 @@ function createBurnedBuildings() {
       ctx.fillText("FOLLOW ON:", canvas.width / 2, 100);
 
       ctx.font = "bold 32px Arial";
-      ctx.fillText("YouTube: @apoorvdarshan", canvas.width / 2, 170);
-      ctx.fillText("Instagram: @404apoorv", canvas.width / 2, 220);
+      ctx.fillText("YouTube: @yournamehere", canvas.width / 2, 170);
+      ctx.fillText("Instagram: @yournamehere", canvas.width / 2, 220);
 
       ctx.font = "bold 28px Arial";
       ctx.fillText("LIKE & SUBSCRIBE!", canvas.width / 2, 290);
@@ -4204,6 +4213,12 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
 
   renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Ensure canvas remains fullscreen after resize
+  if (renderer && renderer.domElement) {
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
+  }
 }
 
 // Animation loop
@@ -4612,6 +4627,17 @@ function resetGameState() {
 // Initialize the scene when the page loads
 window.addEventListener("load", () => {
   console.log("Page loaded, showing main menu");
+
+  // Ensure viewport is properly set for fullscreen
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    const viewportMeta = document.createElement("meta");
+    viewportMeta.name = "viewport";
+    viewportMeta.content =
+      "width=device-width, initial-scale=1.0, user-scalable=no";
+    document.head.appendChild(viewportMeta);
+  }
+
   // Start animation loop immediately for any visual effects
   animate();
   // Don't initialize the game immediately, wait for user to click start

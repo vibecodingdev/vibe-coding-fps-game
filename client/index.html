@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Exo+2:wght@300;400;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20250724" />
+    <link rel="stylesheet" href="styles.css?v=20250724-6" />
   </head>
   <body>
     <!-- Main Menu -->
@@ -200,44 +200,48 @@
 
     <!-- Instructions Screen -->
     <div id="instructions" class="menu-screen">
-      <h1>📖 DOOM PROTOCOL MANUAL</h1>
-      <div class="instructions-content">
-        <div class="instruction-section">
-          <h3>🎮 CONTROLS</h3>
-          <p><span class="key">WASD</span> or <span class="key">Arrow Keys</span> - Move through Hell</p>
-          <p><span class="key">Mouse</span> - Look around / Aim</p>
-          <p><span class="key">Left Click</span> - Fire weapon</p>
-          <p><span class="key">Right Click</span> - Switch weapon</p>
-          <p><span class="key">ESC</span> - Pause / Exit targeting</p>
-          <p><span class="key">Enter</span> - Open chat (multiplayer)</p>
-        </div>
+      <div class="instructions-wrapper">
+        <h1>📖 DOOM PROTOCOL MANUAL</h1>
+        <div class="instructions-content">
+          <div class="instruction-section">
+            <h3>🎮 CONTROLS</h3>
+            <p><span class="key">WASD</span> or <span class="key">Arrow Keys</span> - Move through Hell</p>
+            <p><span class="key">Mouse</span> - Look around / Aim</p>
+            <p><span class="key">Left Click</span> - Fire weapon</p>
+            <p><span class="key">Right Click</span> - Switch weapon</p>
+            <p><span class="key">ESC</span> - Pause / Exit targeting</p>
+            <p><span class="key">Enter</span> - Open chat (multiplayer)</p>
+          </div>
 
-        <div class="instruction-section">
-          <h3>🔫 HELLISH ARSENAL</h3>
-          <p><span class="weapon">🔫 SHOTGUN</span> - Close-range devastation</p>
-          <p><span class="weapon">⚡ CHAINGUN</span> - Rapid-fire suppression</p>
-          <p><span class="weapon">🚀 ROCKET LAUNCHER</span> - Area destruction</p>
-          <p><span class="weapon">🔥 PLASMA RIFLE</span> - Energy devastation</p>
-        </div>
+          <div class="instruction-section">
+            <h3>🔫 HELLISH ARSENAL</h3>
+            <p><span class="weapon">🔫 SHOTGUN</span> - Close-range devastation</p>
+            <p><span class="weapon">⚡ CHAINGUN</span> - Rapid-fire suppression</p>
+            <p><span class="weapon">🚀 ROCKET LAUNCHER</span> - Area destruction</p>
+            <p><span class="weapon">🔥 PLASMA RIFLE</span> - Energy devastation</p>
+          </div>
 
-        <div class="instruction-section">
-          <h3>👹 DEMONIC ENEMIES</h3>
-          <p><span class="enemy">👹 IMP</span> - Basic demon, throws fireballs</p>
-          <p><span class="enemy">🐺 DEMON</span> - Fast melee attacker</p>
-          <p><span class="enemy">👁️ CACODEMON</span> - Flying sphere of death</p>
-          <p><span class="enemy">👑 BARON</span> - Elite demon lord</p>
-        </div>
+          <div class="instruction-section">
+            <h3>👹 DEMONIC ENEMIES</h3>
+            <p><span class="enemy">👹 IMP</span> - Basic demon, throws fireballs</p>
+            <p><span class="enemy">🐺 DEMON</span> - Fast melee attacker</p>
+            <p><span class="enemy">👁️ CACODEMON</span> - Flying sphere of death</p>
+            <p><span class="enemy">👑 BARON</span> - Elite demon lord</p>
+          </div>
 
-        <div class="instruction-section">
-          <h3>🏰 MULTIPLAYER CHAMBERS</h3>
-          <p>• Team up with 1-3 other demons</p>
-          <p>• Explore interconnected hellish rooms</p>
-          <p>• Difficulty scales with party size</p>
-          <p>• Use chat to coordinate attacks</p>
-          <p>• Share ammunition and health</p>
+          <div class="instruction-section">
+            <h3>🏰 MULTIPLAYER CHAMBERS</h3>
+            <p>• Team up with 1-3 other demons</p>
+            <p>• Explore interconnected hellish rooms</p>
+            <p>• Difficulty scales with party size</p>
+            <p>• Use chat to coordinate attacks</p>
+            <p>• Share ammunition and health</p>
+          </div>
+        </div>
+        <div class="menu-buttons">
+          <button class="menu-button" onclick="showMainMenu()">← BACK TO MENU</button>
         </div>
       </div>
-      <button class="menu-button" onclick="showMainMenu()">← BACK TO MENU</button>
     </div>
 
     <!-- Game Over Screen -->

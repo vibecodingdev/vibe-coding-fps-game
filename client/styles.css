@@ -1,6 +1,9 @@
+html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #000;
   font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
@@ -21,6 +24,12 @@ body {
 
 canvas {
   display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1;
 }
 
 /* Main Menu Styles */
@@ -43,7 +52,7 @@ canvas {
   justify-content: flex-start;
   color: #ff6600;
   text-align: center;
-  z-index: 1000;
+  z-index: 10000;
   opacity: 0;
   visibility: hidden;
   transition: all 0.5s ease;
@@ -59,11 +68,18 @@ canvas {
 
 /* Specific layout adjustments for different menu types */
 #mainMenu,
-#instructions,
 #gameOver {
   justify-content: center;
   padding: 1rem;
   overflow: hidden;
+}
+
+#instructions {
+  justify-content: flex-start;
+  align-items: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  min-height: 100vh;
 }
 
 #multiplayerLobby,
@@ -618,13 +634,30 @@ canvas {
 }
 
 /* Instructions Styles */
+.instructions-wrapper {
+  max-width: 1000px;
+  width: 90%;
+  margin: 2rem auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.instructions-wrapper h1 {
+  margin-bottom: 2rem;
+  flex-shrink: 0;
+}
+
 .instructions-content {
-  max-width: 800px;
+  width: 100%;
   text-align: left;
   background: rgba(0, 0, 0, 0.8);
   border: 2px solid #ff6600;
   padding: 2rem;
-  margin: 2rem 0;
+  margin: 0 0 2rem 0;
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .instruction-section {
@@ -676,7 +709,7 @@ canvas {
   padding: 12px;
   border-radius: 0;
   font-size: 14px;
-  z-index: 100;
+  z-index: 1000;
   border: 2px solid #ff6600;
   min-width: 240px;
   max-width: 280px;
@@ -728,7 +761,7 @@ canvas {
   padding: 0.8rem;
   min-width: 180px;
   max-width: 220px;
-  z-index: 100;
+  z-index: 1000;
   backdrop-filter: blur(8px);
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
@@ -767,7 +800,7 @@ canvas {
   bottom: 140px;
   left: 10px;
   width: 360px;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .game-chat-messages {
@@ -829,7 +862,7 @@ canvas {
   padding: 0.8rem;
   text-align: center;
   min-width: 140px;
-  z-index: 100;
+  z-index: 1000;
   backdrop-filter: blur(8px);
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
 }
@@ -855,7 +888,7 @@ canvas {
   border: 2px solid #ff6600;
   padding: 12px;
   font-size: 13px;
-  z-index: 100;
+  z-index: 1000;
   color: #ff6600;
   font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
   backdrop-filter: blur(8px);
@@ -941,7 +974,7 @@ canvas {
   height: 22px;
   background: rgba(0, 0, 0, 0.9);
   border: 2px solid #ff6600;
-  z-index: 100;
+  z-index: 1000;
   overflow: hidden;
   backdrop-filter: blur(8px);
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
@@ -971,7 +1004,7 @@ canvas {
   position: absolute;
   bottom: 100px;
   right: 10px;
-  z-index: 100;
+  z-index: 1000;
 }
 
 #radarContainer {
@@ -981,13 +1014,13 @@ canvas {
   text-align: center;
   backdrop-filter: blur(8px);
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
+  width: 120px;
+  height: 120px;
 }
 
 #radarCanvas {
   background: rgba(139, 0, 0, 0.2);
   border: 1px solid #ff4400;
-  width: 100px;
-  height: 100px;
 }
 
 #radarLabel {
@@ -1038,8 +1071,30 @@ canvas {
     font-size: 3rem;
   }
 
+  .instructions-wrapper {
+    width: 95%;
+    margin: 1rem auto;
+    padding: 0 0.5rem;
+  }
+
   .instructions-content {
-    max-width: 90%;
+    width: 100%;
+    padding: 1.5rem;
+    margin: 0 0 1.5rem 0;
+  }
+
+  .instruction-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .instruction-section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .instruction-section p {
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
   }
 }
 
@@ -1122,8 +1177,8 @@ canvas {
   }
 
   #radarCanvas {
-    width: 80px;
-    height: 80px;
+    width: 100px;
+    height: 100px;
   }
 
   #radarLabel {
@@ -1241,7 +1296,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 20000;
 }
 
 #instructions {
@@ -1250,7 +1305,6 @@ canvas {
   padding: 2rem;
   text-align: center;
   color: #ffffff;
-  max-width: 500px;
   box-shadow: 0 0 30px rgba(255, 102, 0, 0.5);
 }
 

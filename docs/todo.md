@@ -8,3 +8,4 @@
 - [ ] Introduce new weapons and armor
 - [ ] Introduce new avatars for players
 - [ ] Implement a simple market system for purchasing all game items.
+- [ ] Use voice chat, not text chat in game mode.
