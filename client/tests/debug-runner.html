@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPS Game Debug Runner</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .debug-header {
+            text-align: center;
+            border-bottom: 2px solid #0f0;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .debug-section {
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 5px;
+            background: rgba(0, 50, 0, 0.1);
+        }
+        
+        .error-item {
+            background: rgba(255, 0, 0, 0.2);
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #f00;
+        }
+        
+        .warning-item {
+            background: rgba(255, 255, 0, 0.2);
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #ff0;
+            color: #ff0;
+        }
+        
+        .fix-item {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #0f0;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(0, 50, 0, 0.3);
+            padding: 15px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .console-output {
+            background: #111;
+            border: 1px solid #333;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        
+        .button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+        
+        .button:hover {
+            background: #0a0;
+        }
+        
+        .button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        pre {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        
+        #gameFrame {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-header">
+        <h1>🎮 FPS GAME DEBUG RUNNER 🎮</h1>
+        <p>Automated error detection and fixing for DOOM Protocol</p>
+        <button class="button" onclick="runDebugger()">🚀 RUN DEBUGGER</button>
+        <button class="button" onclick="applyFixes()">🔧 APPLY FIXES</button>
+        <button class="button" onclick="clearConsole()">🧹 CLEAR</button>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="passedTests">0</div>
+            <div>Tests Passed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="failedTests">0</div>
+            <div>Tests Failed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="errorsFound">0</div>
+            <div>Errors Found</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="fixesGenerated">0</div>
+            <div>Fixes Generated</div>
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>📊 Debug Results</h3>
+        <div id="debugResults">Click "RUN DEBUGGER" to start analysis...</div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>📝 Console Output</h3>
+        <div class="console-output" id="consoleOutput"></div>
+    </div>
+    
+    <!-- Hidden iframe to load the game -->
+    <iframe id="gameFrame" src="../index.html" width="800" height="600"></iframe>
+    
+    <!-- Load Three.js and required libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    
+    <!-- Load the game script -->
+    <script src="../script.js"></script>
+    
+    <!-- Load error detector -->
+    <script src="error-detector.js"></script>
+    
+    <!-- Load error fixes -->
+    <script src="../error-fixes.js"></script>
+    
+    <script>
+        // Console capture
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn
+        };
+        
+        const consoleOutput = document.getElementById('consoleOutput');
+        
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const colorMap = { log: '#0f0', error: '#f00', warn: '#ff0' };
+            
+            consoleOutput.innerHTML += `<span style="color: ${colorMap[type]}">[${timestamp}] ${message}</span>\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        // Override console methods
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            addToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            addToConsole(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            addToConsole(args.join(' '), 'warn');
+        };
+        
+        // Debug functions
+        let gameDebugger = null;
+        
+        async function runDebugger() {
+            console.log('🚀 Starting debug session...');
+            
+            try {
+                // Create error detector if not exists
+                if (!window.gameErrorDetector) {
+                    console.log('Creating new error detector...');
+                    if (typeof GameErrorDetector !== 'undefined') {
+                        window.gameErrorDetector = new GameErrorDetector();
+                    } else {
+                        console.error('GameErrorDetector class not found');
+                        return;
+                    }
+                }
+                
+                gameDebugger = window.gameErrorDetector;
+                
+                // Run full error detection
+                const results = await gameDebugger.runFullErrorDetection();
+                
+                // Update UI
+                updateStats(results);
+                displayResults(results);
+                
+                console.log('✅ Debug session completed');
+                
+            } catch (error) {
+                console.error('❌ Debug session failed:', error);
+            }
+        }
+        
+        async function applyFixes() {
+            if (!gameDebugger) {
+                console.warn('⚠️  Run debugger first before applying fixes');
+                return;
+            }
+            
+            console.log('🔧 Applying fixes...');
+            
+            try {
+                const appliedCount = await gameDebugger.applyFixes();
+                console.log(`✅ Applied ${appliedCount} fixes`);
+                
+                // Re-run debugger after fixes
+                setTimeout(async () => {
+                    console.log('🔄 Re-running debugger after fixes...');
+                    await runDebugger();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Failed to apply fixes:', error);
+            }
+        }
+        
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+            console.log('🧹 Console cleared');
+        }
+        
+        function updateStats(results) {
+            document.getElementById('passedTests').textContent = results.testResults.passed;
+            document.getElementById('failedTests').textContent = results.testResults.failed;
+            document.getElementById('errorsFound').textContent = results.errors.length;
+            document.getElementById('fixesGenerated').textContent = results.fixes.length;
+        }
+        
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('debugResults');
+            let html = '';
+            
+            if (results.errors.length > 0) {
+                html += '<h4>❌ Errors Found:</h4>';
+                results.errors.forEach((error, index) => {
+                    html += `<div class="error-item">
+                        <strong>${index + 1}. [${error.context}]</strong><br>
+                        ${error.message}
+                    </div>`;
+                });
+            }
+            
+            if (results.warnings.length > 0) {
+                html += '<h4>⚠️  Warnings:</h4>';
+                results.warnings.forEach((warning, index) => {
+                    html += `<div class="warning-item">
+                        <strong>${index + 1}. [${warning.context}]</strong><br>
+                        ${warning.message}
+                    </div>`;
+                });
+            }
+            
+            if (results.fixes.length > 0) {
+                html += '<h4>🔧 Suggested Fixes:</h4>';
+                results.fixes.forEach((fix, index) => {
+                    html += `<div class="fix-item">
+                        <strong>${index + 1}. [${fix.priority}] ${fix.solution}</strong><br>
+                        <pre>${fix.code}</pre>
+                    </div>`;
+                });
+            }
+            
+            if (html === '') {
+                html = '<div style="color: #0f0; text-align: center; padding: 20px;">🎉 No errors found! Game is working perfectly!</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Auto-run debugger when page loads
+        window.addEventListener('load', () => {
+            console.log('🎮 Debug runner loaded');
+            
+            // Wait for game to initialize
+            setTimeout(() => {
+                console.log('🔄 Auto-running debugger...');
+                runDebugger();
+            }, 3000);
+        });
+        
+        // Capture global errors
+        window.addEventListener('error', (event) => {
+            console.error(`Global Error: ${event.error.message} at ${event.filename}:${event.lineno}`);
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error(`Unhandled Promise Rejection: ${event.reason}`);
+        });
+        
+    </script>
+</body>
+</html> 

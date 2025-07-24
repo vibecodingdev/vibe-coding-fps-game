@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CYBERPUNK FPS - Neural Combat Protocol</title>
+    <title>DOOM PROTOCOL - Hellish Combat Arena</title>
     <link rel="icon" type="image/png" href="assets/favicon.png" />
     <link
       rel="stylesheet"
@@ -20,16 +20,20 @@
   <body>
     <!-- Main Menu -->
     <div id="mainMenu" class="menu-screen active">
-      <h1>⚡ NEURAL COMBAT PROTOCOL ⚡</h1>
+      <h1>🔥 DOOM PROTOCOL 🔥</h1>
+      <h2>HELLISH COMBAT ARENA</h2>
       <div class="menu-buttons">
-        <button class="menu-button success" onclick="startGame()">
-          🎮 INITIALIZE PROTOCOL
+        <button class="menu-button success" onclick="showMultiplayerLobby()">
+          🎮 ENTER HELL (MULTIPLAYER)
+        </button>
+        <button class="menu-button" onclick="startSinglePlayer()">
+          👤 SINGLE PLAYER TRAINING
         </button>
         <button class="menu-button" onclick="showInstructions()">
-          📖 NEURAL INTERFACE GUIDE
+          📖 COMBAT MANUAL
         </button>
       </div>
-      <p style="margin-top: 30px; opacity: 0.7">Powered by Three.js Neural Engine</p>
+      <p style="margin-top: 30px; opacity: 0.7">Powered by Three.js Hellish Engine</p>
 
       <!-- Social Media Icons -->
       <div class="social-icons">
@@ -50,115 +54,177 @@
           <i class="fab fa-instagram"></i>
         </a>
         <a
-          href="https://linkedin.com/in/yournamehere"
-          target="_blank"
-          class="social-icon linkedin"
-          title="LinkedIn"
-        >
-          <i class="fab fa-linkedin-in"></i>
-        </a>
-        <a
-          href="https://twitter.com/yournamehere"
-          target="_blank"
-          class="social-icon twitter"
-          title="X (Twitter)"
-        >
-          <span style="font-size: 18px; font-weight: bold">𝕏</span>
-        </a>
-        <a
-          href="https://youtube.com/@yournamehere"
+          href="https://youtube.com/yournamehere"
           target="_blank"
           class="social-icon youtube"
           title="YouTube"
         >
           <i class="fab fa-youtube"></i>
         </a>
+        <a
+          href="https://twitter.com/yournamehere"
+          target="_blank"
+          class="social-icon twitter"
+          title="Twitter"
+        >
+          <i class="fab fa-twitter"></i>
+        </a>
       </div>
-
-      <!-- Made by text -->
-      <p class="made-by">Created by [⚡Neural Architect Name]</p>
     </div>
 
-    <!-- Instructions Menu -->
-    <div id="instructionsMenu" class="menu-screen">
-      <h2>📖 Neural Interface Guide</h2>
-      <div class="instructions-content">
-        <h3>🎮 Neural Controls</h3>
-        <p>
-          <span class="key">WASD</span> or <span class="key">Arrow Keys</span> -
-          Movement Matrix
-        </p>
-        <p><span class="key">Mouse</span> - Neural targeting system</p>
-        <p><span class="key">Left Click</span> - Fire plasma weapon</p>
-        <p><span class="key">Right Click</span> - Switch weapon protocol</p>
-        <p><span class="key">ESC</span> - Pause neural link / Exit targeting mode</p>
-
-        <h3>🔫 Weapon Systems</h3>
-        <p><strong>🔫 Plasma Rifle:</strong> High-precision energy weapon</p>
-        <p><strong>⚡ Neural Cannon:</strong> Rapid-fire suppression system</p>
-
-        <h3>🤖 Enemy Entities</h3>
-        <p>
-          <strong>🤖 Standard Unit:</strong> Basic combat drones (Wave 1+)
-        </p>
-        <p><strong>🏃‍♂️ Speed Unit:</strong> Fast attack drones (Wave 2+)</p>
-        <p><strong>🦾 Tank Unit:</strong> Heavy armor drones (Wave 4+)</p>
-        <p><strong>👹 Boss Unit:</strong> Elite combat systems (Wave 6+)</p>
-
-        <h3>💉 Bio-Enhancement System</h3>
-        <p>Collect neural stim packs to restore 25 HP</p>
-        <p>Avoid enemy attacks to maintain neural stability</p>
-        <p>Stim packs auto-generate every 15 seconds</p>
-
-        <h3>🌊 Combat Protocol Waves</h3>
-        <p>Survive endless waves of increasingly advanced combat units</p>
-        <p>Each wave deploys more units with enhanced protocols</p>
+    <!-- Multiplayer Lobby -->
+    <div id="multiplayerLobby" class="menu-screen">
+      <h1>🔥 HELLISH COMBAT LOBBY 🔥</h1>
+      
+      <!-- Player Info -->
+      <div class="player-info">
+        <input type="text" id="playerName" placeholder="Enter your demon name..." maxlength="20" />
+        <div id="connectionStatus">🔴 Disconnected from Hell</div>
       </div>
-      <div class="menu-buttons">
+
+      <!-- Room Management -->
+      <div class="lobby-content">
+        <div class="lobby-section">
+          <h3>🏰 CREATE HELLISH CHAMBER</h3>
+          <div class="room-creation">
+            <input type="text" id="roomName" placeholder="Chamber name..." maxlength="30" />
+            <select id="maxPlayers">
+              <option value="2">2 Demons</option>
+              <option value="3">3 Demons</option>
+              <option value="4" selected>4 Demons</option>
+            </select>
+            <select id="mapType">
+              <option value="industrial">Industrial Hell</option>
+              <option value="hellscape">Classic Hellscape</option>
+              <option value="techbase">Tech Base</option>
+            </select>
+            <button class="menu-button success" onclick="createRoom()">
+              🔥 CREATE CHAMBER
+            </button>
+          </div>
+        </div>
+
+        <div class="lobby-section">
+          <h3>👹 AVAILABLE CHAMBERS</h3>
+          <div id="roomList" class="room-list">
+            <div class="room-item loading">
+              <span>🔄 Scanning Hell for chambers...</span>
+            </div>
+          </div>
+          <button class="menu-button" onclick="refreshRooms()">
+            🔄 REFRESH CHAMBERS
+          </button>
+        </div>
+      </div>
+
+      <div class="lobby-buttons">
         <button class="menu-button" onclick="showMainMenu()">
-          ← Return to Main Protocol
+          ← BACK TO MENU
         </button>
       </div>
     </div>
 
-    <!-- Pause Menu -->
-    <div id="pauseMenu" class="menu-screen">
-      <div id="pauseOverlay"></div>
-      <h2>⏸️ Neural Link Paused</h2>
-      <div class="menu-buttons">
-        <button class="menu-button success" onclick="resumeGame()">
-          ▶️ Resume Neural Link
+    <!-- Party Room Screen -->
+    <div id="partyRoom" class="menu-screen">
+      <h1 id="roomTitle">🔥 HELLISH CHAMBER 🔥</h1>
+      
+      <div class="party-content">
+        <div class="party-section">
+          <h3>👹 DEMONS IN CHAMBER</h3>
+          <div id="partyMembers" class="party-members">
+            <!-- Party members will be populated here -->
+          </div>
+        </div>
+
+        <div class="party-section">
+          <h3>💬 HELL CHAT</h3>
+          <div id="chatContainer" class="chat-container">
+            <div id="chatMessages" class="chat-messages">
+              <!-- Chat messages will appear here -->
+            </div>
+            <div class="chat-input">
+              <input type="text" id="chatInput" placeholder="Speak to your demon allies..." maxlength="200" />
+              <button onclick="sendChatMessage()">📨</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="party-buttons">
+        <button class="menu-button success" id="startGameButton" onclick="startMultiplayerGame()" disabled>
+          🎮 BEGIN HELLISH COMBAT
         </button>
-        <button class="menu-button" onclick="showInstructions()">
-          📖 Interface Guide
-        </button>
-        <button class="menu-button danger" onclick="quitToMainMenu()">
-          🏠 Main Protocol
+        <button class="menu-button danger" onclick="leaveRoom()">
+          🚪 LEAVE CHAMBER
         </button>
       </div>
+    </div>
+
+    <!-- Instructions Screen -->
+    <div id="instructions" class="menu-screen">
+      <h1>📖 DOOM PROTOCOL MANUAL</h1>
+      <div class="instructions-content">
+        <div class="instruction-section">
+          <h3>🎮 CONTROLS</h3>
+          <p><span class="key">WASD</span> or <span class="key">Arrow Keys</span> - Move through Hell</p>
+          <p><span class="key">Mouse</span> - Look around / Aim</p>
+          <p><span class="key">Left Click</span> - Fire weapon</p>
+          <p><span class="key">Right Click</span> - Switch weapon</p>
+          <p><span class="key">ESC</span> - Pause / Exit targeting</p>
+          <p><span class="key">Enter</span> - Open chat (multiplayer)</p>
+        </div>
+
+        <div class="instruction-section">
+          <h3>🔫 HELLISH ARSENAL</h3>
+          <p><span class="weapon">🔫 SHOTGUN</span> - Close-range devastation</p>
+          <p><span class="weapon">⚡ CHAINGUN</span> - Rapid-fire suppression</p>
+          <p><span class="weapon">🚀 ROCKET LAUNCHER</span> - Area destruction</p>
+          <p><span class="weapon">🔥 PLASMA RIFLE</span> - Energy devastation</p>
+        </div>
+
+        <div class="instruction-section">
+          <h3>👹 DEMONIC ENEMIES</h3>
+          <p><span class="enemy">👹 IMP</span> - Basic demon, throws fireballs</p>
+          <p><span class="enemy">🐺 DEMON</span> - Fast melee attacker</p>
+          <p><span class="enemy">👁️ CACODEMON</span> - Flying sphere of death</p>
+          <p><span class="enemy">👑 BARON</span> - Elite demon lord</p>
+        </div>
+
+        <div class="instruction-section">
+          <h3>🏰 MULTIPLAYER CHAMBERS</h3>
+          <p>• Team up with 1-3 other demons</p>
+          <p>• Explore interconnected hellish rooms</p>
+          <p>• Difficulty scales with party size</p>
+          <p>• Use chat to coordinate attacks</p>
+          <p>• Share ammunition and health</p>
+        </div>
+      </div>
+      <button class="menu-button" onclick="showMainMenu()">← BACK TO MENU</button>
     </div>
 
     <!-- Game Over Screen -->
-    <div id="gameOverScreen" class="menu-screen">
-      <h1>💀 NEURAL LINK TERMINATED 💀</h1>
-      <div class="stats">
-        <p>🌊 Protocol Waves Survived: <span id="finalWave">0</span></p>
-        <p>🎯 Units Eliminated: <span id="finalKills">0</span></p>
-        <p>💉 Neural Stims Collected: <span id="finalHealthPacks">0</span></p>
-        <p>❤️ Final Neural Integrity: <span id="finalHealth">0</span></p>
+    <div id="gameOver" class="menu-screen">
+      <h1>💀 HELL HAS CLAIMED YOU 💀</h1>
+      <div id="finalStats">
+        <div>🔥 Demons Slain: <span id="finalKills">0</span></div>
+        <div>🌊 Waves Survived: <span id="finalWaves">0</span></div>
+        <div>⏱️ Time in Hell: <span id="finalTime">0</span></div>
       </div>
       <div class="menu-buttons">
         <button class="menu-button success" onclick="restartGame()">
-          🔄 Restart Neural Protocol
+          🔄 RETURN TO HELL
+        </button>
+        <button class="menu-button" onclick="showMainMenu()">
+          🏠 BACK TO MENU
         </button>
       </div>
     </div>
 
-    <!-- Game UI (hidden initially) -->
+    <!-- Game UI -->
     <div id="gameUI" style="display: none">
       <div id="blocker">
         <div id="instructions">
-          <h1>Neural Combat Interface</h1>
+          <h1>Doom Combat Interface</h1>
           <p>
             Move: <span class="highlight">WASD</span> or
             <span class="highlight">Arrow Keys</span>
@@ -167,23 +233,43 @@
           <p>Fire: <span class="highlight">Left Click</span></p>
           <p>Switch Weapon: <span class="highlight">Right Click</span></p>
           <p>
-            <strong>Click to initialize neural link</strong>
+            <strong>Click to enter Hell</strong>
           </p>
-          <p>Press <span class="highlight">ESC</span> to disconnect targeting system</p>
+          <p>Press <span class="highlight">ESC</span> to exit targeting system</p>
         </div>
       </div>
 
       <div class="info">
-        <div id="gameStatus">🎮 Neural Combat Active</div>
-        <div id="controls">WASD/Arrows to move, Neural targeting online</div>
-        <div id="waveInfo">🌊 Protocol Wave 1</div>
-        <div id="killCount">💀 Units Eliminated: 0</div>
-        <div>🔫 Left click to fire! Right click to switch weapon protocols!</div>
+        <div id="gameStatus">🔥 Hellish Combat Active</div>
+        <div id="controls">WASD/Arrows to move, Mouse to aim</div>
+        <div id="waveInfo">🌊 Hell Wave 1</div>
+        <div id="killCount">💀 Demons Slain: 0</div>
+        <div id="roomInfo">🏰 Chamber: Loading...</div>
+        <div>🔫 Left click to fire! Right click to switch weapons!</div>
+      </div>
+
+      <!-- Multiplayer Players List -->
+      <div id="playersInfo" class="players-info">
+        <h4>👹 DEMONS IN HELL</h4>
+        <div id="playersList">
+          <!-- Players will be populated here -->
+        </div>
+      </div>
+
+      <!-- In-game Chat -->
+      <div id="gameChat" class="game-chat">
+        <div id="gameChatMessages" class="game-chat-messages">
+          <!-- Chat messages during game -->
+        </div>
+        <div class="game-chat-input" style="display: none;">
+          <input type="text" id="gameChatInput" placeholder="Type to your demon allies..." maxlength="200" />
+          <button onclick="sendGameChatMessage()">📨</button>
+        </div>
       </div>
 
       <div class="audio-controls">
         <label
-          >🔊 Audio Matrix:
+          >🔊 Hell Audio:
           <input
             type="range"
             id="masterVolume"
@@ -198,20 +284,25 @@
 
       <div id="healthBar">
         <div id="healthFill" style="width: 100%"></div>
-        <div id="healthText">Neural Integrity: 100/100</div>
+        <div id="healthText">Hell Energy: 100/100</div>
+      </div>
+
+      <div id="weaponInfo" class="weapon-info">
+        <div id="weaponName">🔫 SHOTGUN</div>
+        <div id="ammoCount">8/32</div>
       </div>
 
       <div id="miniRadar">
         <div id="radarContainer">
           <canvas id="radarCanvas" width="120" height="120"></canvas>
-          <div id="radarLabel">NEURAL RADAR</div>
+          <div id="radarLabel">HELL RADAR</div>
         </div>
       </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

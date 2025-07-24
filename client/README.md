@@ -28,7 +28,7 @@ A modern 3D zombie survival game built with Three.js featuring professional UI d
 
 ```bash
 cd zombie-game
-python -m http.server 8080
+python3 -m http.server 8080
 # Open http://localhost:8080
 ```
 

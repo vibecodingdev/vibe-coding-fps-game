@@ -1,95 +1,119 @@
-我将帮你把 UI 风格修改成赛博朋克的配色和风格。赛博朋克风格通常使用霓虹色彩（青色、紫色、粉色）、深色背景、发光效果和未来感字体。
+# Cyberpunk UI Style Transformation Guide
+
+I will help you modify the UI style to a cyberpunk color scheme and aesthetic. Cyberpunk style typically uses neon colors (cyan, purple, pink), dark backgrounds, glowing effects, and futuristic fonts.
+
 Read file: client/styles.css
-现在我将把 UI 风格修改成赛博朋克风格。赛博朋克风格的特点包括：
 
-- 深色背景（黑色、深蓝色）
-- 霓虹色彩（青色、紫色、粉色、绿色）
-- 发光效果和边框
-- 科技感的字体
-- 网格和电路图案
-  现在我需要修改 HTML 文件中的标题文本，让它更符合赛博朋克风格：
-  现在我需要修改 JavaScript 文件中的一些 UI 文本，让它们也符合赛博朋克风格：
-  Ran tool
-  现在我将修改 JavaScript 中的一些关键 UI 文本，让它们符合赛博朋克风格：
-  Read file: client/script.js
-  Read file: client/script.js
-  Read file: client/script.js
-  现在我找到了要修改的地方，让我修改这些显示文本：
-  现在让我找到并修改 killCount 的更新函数：
-  Ran tool
-  现在让我修改武器显示函数：
-  Ran tool
-  Read file: client/script.js
-  现在让我修改武器系统和健康条的显示：
-  Ran tool
-  Read file: client/script.js
-  现在让我修改敌人类型的名称，让它们更符合赛博朋克风格：
-  Ran tool
-  Read file: client/script.js
-  现在让我修改一些日志和提示信息：
-  Ran tool
-  现在让我修改一些关键的消息和显示文本：
+Now I will modify the UI style to cyberpunk style. Cyberpunk style characteristics include:
 
-现在让我创建一个简单的测试文件来看看效果：
+- Dark backgrounds (black, deep blue)
+- Neon colors (cyan, purple, pink, green)
+- Glowing effects and borders
+- Tech-style fonts
+- Grid and circuit patterns
+
+Now I need to modify the title text in the HTML file to make it more cyberpunk-style:
+
+Now I need to modify some UI text in the JavaScript file to make them cyberpunk-style as well:
+
+Ran tool
+
+Now I will modify some key UI text in JavaScript to make them cyberpunk-style:
+
+Read file: client/script.js
+Read file: client/script.js
+Read file: client/script.js
+
+Now I found the places to modify, let me change these display texts:
+
+Now let me find and modify the killCount update function:
+
+Ran tool
+
+Now let me modify the weapon display function:
+
+Ran tool
+
+Read file: client/script.js
+
+Now let me modify the weapon system and health bar display:
+
+Ran tool
+
+Read file: client/script.js
+
+Now let me modify the enemy type names to make them more cyberpunk-style:
+
+Ran tool
+
+Read file: client/script.js
+
+Now let me modify some log and prompt messages:
+
+Ran tool
+
+Now let me modify some key messages and display text:
+
+Now let me create a simple test file to see the effect:
 
 ```bash
 cd client && python3 -m http.server 8000
 ```
 
-我已经成功将 FPS 游戏的 UI 风格修改为赛博朋克风格！以下是主要的修改内容：
+I have successfully transformed the FPS game UI style to cyberpunk style! Here are the main modifications:
 
-## 🎨 赛博朋克风格改造总结
+## 🎨 Cyberpunk Style Transformation Summary
 
-### 🌈 **配色方案变更**
+### 🌈 **Color Scheme Changes**
 
-- **主色调**: 霓虹青色 (#00ffff)、霓虹紫色 (#ff00ff)、霓虹绿色 (#00ff00)
-- **背景**: 深黑色渐变与赛博朋克网格动画
-- **发光效果**: 所有 UI 元素都添加了霓虹发光边框和阴影
+- **Primary Colors**: Neon cyan (#00ffff), neon purple (#ff00ff), neon green (#00ff00)
+- **Background**: Deep black gradient with cyberpunk grid animation
+- **Glow Effects**: All UI elements have neon glowing borders and shadows
 
-### 🔤 **字体与视觉效果**
+### 🔤 **Fonts and Visual Effects**
 
-- **字体**: 改用 Orbitron、Rajdhani、Space Mono 等科技感字体
-- **形状**: 移除圆角，改用棱角分明的科技感设计
-- **动画**: 添加了霓虹边框变色动画、网格滚动动画、脉冲发光效果
+- **Fonts**: Changed to tech-style fonts like Orbitron, Rajdhani, Space Mono
+- **Shapes**: Removed rounded corners, changed to angular tech-style design
+- **Animations**: Added neon border color-changing animations, grid scrolling animations, pulsing glow effects
 
-### 🎮 **游戏元素重命名**
+### 🎮 **Game Element Renaming**
 
-- **标题**: "NEURAL COMBAT PROTOCOL" (神经战斗协议)
-- **武器系统**:
-  - 突击步枪 → 等离子步枪 (Plasma Rifle)
-  - 机关枪 → 神经加农炮 (Neural Cannon)
-- **敌人类型**:
-  - 僵尸 → 战斗单位 (Combat Units)
-  - 普通僵尸 → 标准单位 (Standard Unit) 🤖
-  - 快速僵尸 → 速度单位 (Speed Unit) 🏃‍♂️
-  - 坦克僵尸 → 坦克单位 (Tank Unit) 🦾
-  - 精英僵尸 → 精英单位 (Boss Unit) 👹
+- **Title**: "NEURAL COMBAT PROTOCOL"
+- **Weapon System**:
+  - Assault Rifle → Plasma Rifle
+  - Machine Gun → Neural Cannon
+- **Enemy Types**:
+  - Zombies → Combat Units
+  - Normal Zombie → Standard Unit 🤖
+  - Fast Zombie → Speed Unit 🏃‍♂️
+  - Tank Zombie → Tank Unit 🦾
+  - Elite Zombie → Boss Unit 👹
 
-### 💊 **道具系统更新**
+### 💊 **Item System Updates**
 
-- **生命包** → **神经刺激剂** (Neural Stims) 💉
-- **弹药包** → **能量电池** (Energy Cells) 🔋
-- **生命值** → **神经完整性** (Neural Integrity)
+- **Health Packs** → **Neural Stims** 💉
+- **Ammo Packs** → **Energy Cells** 🔋
+- **Health** → **Neural Integrity**
 
-### 📡 **界面组件**
+### 📡 **Interface Components**
 
-- **雷达**: 改为棱角分明的赛博朋克风格，带有扫描动画
-- **准星**: 霓虹青色发光，锁定时变为紫色
-- **按钮**: 添加斜角裁剪效果，霓虹边框和悬停动画
-- **进度条**: 赛博朋克颜色渐变，发光动画效果
+- **Radar**: Changed to angular cyberpunk style with scanning animation
+- **Crosshair**: Neon cyan glow, turns purple when locked on target
+- **Buttons**: Added diagonal clip effects, neon borders and hover animations
+- **Progress Bars**: Cyberpunk color gradients with glowing animation effects
 
-### 🌊 **游戏文本更新**
+### 🌊 **Game Text Updates**
 
-- **Wave** → **Protocol Wave** (协议波次)
-- **Kills** → **Units Eliminated** (单位消灭数)
-- **Stalking/Chasing/Attacking** → **Scanning/Pursuing/Engaging** (扫描/追击/交战)
+- **Wave** → **Protocol Wave**
+- **Kills** → **Units Eliminated**
+- **Stalking/Chasing/Attacking** → **Scanning/Pursuing/Engaging**
 
-### ✨ **新增视觉特效**
+### ✨ **New Visual Effects**
 
-- 背景网格矩阵动画
-- 霓虹色彩循环变化
-- 脉冲发光效果
-- 边框动态颜色变化
-- 社交媒体图标的霓虹悬停效果
+- Background matrix grid animation
+- Neon color cycling changes
+- Pulsing glow effects
+- Dynamic border color changes
+- Neon hover effects for social media icons
 
-现在你可以通过访问 `http://localhost:8000` 来查看这个完全重新设计的赛博朋克风格 FPS 游戏！游戏保持了原有的所有功能，但视觉风格完全转换为了充满科技感的赛博朋克美学。
+Now you can visit `http://localhost:8000` to see this completely redesigned cyberpunk-style FPS game! The game maintains all original functionality but the visual style has been completely transformed to a tech-filled cyberpunk aesthetic.

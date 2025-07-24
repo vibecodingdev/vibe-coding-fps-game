@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPS Game Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            border-bottom: 2px solid #0f0;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #666;
+            background: rgba(0, 50, 0, 0.1);
+        }
+        
+        .test-case.pass {
+            border-left-color: #0f0;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .test-case.fail {
+            border-left-color: #f00;
+            background: rgba(255, 0, 0, 0.1);
+            color: #f88;
+        }
+        
+        .test-case.running {
+            border-left-color: #ff0;
+            background: rgba(255, 255, 0, 0.1);
+            color: #ff0;
+        }
+        
+        .error-details {
+            background: rgba(255, 0, 0, 0.2);
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        
+        .test-stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        .run-button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px;
+        }
+        
+        .run-button:hover {
+            background: #0a0;
+        }
+        
+        .run-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        #gameContainer {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎮 FPS GAME TEST SUITE 🎮</h1>
+            <p>Comprehensive testing for DOOM Protocol game</p>
+            <button class="run-button" onclick="runAllTests()">🚀 RUN ALL TESTS</button>
+            <button class="run-button" onclick="runSingleTest()">🔍 RUN SINGLE TEST</button>
+            <button class="run-button" onclick="clearResults()">🧹 CLEAR RESULTS</button>
+        </div>
+        
+        <div class="test-stats">
+            <div><strong>Test Results</strong></div>
+            <div>Passed: <span id="passCount">0</span></div>
+            <div>Failed: <span id="failCount">0</span></div>
+            <div>Total: <span id="totalCount">0</span></div>
+            <div>Success Rate: <span id="successRate">0%</span></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Core Game Functions</h2>
+            <div id="coreTests"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔫 Weapon System Tests</h2>
+            <div id="weaponTests"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>👹 Enemy System Tests</h2>
+            <div id="enemyTests"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎮 Controls & Input Tests</h2>
+            <div id="controlTests"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🖥️ UI & Display Tests</h2>
+            <div id="uiTests"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🌐 Multiplayer Tests</h2>
+            <div id="multiplayerTests"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔊 Audio System Tests</h2>
+            <div id="audioTests"></div>
+        </div>
+    </div>
+    
+    <!-- Hidden game container for testing -->
+    <div id="gameContainer">
+        <iframe id="gameFrame" src="../index.html" width="100%" height="100%"></iframe>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Test framework
+        class TestSuite {
+            constructor() {
+                this.tests = [];
+                this.results = {
+                    passed: 0,
+                    failed: 0,
+                    total: 0
+                };
+                this.gameWindow = null;
+                this.gameLoaded = false;
+            }
+            
+            async loadGameScript() {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = '../script.js';
+                    script.onload = () => {
+                        console.log('Game script loaded successfully');
+                        this.gameLoaded = true;
+                        resolve();
+                    };
+                    script.onerror = (error) => {
+                        console.error('Failed to load game script:', error);
+                        reject(error);
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+            
+            addTest(category, name, testFunction) {
+                this.tests.push({
+                    category,
+                    name,
+                    test: testFunction,
+                    status: 'pending'
+                });
+            }
+            
+            async runTest(testObj) {
+                const testElement = document.getElementById(`test-${testObj.category}-${testObj.name.replace(/\s+/g, '-')}`);
+                if (testElement) {
+                    testElement.className = 'test-case running';
+                    testElement.innerHTML = `🔄 ${testObj.name} - Running...`;
+                }
+                
+                try {
+                    await testObj.test();
+                    testObj.status = 'passed';
+                    this.results.passed++;
+                    
+                    if (testElement) {
+                        testElement.className = 'test-case pass';
+                        testElement.innerHTML = `✅ ${testObj.name} - PASSED`;
+                    }
+                    
+                    console.log(`✅ ${testObj.name} - PASSED`);
+                } catch (error) {
+                    testObj.status = 'failed';
+                    testObj.error = error;
+                    this.results.failed++;
+                    
+                    if (testElement) {
+                        testElement.className = 'test-case fail';
+                        testElement.innerHTML = `❌ ${testObj.name} - FAILED<div class="error-details">${error.message}\n${error.stack}</div>`;
+                    }
+                    
+                    console.error(`❌ ${testObj.name} - FAILED:`, error);
+                }
+                
+                this.results.total++;
+                this.updateStats();
+            }
+            
+            async runAllTests() {
+                console.log('🚀 Starting comprehensive test suite...');
+                this.clearResults();
+                
+                // Load game script first
+                try {
+                    await this.loadGameScript();
+                } catch (error) {
+                    console.error('Failed to load game script, continuing with available tests...');
+                }
+                
+                for (const test of this.tests) {
+                    await this.runTest(test);
+                    // Small delay between tests
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                console.log(`🏁 Test suite completed. ${this.results.passed}/${this.results.total} tests passed.`);
+            }
+            
+            clearResults() {
+                this.results = { passed: 0, failed: 0, total: 0 };
+                this.updateStats();
+                
+                // Clear all test displays
+                ['coreTests', 'weaponTests', 'enemyTests', 'controlTests', 'uiTests', 'multiplayerTests', 'audioTests'].forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container) {
+                        container.innerHTML = '';
+                    }
+                });
+            }
+            
+            updateStats() {
+                document.getElementById('passCount').textContent = this.results.passed;
+                document.getElementById('failCount').textContent = this.results.failed;
+                document.getElementById('totalCount').textContent = this.results.total;
+                
+                const successRate = this.results.total > 0 
+                    ? Math.round((this.results.passed / this.results.total) * 100) 
+                    : 0;
+                document.getElementById('successRate').textContent = successRate + '%';
+            }
+            
+            createTestElement(category, name) {
+                const container = document.getElementById(category + 'Tests');
+                if (container) {
+                    const testDiv = document.createElement('div');
+                    testDiv.className = 'test-case';
+                    testDiv.id = `test-${category}-${name.replace(/\s+/g, '-')}`;
+                    testDiv.innerHTML = `⏳ ${name} - Pending`;
+                    container.appendChild(testDiv);
+                }
+            }
+        }
+        
+        // Initialize test suite
+        const testSuite = new TestSuite();
+        
+        // Core Game Function Tests
+        testSuite.addTest('core', 'Game Initialization', async () => {
+            // Test if basic game variables exist
+            if (typeof gameState === 'undefined') {
+                throw new Error('gameState is not defined');
+            }
+            
+            if (typeof scene === 'undefined') {
+                throw new Error('THREE.js scene is not defined');
+            }
+            
+            if (typeof camera === 'undefined') {
+                throw new Error('THREE.js camera is not defined');
+            }
+            
+            if (typeof renderer === 'undefined') {
+                throw new Error('THREE.js renderer is not defined');
+            }
+            
+            console.log('✓ Core game objects initialized');
+        });
+        
+        testSuite.addTest('core', 'Game State Management', async () => {
+            if (typeof gameState === 'undefined') {
+                throw new Error('gameState is not defined');
+            }
+            
+            const requiredStates = ['mainMenu', 'playing', 'paused', 'gameOver'];
+            const currentState = gameState;
+            
+            if (!requiredStates.includes(currentState) && typeof currentState !== 'string') {
+                throw new Error(`Invalid game state: ${currentState}`);
+            }
+            
+            console.log('✓ Game state management working');
+        });
+        
+        testSuite.addTest('core', 'Scene Setup', async () => {
+            if (typeof createGround !== 'function') {
+                throw new Error('createGround function not found');
+            }
+            
+            if (typeof createSky !== 'function') {
+                throw new Error('createSky function not found');
+            }
+            
+            if (typeof addLighting !== 'function') {
+                throw new Error('addLighting function not found');
+            }
+            
+            console.log('✓ Scene setup functions available');
+        });
+        
+        // Weapon System Tests
+        testSuite.addTest('weapon', 'Weapon Creation', async () => {
+            if (typeof createGun !== 'function') {
+                throw new Error('createGun function not found');
+            }
+            
+            if (typeof createMachineGun !== 'function') {
+                throw new Error('createMachineGun function not found');
+            }
+            
+            if (typeof WEAPONS === 'undefined') {
+                throw new Error('WEAPONS configuration not found');
+            }
+            
+            const requiredWeapons = ['shotgun', 'chaingun', 'rocket', 'plasma'];
+            for (const weapon of requiredWeapons) {
+                if (!WEAPONS[weapon]) {
+                    throw new Error(`Weapon ${weapon} not configured`);
+                }
+            }
+            
+            console.log('✓ Weapon system configured correctly');
+        });
+        
+        testSuite.addTest('weapon', 'Shooting Mechanics', async () => {
+            if (typeof shoot !== 'function') {
+                throw new Error('shoot function not found');
+            }
+            
+            if (typeof createBullet !== 'function') {
+                throw new Error('createBullet function not found');
+            }
+            
+            if (typeof updateBullets !== 'function') {
+                throw new Error('updateBullets function not found');
+            }
+            
+            console.log('✓ Shooting mechanics functions available');
+        });
+        
+        testSuite.addTest('weapon', 'Weapon Switching', async () => {
+            if (typeof switchWeapon !== 'function') {
+                throw new Error('switchWeapon function not found');
+            }
+            
+            if (typeof currentWeapon === 'undefined') {
+                throw new Error('currentWeapon variable not found');
+            }
+            
+            console.log('✓ Weapon switching system available');
+        });
+        
+        // Enemy System Tests
+        testSuite.addTest('enemy', 'Demon Creation', async () => {
+            if (typeof createDemonModel !== 'function') {
+                throw new Error('createDemonModel function not found');
+            }
+            
+            if (typeof spawnDemons !== 'function') {
+                throw new Error('spawnDemons function not found');
+            }
+            
+            if (typeof demons === 'undefined') {
+                throw new Error('demons array not found');
+            }
+            
+            console.log('✓ Enemy creation system available');
+        });
+        
+        testSuite.addTest('enemy', 'Wave System', async () => {
+            if (typeof startWaveSystem !== 'function') {
+                throw new Error('startWaveSystem function not found');
+            }
+            
+            if (typeof startWave !== 'function') {
+                throw new Error('startWave function not found');
+            }
+            
+            if (typeof checkWaveComplete !== 'function') {
+                throw new Error('checkWaveComplete function not found');
+            }
+            
+            if (typeof currentWave === 'undefined') {
+                throw new Error('currentWave variable not found');
+            }
+            
+            console.log('✓ Wave system functions available');
+        });
+        
+        testSuite.addTest('enemy', 'Enemy AI', async () => {
+            if (typeof updateDemons !== 'function') {
+                throw new Error('updateDemons function not found');
+            }
+            
+            if (typeof calculatePathToPlayer !== 'function') {
+                throw new Error('calculatePathToPlayer function not found');
+            }
+            
+            console.log('✓ Enemy AI functions available');
+        });
+        
+        // Controls & Input Tests
+        testSuite.addTest('control', 'Pointer Lock Controls', async () => {
+            if (typeof initControls !== 'function') {
+                throw new Error('initControls function not found');
+            }
+            
+            if (typeof controls === 'undefined') {
+                throw new Error('controls object not found');
+            }
+            
+            console.log('✓ Control system available');
+        });
+        
+        testSuite.addTest('control', 'Mouse Events', async () => {
+            if (typeof onMouseDown !== 'function') {
+                throw new Error('onMouseDown function not found');
+            }
+            
+            if (typeof onMouseUp !== 'function') {
+                throw new Error('onMouseUp function not found');
+            }
+            
+            console.log('✓ Mouse event handlers available');
+        });
+        
+        testSuite.addTest('control', 'Movement System', async () => {
+            const requiredVars = ['moveForward', 'moveBackward', 'moveLeft', 'moveRight'];
+            for (const varName of requiredVars) {
+                if (typeof window[varName] === 'undefined') {
+                    throw new Error(`Movement variable ${varName} not found`);
+                }
+            }
+            
+            console.log('✓ Movement system variables available');
+        });
+        
+        // UI & Display Tests
+        testSuite.addTest('ui', 'UI Elements', async () => {
+            const requiredElements = ['gameUI', 'healthBar', 'weaponInfo', 'crosshair'];
+            for (const elementId of requiredElements) {
+                const element = document.getElementById(elementId);
+                if (!element) {
+                    throw new Error(`UI element ${elementId} not found`);
+                }
+            }
+            
+            console.log('✓ Required UI elements present');
+        });
+        
+        testSuite.addTest('ui', 'Health System', async () => {
+            if (typeof updateHealthBar !== 'function') {
+                throw new Error('updateHealthBar function not found');
+            }
+            
+            if (typeof takeDamage !== 'function') {
+                throw new Error('takeDamage function not found');
+            }
+            
+            if (typeof playerHealth === 'undefined') {
+                throw new Error('playerHealth variable not found');
+            }
+            
+            console.log('✓ Health system functions available');
+        });
+        
+        testSuite.addTest('ui', 'Radar System', async () => {
+            if (typeof initRadar !== 'function') {
+                throw new Error('initRadar function not found');
+            }
+            
+            if (typeof updateRadar !== 'function') {
+                throw new Error('updateRadar function not found');
+            }
+            
+            const radarElement = document.getElementById('radarCanvas');
+            if (!radarElement) {
+                throw new Error('Radar canvas element not found');
+            }
+            
+            console.log('✓ Radar system available');
+        });
+        
+        // Multiplayer Tests
+        testSuite.addTest('multiplayer', 'Networking Setup', async () => {
+            if (typeof initializeNetworking !== 'function') {
+                throw new Error('initializeNetworking function not found');
+            }
+            
+            if (typeof socket === 'undefined') {
+                console.warn('Socket.IO not loaded - multiplayer features may not work');
+            }
+            
+            console.log('✓ Networking functions available');
+        });
+        
+        testSuite.addTest('multiplayer', 'Room Management', async () => {
+            if (typeof createRoom !== 'function') {
+                throw new Error('createRoom function not found');
+            }
+            
+            if (typeof joinRoom !== 'function') {
+                throw new Error('joinRoom function not found');
+            }
+            
+            if (typeof leaveRoom !== 'function') {
+                throw new Error('leaveRoom function not found');
+            }
+            
+            console.log('✓ Room management functions available');
+        });
+        
+        // Audio System Tests
+        testSuite.addTest('audio', 'Audio Initialization', async () => {
+            if (typeof initAudio !== 'function') {
+                throw new Error('initAudio function not found');
+            }
+            
+            if (typeof playGunfireSound !== 'function') {
+                throw new Error('playGunfireSound function not found');
+            }
+            
+            console.log('✓ Audio system functions available');
+        });
+        
+        testSuite.addTest('audio', 'Sound Effects', async () => {
+            if (typeof playDemonGrowlSound !== 'function') {
+                throw new Error('playDemonGrowlSound function not found');
+            }
+            
+            if (typeof playDemonAttackSound !== 'function') {
+                throw new Error('playDemonAttackSound function not found');
+            }
+            
+            console.log('✓ Sound effect functions available');
+        });
+        
+        // Initialize test elements
+        function initTestElements() {
+            testSuite.tests.forEach(test => {
+                testSuite.createTestElement(test.category, test.name);
+            });
+        }
+        
+        // Global functions for buttons
+        function runAllTests() {
+            initTestElements();
+            testSuite.runAllTests();
+        }
+        
+        function runSingleTest() {
+            const testName = prompt('Enter test name (or part of it):');
+            if (testName) {
+                const matchingTests = testSuite.tests.filter(test => 
+                    test.name.toLowerCase().includes(testName.toLowerCase())
+                );
+                
+                if (matchingTests.length > 0) {
+                    testSuite.clearResults();
+                    initTestElements();
+                    matchingTests.forEach(test => testSuite.runTest(test));
+                } else {
+                    alert('No matching tests found');
+                }
+            }
+        }
+        
+        function clearResults() {
+            testSuite.clearResults();
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            console.log('Test suite loaded. Click "RUN ALL TESTS" to begin.');
+            initTestElements();
+        });
+        
+        // Export for debugging
+        window.testSuite = testSuite;
+        
+    </script>
+</body>
+</html> 

@@ -1,6 +1,15 @@
 // Game state management
-let gameState = "mainMenu"; // 'mainMenu', 'instructions', 'playing', 'paused', 'gameOver'
+let gameState = "mainMenu"; // 'mainMenu', 'multiplayerLobby', 'partyRoom', 'instructions', 'playing', 'paused', 'gameOver'
 let gameInitialized = false;
+let isMultiplayer = false;
+
+// Networking
+let socket = null;
+let isConnected = false;
+let currentRoom = null;
+let localPlayer = null;
+let remotePlayers = new Map();
+let isRoomLeader = false;
 
 // Scene setup
 let scene, camera, renderer;
@@ -14,127 +23,160 @@ let velocity = new THREE.Vector3();
 let direction = new THREE.Vector3();
 let prevTime = performance.now();
 
-// Zombie system
-let zombies = [];
-let zombieModel = null;
-let loader = new THREE.GLTFLoader();
-const ZOMBIE_COUNT = 10;
+// Zombie system (now called demons for Doom style)
+let demons = [];
+let demonModel = null;
+let loader = null;
+const DEMON_COUNT = 10;
 
-// Zombie types with different stats
-const ZOMBIE_TYPES = {
-  NORMAL: {
-    name: "Standard Unit",
-    emoji: "🤖",
+// Initialize loader with error handling (currently disabled for performance)
+function initializeLoader() {
+  // GLTFLoader disabled - using optimized built-in demon models
+  loader = null;
+  console.log('Using built-in Doom-style demon models for optimal performance');
+}
+
+// Demon types with Doom-style characteristics
+const DEMON_TYPES = {
+  IMP: {
+    name: "Imp",
+    emoji: "👹",
     health: 1,
     speed: 1.0,
     scale: 1.0,
-    color: 0x4a5c3a, // Green
-    headColor: 0x8b7355, // Brown
+    color: 0x8B4513, // Brown
+    headColor: 0x654321, // Dark brown
     eyeColor: 0xff0000, // Red
     detectRange: 60,
     attackRange: 3.5,
     chaseRange: 8,
     attackDamage: 10,
-    spawnWeight: 100, // Higher = more common
+    spawnWeight: 100,
   },
-  FAST: {
-    name: "Speed Unit",
-    emoji: "🏃‍♂️",
-    health: 1,
+  DEMON: {
+    name: "Demon",
+    emoji: "🐺",
+    health: 2,
     speed: 1.8,
     scale: 0.9,
-    color: 0x6b4226, // Dark brown
-    headColor: 0x8b7355, // Brown
+    color: 0x4B0000, // Dark red
+    headColor: 0x8B0000, // Red
     eyeColor: 0xff4400, // Orange-red
     detectRange: 70,
     attackRange: 4.0,
     chaseRange: 10,
-    attackDamage: 8,
+    attackDamage: 15,
     spawnWeight: 60,
   },
-  TANK: {
-    name: "Tank Unit",
-    emoji: "🦾",
-    health: 3,
-    speed: 0.6,
-    scale: 1.4,
-    color: 0x2c3e2a, // Dark green
-    headColor: 0x654321, // Dark brown
-    eyeColor: 0xff0000, // Red
-    detectRange: 50,
-    attackRange: 4.5,
-    chaseRange: 8,
-    attackDamage: 20,
-    spawnWeight: 30,
-  },
-  BOSS: {
-    name: "Boss Unit",
-    emoji: "👹",
-    health: 8,
+  CACODEMON: {
+    name: "Cacodemon",
+    emoji: "👁️",
+    health: 4,
     speed: 0.8,
-    scale: 2.0,
-    color: 0x1a1a1a, // Almost black
-    headColor: 0x4a0e0e, // Dark red
-    eyeColor: 0xff6600, // Bright orange
+    scale: 1.6,
+    color: 0x800080, // Purple
+    headColor: 0x4B0082, // Indigo
+    eyeColor: 0xff0000, // Red
     detectRange: 80,
     attackRange: 6.0,
     chaseRange: 12,
-    attackDamage: 30,
+    attackDamage: 20,
+    spawnWeight: 30,
+  },
+  BARON: {
+    name: "Baron of Hell",
+    emoji: "👑",
+    health: 8,
+    speed: 0.6,
+    scale: 2.2,
+    color: 0x006400, // Dark green
+    headColor: 0x228B22, // Forest green
+    eyeColor: 0xff6600, // Bright orange
+    detectRange: 100,
+    attackRange: 8.0,
+    chaseRange: 15,
+    attackDamage: 35,
     spawnWeight: 5,
   },
 };
 
-// Track zombie type counts for UI
-let zombieTypeCounts = {
-  NORMAL: 0,
-  FAST: 0,
-  TANK: 0,
-  BOSS: 0,
+// Track demon type counts for UI
+let demonTypeCounts = {
+  IMP: 0,
+  DEMON: 0,
+  CACODEMON: 0,
+  BARON: 0,
 };
 
 // Health pack system
 let healthPacks = [];
 let lastHealthPackSpawn = 0;
-const HEALTH_PACK_SPAWN_INTERVAL = 15000; // 15 seconds between spawns
-const HEALTH_PACK_HEAL_AMOUNT = 25; // How much health each pack restores
-const MAX_HEALTH_PACKS = 3; // Maximum health packs on map at once
+const HEALTH_PACK_SPAWN_INTERVAL = 15000;
+const HEALTH_PACK_HEAL_AMOUNT = 25;
+const MAX_HEALTH_PACKS = 3;
 let healthPacksCollected = 0;
 
 // Ammo pack system
 let ammoPacks = [];
 let lastAmmoPackSpawn = 0;
-const AMMO_PACK_SPAWN_INTERVAL = 20000; // 20 seconds between spawns
-const AMMO_PACK_REFILL_AMOUNT = 60; // How much ammo each pack restores
-const MAX_AMMO_PACKS = 2; // Maximum ammo packs on map at once
+const AMMO_PACK_SPAWN_INTERVAL = 20000;
+const AMMO_PACK_REFILL_AMOUNT = 60;
+const MAX_AMMO_PACKS = 2;
 let ammoPacksCollected = 0;
 
-// Gun and shooting system
+// Doom-style weapon system
 let gun = null;
 let machineGun = null;
-let currentWeapon = "rifle"; // 'rifle' or 'machinegun'
+let rocketLauncher = null;
+let plasmaRifle = null;
+let currentWeapon = "shotgun";
 let bullets = [];
 const BULLET_SPEED = 50;
-const BULLET_LIFETIME = 3000; // 3 seconds in milliseconds
+const BULLET_LIFETIME = 3000;
 
-// Weapon-specific properties
+// Doom weapon properties
 const WEAPONS = {
-  rifle: {
-    name: "Plasma Rifle",
-    fireRate: 0, // Single shot
-    damage: 1,
-    recoil: 0.4,
+  shotgun: {
+    name: "Shotgun",
+    fireRate: 800, // ms between shots
+    damage: 7, // Per pellet
+    pellets: 8, // Shotgun pellets
+    recoil: 0.6,
     emoji: "🔫",
-    maxAmmo: 999, // Effectively unlimited
-    currentAmmo: 999,
+    maxAmmo: 50,
+    currentAmmo: 50,
+    spread: 0.3, // Shotgun spread
   },
-  machinegun: {
-    name: "Neural Cannon",
-    fireRate: 400, // Rounds per minute
+  chaingun: {
+    name: "Chaingun",
+    fireRate: 100, // Very fast
     damage: 1,
-    recoil: 0.25,
+    recoil: 0.2,
     emoji: "⚡",
-    maxAmmo: 150, // Limited ammo
-    currentAmmo: 150,
+    maxAmmo: 200,
+    currentAmmo: 200,
+    spread: 0.1,
+  },
+  rocket: {
+    name: "Rocket Launcher",
+    fireRate: 1200, // Slow but powerful
+    damage: 50,
+    recoil: 1.0,
+    emoji: "🚀",
+    maxAmmo: 20,
+    currentAmmo: 20,
+    splash: 10, // Splash damage radius
+    spread: 0.02,
+  },
+  plasma: {
+    name: "Plasma Rifle",
+    fireRate: 200,
+    damage: 4,
+    recoil: 0.3,
+    emoji: "🔥",
+    maxAmmo: 100,
+    currentAmmo: 100,
+    spread: 0.05,
   },
 };
 
@@ -160,16 +202,16 @@ const RADAR_RANGE = 50; // Range in game units
 const RADAR_SIZE = 120; // Canvas size in pixels
 
 // Score system
-let zombieKills = 0;
+let demonKills = 0;
 
 // Wave system
 let currentWave = 1;
-let zombiesThisWave = 0;
-let zombiesSpawnedThisWave = 0;
+let demonsThisWave = 0;
+let demonsSpawnedThisWave = 0;
 let waveInProgress = false;
 let timeBetweenWaves = 5000; // 5 seconds between waves
 let nextWaveTimer = null;
-let zombieSpawnTimer = null;
+let demonSpawnTimer = null;
 
 // Player health system
 let playerHealth = 100;
@@ -183,14 +225,14 @@ let audioListener;
 let audioLoader;
 let backgroundMusic;
 let gunfireSound;
-let zombieGrowlSound;
-let zombieAttackSound;
+let demonGrowlSound;
+let demonAttackSound;
 let sounds = {
   backgroundMusic: null,
   gunfire: null,
   machinegun: null,
-  zombieGrowl: null,
-  zombieAttack: null,
+  demonGrowl: null,
+  demonAttack: null,
 };
 let musicVolume = 0.3;
 let effectsVolume = 0.7;
@@ -228,8 +270,8 @@ function initBackgroundMusic() {
 function initSoundEffects() {
   // Create sound objects
   gunfireSound = new THREE.Audio(audioListener);
-  zombieGrowlSound = new THREE.Audio(audioListener);
-  zombieAttackSound = new THREE.Audio(audioListener);
+  demonGrowlSound = new THREE.Audio(audioListener);
+  demonAttackSound = new THREE.Audio(audioListener);
 
   // Load actual sound files
   console.log("Loading sound effects...");
@@ -272,18 +314,18 @@ function initSoundEffects() {
     "assets/zombie.mp3",
     function (buffer) {
       console.log("Zombie sound loaded successfully");
-      zombieGrowlSound.setBuffer(buffer);
-      zombieGrowlSound.setVolume(effectsVolume);
-      zombieAttackSound.setBuffer(buffer); // Use same sound for attack
-      zombieAttackSound.setVolume(effectsVolume);
-      sounds.zombieGrowl = zombieGrowlSound;
-      sounds.zombieAttack = zombieAttackSound;
+      demonGrowlSound.setBuffer(buffer);
+      demonGrowlSound.setVolume(effectsVolume);
+      demonAttackSound.setBuffer(buffer); // Use same sound for attack
+      demonAttackSound.setVolume(effectsVolume);
+      sounds.demonGrowl = demonGrowlSound;
+      sounds.demonAttack = demonAttackSound;
     },
     undefined,
     function (error) {
       console.error("Error loading zombie sound:", error);
-      sounds.zombieGrowl = null;
-      sounds.zombieAttack = null;
+      sounds.demonGrowl = null;
+      sounds.demonAttack = null;
     }
   );
 
@@ -298,11 +340,11 @@ function updateSoundVolumes() {
   if (sounds.machinegun && sounds.machinegun.setVolume) {
     sounds.machinegun.setVolume(effectsVolume);
   }
-  if (sounds.zombieGrowl && sounds.zombieGrowl.setVolume) {
-    sounds.zombieGrowl.setVolume(effectsVolume);
+  if (sounds.demonGrowl && sounds.demonGrowl.setVolume) {
+    sounds.demonGrowl.setVolume(effectsVolume);
   }
-  if (sounds.zombieAttack && sounds.zombieAttack.setVolume) {
-    sounds.zombieAttack.setVolume(effectsVolume);
+  if (sounds.demonAttack && sounds.demonAttack.setVolume) {
+    sounds.demonAttack.setVolume(effectsVolume);
   }
 }
 
@@ -310,7 +352,7 @@ function updateSoundVolumes() {
 function playGunfireSound() {
   // Use appropriate sound based on current weapon
   const weaponSound =
-    currentWeapon === "rifle" ? sounds.gunfire : sounds.machinegun;
+    currentWeapon === "shotgun" ? sounds.gunfire : sounds.machinegun;
 
   if (!weaponSound) {
     console.warn(`No sound loaded for ${currentWeapon}`);
@@ -327,10 +369,10 @@ function playGunfireSound() {
   weaponSound.play();
 }
 
-// Play zombie growl sound
-function playZombieGrowlSound() {
-  if (!sounds.zombieGrowl) {
-    console.warn("No zombie growl sound loaded");
+// Play demon growl sound
+function playDemonGrowlSound() {
+  if (!sounds.demonGrowl) {
+    console.warn("No demon growl sound loaded");
     return;
   }
 
@@ -340,34 +382,37 @@ function playZombieGrowlSound() {
   lastGrowlTime = currentTime;
 
   // Stop the sound if it's already playing
-  if (sounds.zombieGrowl.isPlaying) {
-    sounds.zombieGrowl.stop();
+  if (sounds.demonGrowl.isPlaying) {
+    sounds.demonGrowl.stop();
   }
 
   // Update volume and play
-  sounds.zombieGrowl.setVolume(effectsVolume * 0.6);
-  sounds.zombieGrowl.play();
+  sounds.demonGrowl.setVolume(effectsVolume * 0.6);
+  sounds.demonGrowl.play();
 }
 
-// Play zombie attack sound
-function playZombieAttackSound() {
-  if (!sounds.zombieAttack) {
-    console.warn("No zombie attack sound loaded");
+// Play demon attack sound
+function playDemonAttackSound() {
+  if (!sounds.demonAttack) {
+    console.warn("No demon attack sound loaded");
     return;
   }
 
   // Stop the sound if it's already playing
-  if (sounds.zombieAttack.isPlaying) {
-    sounds.zombieAttack.stop();
+  if (sounds.demonAttack.isPlaying) {
+    sounds.demonAttack.stop();
   }
 
   // Update volume and play
-  sounds.zombieAttack.setVolume(effectsVolume * 0.8);
-  sounds.zombieAttack.play();
+  sounds.demonAttack.setVolume(effectsVolume * 0.8);
+  sounds.demonAttack.play();
 }
 
 // Initialize the scene
 function init() {
+  // Initialize loader first
+  initializeLoader();
+
   // Create scene
   scene = new THREE.Scene();
 
@@ -410,8 +455,8 @@ function init() {
   // Add some objects to make the scene more interesting
   addObjects();
 
-  // Load zombie model and start wave system
-  loadZombieModel();
+  // Load demon model and start wave system
+  loadDemonModel();
 
   // Add event listeners
   addEventListeners();
@@ -1404,56 +1449,36 @@ function createHospitals() {
   }
 }
 
-// Load zombie model and spawn zombies
-function loadZombieModel() {
-  console.log("Starting zombie model loading...");
+// Load demon model and spawn demons
+function loadDemonModel() {
+  console.log("Starting demon model loading...");
 
-  // For now, let's skip GLTF loading and go straight to placeholder zombies
-  // This ensures zombies appear immediately
-  console.log("Creating placeholder zombie models...");
-  createPlaceholderZombieModel();
+  // Always create placeholder demons first for immediate gameplay
+  console.log("Creating placeholder demon models...");
+  createPlaceholderDemonModel();
 
   // Initialize all UI elements
   initializeUI();
 
-  // Start wave system instead of spawning all zombies at once
+  // Start wave system instead of spawning all demons at once
   startWaveSystem();
 
-  // Uncomment below to try loading GLTF models
-  /*
-  const modelURL = "https://threejs.org/examples/models/gltf/Soldier/Soldier.glb";
-  
-  loader.load(
-    modelURL,
-    function (gltf) {
-      console.log("GLTF model loaded successfully");
-      // Replace existing zombies with GLTF model
-      zombies.forEach(zombie => scene.remove(zombie));
-      zombies = [];
-      zombieModel = gltf.scene;
-      spawnZombies();
-    },
-    function (progress) {
-      console.log("Loading progress:", (progress.loaded / progress.total) * 100 + "%");
-    },
-    function (error) {
-      console.log("Error loading GLTF model:", error);
-    }
-  );
-  */
+  // Note: GLTF model loading disabled - using optimized placeholder models
+  // This ensures immediate gameplay without network dependencies
+  console.log("Using optimized Doom-style demon models for best performance");
 }
 
-// Create a zombie model based on type
-function createZombieModel(zombieType) {
-  const typeData = ZOMBIE_TYPES[zombieType];
-  const zombieGroup = new THREE.Group();
+// Create a demon model based on type
+function createDemonModel(demonType) {
+  const typeData = DEMON_TYPES[demonType];
+  const demonGroup = new THREE.Group();
 
   // Body (using box geometry for better compatibility)
   const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.3);
   const bodyMaterial = new THREE.MeshLambertMaterial({ color: typeData.color });
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
   body.position.y = 0.6;
-  zombieGroup.add(body);
+  demonGroup.add(body);
 
   // Head
   const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
@@ -1462,7 +1487,7 @@ function createZombieModel(zombieType) {
   });
   const head = new THREE.Mesh(headGeometry, headMaterial);
   head.position.y = 1.4;
-  zombieGroup.add(head);
+  demonGroup.add(head);
 
   // Eyes (different colors for different types)
   const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
@@ -1474,11 +1499,11 @@ function createZombieModel(zombieType) {
 
   const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
   leftEye.position.set(-0.1, 1.45, 0.25);
-  zombieGroup.add(leftEye);
+  demonGroup.add(leftEye);
 
   const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
   rightEye.position.set(0.1, 1.45, 0.25);
-  zombieGroup.add(rightEye);
+  demonGroup.add(rightEye);
 
   // Arms
   const armGeometry = new THREE.BoxGeometry(0.15, 0.7, 0.15);
@@ -1489,12 +1514,12 @@ function createZombieModel(zombieType) {
   const leftArm = new THREE.Mesh(armGeometry, armMaterial);
   leftArm.position.set(-0.45, 0.8, 0);
   leftArm.rotation.z = 0.3;
-  zombieGroup.add(leftArm);
+  demonGroup.add(leftArm);
 
   const rightArm = new THREE.Mesh(armGeometry, armMaterial);
   rightArm.position.set(0.45, 0.8, 0);
   rightArm.rotation.z = -0.3;
-  zombieGroup.add(rightArm);
+  demonGroup.add(rightArm);
 
   // Legs
   const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
@@ -1502,62 +1527,62 @@ function createZombieModel(zombieType) {
 
   const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
   leftLeg.position.set(-0.15, -0.4, 0);
-  zombieGroup.add(leftLeg);
+  demonGroup.add(leftLeg);
 
   const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
   rightLeg.position.set(0.15, -0.4, 0);
-  zombieGroup.add(rightLeg);
+  demonGroup.add(rightLeg);
 
-  // Special features based on zombie type
-  if (zombieType === "TANK" || zombieType === "BOSS") {
-    // Add armor/spikes for tank and boss
+  // Special features based on demon type
+  if (demonType === "CACODEMON" || demonType === "BARON") {
+    // Add armor/spikes for Cacodemon and Baron
     const armorGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.4);
     const armorMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const armor = new THREE.Mesh(armorGeometry, armorMaterial);
     armor.position.y = 1.0;
-    zombieGroup.add(armor);
+    demonGroup.add(armor);
   }
 
-  if (zombieType === "FAST") {
-    // Add running gear for fast zombies
+  if (demonType === "DEMON") {
+    // Add running gear for fast demons
     const helmetGeometry = new THREE.BoxGeometry(0.45, 0.15, 0.45);
     const helmetMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
     helmet.position.y = 1.6;
-    zombieGroup.add(helmet);
+    demonGroup.add(helmet);
   }
 
-  if (zombieType === "BOSS") {
-    // Add crown for boss
+  if (demonType === "BARON") {
+    // Add crown for Baron
     const crownGeometry = new THREE.ConeGeometry(0.3, 0.4, 6);
     const crownMaterial = new THREE.MeshLambertMaterial({ color: 0x8b0000 });
     const crown = new THREE.Mesh(crownGeometry, crownMaterial);
     crown.position.y = 1.8;
-    zombieGroup.add(crown);
+    demonGroup.add(crown);
   }
 
   // Enable shadows
-  zombieGroup.traverse(function (child) {
+  demonGroup.traverse(function (child) {
     if (child.isMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
     }
   });
 
-  // Store zombie type in the model
-  zombieGroup.userData.zombieType = zombieType;
+  // Store demon type in the model
+  demonGroup.userData.demonType = demonType;
 
-  return zombieGroup;
+  return demonGroup;
 }
 
-// Create placeholder zombie models for all types
-function createPlaceholderZombieModel() {
-  console.log("Creating placeholder zombie models for all types...");
+// Create placeholder demon models for all types
+function createPlaceholderDemonModel() {
+  console.log("Creating placeholder demon models for all types...");
 
   // Create base model (normal type)
-  zombieModel = createZombieModel("NORMAL");
+  demonModel = createDemonModel("IMP");
 
-  console.log("Placeholder zombie models created successfully");
+  console.log("Placeholder demon models created successfully");
 }
 
 // Create an ammo pack model
@@ -1695,11 +1720,11 @@ function spawnAmmoPack() {
 
   const ammoPack = createAmmoPack();
 
-  // Random position on the map (avoiding zombies and player)
+  // Random position on the map (avoiding demons and player)
   let x, z;
   let attempts = 0;
   do {
-    x = (Math.random() - 0.5) * 50; // Slightly smaller area than zombies
+    x = (Math.random() - 0.5) * 50; // Slightly smaller area than demons
     z = (Math.random() - 0.5) * 50;
     attempts++;
   } while (attempts < 10 && isTooCloseToEntities(x, z, 8)); // 8 unit clearance
@@ -1724,11 +1749,11 @@ function spawnHealthPack() {
 
   const healthPack = createHealthPack();
 
-  // Random position on the map (avoiding zombies and player)
+  // Random position on the map (avoiding demons and player)
   let x, z;
   let attempts = 0;
   do {
-    x = (Math.random() - 0.5) * 50; // Slightly smaller area than zombies
+    x = (Math.random() - 0.5) * 50; // Slightly smaller area than demons
     z = (Math.random() - 0.5) * 50;
     attempts++;
   } while (attempts < 10 && isTooCloseToEntities(x, z, 8)); // 8 unit clearance
@@ -1745,7 +1770,7 @@ function spawnHealthPack() {
   console.log(`💉 Neural stim spawned at (${x.toFixed(2)}, ${z.toFixed(2)})`);
 }
 
-// Check if position is too close to player or zombies
+// Check if position is too close to player or demons
 function isTooCloseToEntities(x, z, minDistance) {
   // Check distance to player
   const playerPos = controls.getObject().position;
@@ -1754,13 +1779,13 @@ function isTooCloseToEntities(x, z, minDistance) {
   );
   if (distToPlayer < minDistance) return true;
 
-  // Check distance to zombies
-  for (const zombie of zombies) {
-    if (!zombie) continue;
-    const distToZombie = Math.sqrt(
-      Math.pow(x - zombie.position.x, 2) + Math.pow(z - zombie.position.z, 2)
+  // Check distance to demons
+  for (const demon of demons) {
+    if (!demon) continue;
+    const distToDemon = Math.sqrt(
+      Math.pow(x - demon.position.x, 2) + Math.pow(z - demon.position.z, 2)
     );
-    if (distToZombie < minDistance) return true;
+    if (distToDemon < minDistance) return true;
   }
 
   return false;
@@ -1843,10 +1868,10 @@ function checkAmmoPackCollision() {
   if (isGameOver) return;
 
   const playerPosition = controls.getObject().position;
-  const machineGun = WEAPONS.machinegun;
+  const chaingun = WEAPONS.chaingun;
 
-  // Don't collect if machine gun is already at max ammo
-  if (machineGun.currentAmmo >= machineGun.maxAmmo) return;
+  // Don't collect if chaingun is already at max ammo
+  if (chaingun.currentAmmo >= chaingun.maxAmmo) return;
 
   ammoPacks.forEach((ammoPack, index) => {
     if (!ammoPack) return;
@@ -1888,15 +1913,15 @@ function checkHealthPackCollision() {
 
 // Collect an ammo pack
 function collectAmmoPack(ammoPack, index) {
-  const machineGun = WEAPONS.machinegun;
+  const chaingun = WEAPONS.chaingun;
 
   // Calculate ammo to add
-  const oldAmmo = machineGun.currentAmmo;
-  machineGun.currentAmmo = Math.min(
-    machineGun.maxAmmo,
-    machineGun.currentAmmo + AMMO_PACK_REFILL_AMOUNT
+  const oldAmmo = chaingun.currentAmmo;
+  chaingun.currentAmmo = Math.min(
+    chaingun.maxAmmo,
+    chaingun.currentAmmo + AMMO_PACK_REFILL_AMOUNT
   );
-  const actualRefill = machineGun.currentAmmo - oldAmmo;
+  const actualRefill = chaingun.currentAmmo - oldAmmo;
 
   // Update weapon display
   updateWeaponDisplay();
@@ -1918,7 +1943,7 @@ function collectAmmoPack(ammoPack, index) {
   updateAmmoPackCount();
 
   console.log(
-    `🔋 Energy cell collected! Refilled ${actualRefill} energy (${oldAmmo} → ${machineGun.currentAmmo})`
+    `🔋 Energy cell collected! Refilled ${actualRefill} energy (${oldAmmo} → ${chaingun.currentAmmo})`
   );
 
   // Show floating text
@@ -2170,17 +2195,17 @@ function playHealthPackSound() {
   oscillator.stop(audioContext.currentTime + 0.6);
 }
 
-// Spawn zombies randomly around the map
-function spawnZombies() {
-  console.log(`Spawning ${ZOMBIE_COUNT} zombies...`);
+// Spawn demons randomly around the map
+function spawnDemons() {
+  console.log(`Spawning ${DEMON_COUNT} demons...`);
 
-  if (!zombieModel) {
-    console.error("Zombie model not created yet!");
+  if (!demonModel) {
+    console.error("Demon model not created yet!");
     return;
   }
 
-  for (let i = 0; i < ZOMBIE_COUNT; i++) {
-    const zombie = zombieModel.clone();
+  for (let i = 0; i < DEMON_COUNT; i++) {
+    const demon = demonModel.clone();
 
     // Random position on the map (avoiding the center where player starts)
     let x, z;
@@ -2189,46 +2214,46 @@ function spawnZombies() {
       z = (Math.random() - 0.5) * 60;
     } while (Math.sqrt(x * x + z * z) < 10); // Keep away from player start position
 
-    zombie.position.set(x, 0, z);
-    zombie.rotation.y = Math.random() * Math.PI * 2; // Random rotation
+    demon.position.set(x, 0, z);
+    demon.rotation.y = Math.random() * Math.PI * 2; // Random rotation
 
-    // Scale zombies to make them more visible
+    // Scale demons to make them more visible
     const scale = 1.5 + Math.random() * 0.5; // 1.5 to 2.0 scale (larger)
-    zombie.scale.setScalar(scale);
+    demon.scale.setScalar(scale);
 
-    // Add some properties for zombie behavior
-    zombie.userData = {
+    // Add some properties for demon behavior
+    demon.userData = {
       walkSpeed: 0.3 + Math.random() * 0.4, // Base walk speed (0.3-0.7)
       rotationSpeed: 0.01 + Math.random() * 0.02,
       wanderDirection: Math.random() * Math.PI * 2,
       wanderTimer: Math.random() * 100,
       attackCooldown: 0,
       isAttacking: false,
-      hasAttacked: false, // New: track if zombie has attacked in current cycle
+      hasAttacked: false, // New: track if demon has attacked in current cycle
       originalScale: scale, // Store original scale
       attackScaleSet: false,
     };
 
-    zombies.push(zombie);
-    scene.add(zombie);
+    demons.push(demon);
+    scene.add(demon);
 
     console.log(
-      `Zombie ${i + 1} spawned at position (${x.toFixed(2)}, 0, ${z.toFixed(
+      `Demon ${i + 1} spawned at position (${x.toFixed(2)}, 0, ${z.toFixed(
         2
       )})`
     );
   }
 
-  // Also add a few test zombies close to the player for immediate visibility
+  // Also add a few test demons close to the player for immediate visibility
   for (let i = 0; i < 3; i++) {
-    const testZombie = zombieModel.clone();
-    testZombie.position.set(
+    const testDemon = demonModel.clone();
+    testDemon.position.set(
       5 + i * 3, // 5, 8, 11 units in front
       0,
       -10 - i * 2 // Spread them out
     );
-    testZombie.scale.setScalar(2); // Make them big and obvious
-    testZombie.userData = {
+    testDemon.scale.setScalar(2); // Make them big and obvious
+    testDemon.userData = {
       walkSpeed: 0.3,
       rotationSpeed: 0.01,
       wanderDirection: 0,
@@ -2236,20 +2261,20 @@ function spawnZombies() {
       attackCooldown: 0,
       isAttacking: false,
       hasAttacked: false,
-      originalScale: 2, // Test zombies are scaled to 2
+      originalScale: 2, // Test demons are scaled to 2
       attackScaleSet: false,
     };
-    zombies.push(testZombie);
-    scene.add(testZombie);
+    demons.push(testDemon);
+    scene.add(testDemon);
     console.log(
-      `Test zombie ${i + 1} placed at (${testZombie.position.x}, ${
-        testZombie.position.y
-      }, ${testZombie.position.z})`
+      `Test demon ${i + 1} placed at (${testDemon.position.x}, ${
+        testDemon.position.y
+      }, ${testDemon.position.z})`
     );
   }
 
-  console.log(`Successfully spawned ${ZOMBIE_COUNT + 3} zombies on the map!`);
-  console.log("Total zombies in array:", zombies.length);
+  console.log(`Successfully spawned ${DEMON_COUNT + 3} demons on the map!`);
+  console.log("Total demons in array:", demons.length);
 }
 
 // Wave system functions
@@ -2262,60 +2287,60 @@ function startWaveSystem() {
 function startWave() {
   console.log(`Starting Wave ${currentWave}`);
   waveInProgress = true;
-  zombiesThisWave = getZombiesForWave(currentWave);
-  zombiesSpawnedThisWave = 0;
+  demonsThisWave = getDemonsForWave(currentWave);
+  demonsSpawnedThisWave = 0;
 
   updateWaveDisplay();
 
-  // Start spawning zombies for this wave
-  spawnWaveZombies();
+  // Start spawning demons for this wave
+  spawnWaveDemons();
 }
 
-function getZombiesForWave(waveNumber) {
-  // Increase zombie count each wave: Wave 1 = 3, Wave 2 = 5, Wave 3 = 8, etc.
+function getDemonsForWave(waveNumber) {
+  // Increase demon count each wave: Wave 1 = 3, Wave 2 = 5, Wave 3 = 8, etc.
   return Math.floor(2 + waveNumber * 1.5);
 }
 
-// Determine which zombie types can spawn in current wave
-function getAvailableZombieTypes(waveNumber) {
+// Determine which demon types can spawn in current wave
+function getAvailableDemonTypes(waveNumber) {
   const availableTypes = [];
 
-  // Normal zombies always available
+  // Normal demons always available
   availableTypes.push({
-    type: "NORMAL",
-    weight: ZOMBIE_TYPES.NORMAL.spawnWeight,
+    type: "IMP",
+    weight: DEMON_TYPES.IMP.spawnWeight,
   });
 
-  // Fast zombies from wave 2
+  // Fast demons from wave 2
   if (waveNumber >= 2) {
     availableTypes.push({
-      type: "FAST",
-      weight: ZOMBIE_TYPES.FAST.spawnWeight,
+      type: "DEMON",
+      weight: DEMON_TYPES.DEMON.spawnWeight,
     });
   }
 
-  // Tank zombies from wave 4
+  // Tank demons from wave 4
   if (waveNumber >= 4) {
     availableTypes.push({
-      type: "TANK",
-      weight: ZOMBIE_TYPES.TANK.spawnWeight,
+      type: "CACODEMON",
+      weight: DEMON_TYPES.CACODEMON.spawnWeight,
     });
   }
 
-  // Boss zombies from wave 6 (rare)
+  // Boss demons from wave 6 (rare)
   if (waveNumber >= 6) {
     availableTypes.push({
-      type: "BOSS",
-      weight: ZOMBIE_TYPES.BOSS.spawnWeight,
+      type: "BARON",
+      weight: DEMON_TYPES.BARON.spawnWeight,
     });
   }
 
   return availableTypes;
 }
 
-// Select a random zombie type based on spawn weights
-function selectZombieType(waveNumber) {
-  const availableTypes = getAvailableZombieTypes(waveNumber);
+// Select a random demon type based on spawn weights
+function selectDemonType(waveNumber) {
+  const availableTypes = getAvailableDemonTypes(waveNumber);
 
   // Calculate total weight
   const totalWeight = availableTypes.reduce(
@@ -2334,33 +2359,33 @@ function selectZombieType(waveNumber) {
   }
 
   // Fallback to normal
-  return "NORMAL";
+  return "IMP";
 }
 
-function spawnWaveZombies() {
-  if (zombiesSpawnedThisWave >= zombiesThisWave) {
+function spawnWaveDemons() {
+  if (demonsSpawnedThisWave >= demonsThisWave) {
     console.log(
-      `All ${zombiesThisWave} combat units deployed for protocol wave ${currentWave}`
+      `All ${demonsThisWave} combat units deployed for protocol wave ${currentWave}`
     );
     return;
   }
 
-  // Spawn one zombie
-  spawnSingleZombie();
-  zombiesSpawnedThisWave++;
+  // Spawn one demon
+  spawnSingleDemon();
+  demonsSpawnedThisWave++;
 
-  // Schedule next zombie spawn (every 1-3 seconds)
+  // Schedule next demon spawn (every 1-3 seconds)
   const spawnDelay = 1000 + Math.random() * 2000;
-  zombieSpawnTimer = setTimeout(spawnWaveZombies, spawnDelay);
+  demonSpawnTimer = setTimeout(spawnWaveDemons, spawnDelay);
 }
 
-function spawnSingleZombie() {
-  // Select zombie type based on current wave
-  const zombieType = selectZombieType(currentWave);
-  const typeData = ZOMBIE_TYPES[zombieType];
+function spawnSingleDemon() {
+  // Select demon type based on current wave
+  const demonType = selectDemonType(currentWave);
+  const typeData = DEMON_TYPES[demonType];
 
-  // Create zombie of selected type
-  const zombie = createZombieModel(zombieType);
+  // Create demon of selected type
+  const demon = createDemonModel(demonType);
 
   // Random position on the map (avoiding the center where player starts)
   let x, z;
@@ -2369,18 +2394,18 @@ function spawnSingleZombie() {
     z = (Math.random() - 0.5) * 60;
   } while (Math.sqrt(x * x + z * z) < 10);
 
-  zombie.position.set(x, 0, z);
-  zombie.rotation.y = Math.random() * Math.PI * 2;
+  demon.position.set(x, 0, z);
+  demon.rotation.y = Math.random() * Math.PI * 2;
 
   // Apply type-specific scaling with wave multiplier
   const waveMultiplier = 1 + (currentWave - 1) * 0.05; // Reduced wave scaling
   const baseScale = 1.5 + Math.random() * 0.5;
   const finalScale = baseScale * typeData.scale * waveMultiplier;
-  zombie.scale.setScalar(finalScale);
+  demon.scale.setScalar(finalScale);
 
-  // Set up zombie data based on type
-  zombie.userData = {
-    zombieType: zombieType,
+  // Set up demon data based on type
+  demon.userData = {
+    demonType: demonType,
     health: typeData.health,
     maxHealth: typeData.health,
     walkSpeed: typeData.speed * (0.8 + Math.random() * 0.4) * waveMultiplier,
@@ -2398,27 +2423,27 @@ function spawnSingleZombie() {
     attackDamage: typeData.attackDamage,
   };
 
-  zombies.push(zombie);
-  scene.add(zombie);
+  demons.push(demon);
+  scene.add(demon);
 
   // Update type count for UI
-  zombieTypeCounts[zombieType]++;
+  demonTypeCounts[demonType]++;
 
   console.log(
-    `${typeData.emoji} ${typeData.name} deployed for protocol wave ${currentWave} (${zombiesSpawnedThisWave}/${zombiesThisWave})`
+    `${typeData.emoji} ${typeData.name} deployed for protocol wave ${currentWave} (${demonsSpawnedThisWave}/${demonsThisWave})`
   );
 }
 
 function checkWaveComplete() {
   if (!waveInProgress || isGameOver) return;
 
-  // Count living zombies (not dead or falling)
-  const livingZombies = zombies.filter(
-    (zombie) =>
-      zombie.userData && !zombie.userData.isDead && !zombie.userData.isFalling
+  // Count living demons (not dead or falling)
+  const livingDemons = demons.filter(
+    (demon) =>
+      demon.userData && !demon.userData.isDead && !demon.userData.isFalling
   ).length;
 
-  if (livingZombies === 0 && zombiesSpawnedThisWave >= zombiesThisWave) {
+  if (livingDemons === 0 && demonsSpawnedThisWave >= demonsThisWave) {
     completeWave();
   }
 }
@@ -2429,9 +2454,9 @@ function completeWave() {
   currentWave++;
 
   // Clear any remaining spawn timers
-  if (zombieSpawnTimer) {
-    clearTimeout(zombieSpawnTimer);
-    zombieSpawnTimer = null;
+  if (demonSpawnTimer) {
+    clearTimeout(demonSpawnTimer);
+    demonSpawnTimer = null;
   }
 
   updateWaveDisplay();
@@ -2443,38 +2468,38 @@ function completeWave() {
   }, timeBetweenWaves);
 }
 
-// Enhanced zombie AI - hunt the player
-function updateZombies() {
-  if (zombies.length === 0) return;
+// Enhanced demon AI - hunt the player
+function updateDemons() {
+  if (demons.length === 0) return;
 
   const playerPosition = controls.getObject().position;
 
-  zombies.forEach((zombie, index) => {
-    if (!zombie || !zombie.userData) return;
+  demons.forEach((demon, index) => {
+    if (!demon || !demon.userData) return;
 
-    const userData = zombie.userData;
+    const userData = demon.userData;
 
-    // Handle falling zombies
+    // Handle falling demons
     if (userData.isFalling) {
       userData.fallSpeed += 0.02; // Increase fall speed
-      zombie.rotation.x += userData.fallSpeed;
+      demon.rotation.x += userData.fallSpeed;
 
-      // Stop falling when zombie has rotated 90 degrees
-      if (zombie.rotation.x >= Math.PI / 2) {
-        zombie.rotation.x = Math.PI / 2;
+      // Stop falling when demon has rotated 90 degrees
+      if (demon.rotation.x >= Math.PI / 2) {
+        demon.rotation.x = Math.PI / 2;
         userData.isFalling = false;
         userData.isDead = true;
-        console.log("Zombie fell down and is now dead");
+        console.log("Demon fell down and is now dead");
       }
-      return; // Skip normal movement for falling zombies
+      return; // Skip normal movement for falling demons
     }
 
-    // Skip movement if zombie is dead
+    // Skip movement if demon is dead
     if (userData.isDead) return;
 
     // Calculate distance to player
-    const dx = playerPosition.x - zombie.position.x;
-    const dz = playerPosition.z - zombie.position.z;
+    const dx = playerPosition.x - demon.position.x;
+    const dz = playerPosition.z - demon.position.z;
     const distanceToPlayer = Math.sqrt(dx * dx + dz * dz);
 
     // Initialize attack state if not present
@@ -2493,44 +2518,44 @@ function updateZombies() {
     const attackRange = userData.attackRange || 3.5;
     const chaseRange = userData.chaseRange || 8;
 
-    // Determine zombie behavior based on distance to player
+    // Determine demon behavior based on distance to player
     if (distanceToPlayer < detectionRange) {
       // PLAYER DETECTED - Start hunting behavior
 
       // Play growl sound occasionally when hunting
       if (Math.random() < 0.003) {
         // Slightly more frequent growls
-        playZombieGrowlSound();
+        playDemonGrowlSound();
       }
 
       // Calculate optimal path to player (basic pathfinding)
       const pathToPlayer = calculatePathToPlayer(
-        zombie.position,
+        demon.position,
         playerPosition
       );
 
       // Check behavior state based on distance
       if (distanceToPlayer <= attackRange) {
         // ATTACK MODE - Close enough to attack
-        executeZombieAttack(zombie, userData, pathToPlayer.direction);
+        executeDemonAttack(demon, userData, pathToPlayer.direction);
       } else if (distanceToPlayer <= chaseRange) {
         // PREPARE ATTACK MODE - Close but not in attack range
-        prepareZombieAttack(zombie, userData, pathToPlayer);
+        prepareDemonAttack(demon, userData, pathToPlayer);
       } else {
         // CHASE MODE - Actively pursue player
-        executeZombieChase(zombie, userData, pathToPlayer);
+        executeDemonChase(demon, userData, pathToPlayer);
       }
     } else {
       // WANDERING MODE - Player too far away
-      executeZombieWander(zombie, userData);
+      executeDemonWander(demon, userData);
     }
 
-    // Keep zombies within map bounds
+    // Keep demons within map bounds
     const maxDistance = 45;
-    if (zombie.position.x > maxDistance) zombie.position.x = maxDistance;
-    if (zombie.position.x < -maxDistance) zombie.position.x = -maxDistance;
-    if (zombie.position.z > maxDistance) zombie.position.z = maxDistance;
-    if (zombie.position.z < -maxDistance) zombie.position.z = -maxDistance;
+    if (demon.position.x > maxDistance) demon.position.x = maxDistance;
+    if (demon.position.x < -maxDistance) demon.position.x = -maxDistance;
+    if (demon.position.z > maxDistance) demon.position.z = maxDistance;
+    if (demon.position.z < -maxDistance) demon.position.z = -maxDistance;
 
     // Enhanced animations are now handled in the behavior functions
     // Just handle attack scaling here
@@ -2538,14 +2563,14 @@ function updateZombies() {
       if (userData.isAttacking) {
         // Set attack scale only once (don't multiply every frame)
         if (!userData.attackScaleSet) {
-          userData.originalScale = zombie.scale.x;
-          zombie.scale.setScalar(userData.originalScale * 1.15); // Slightly larger when attacking
+          userData.originalScale = demon.scale.x;
+          demon.scale.setScalar(userData.originalScale * 1.15); // Slightly larger when attacking
           userData.attackScaleSet = true;
         }
       } else {
         // Reset scale when not attacking
         if (userData.attackScaleSet) {
-          zombie.scale.setScalar(userData.originalScale || 1);
+          demon.scale.setScalar(userData.originalScale || 1);
           userData.attackScaleSet = false;
         }
       }
@@ -2554,9 +2579,9 @@ function updateZombies() {
 }
 
 // Basic pathfinding - calculate direct path to player
-function calculatePathToPlayer(zombiePos, playerPos) {
-  const dx = playerPos.x - zombiePos.x;
-  const dz = playerPos.z - zombiePos.z;
+function calculatePathToPlayer(demonPos, playerPos) {
+  const dx = playerPos.x - demonPos.x;
+  const dz = playerPos.z - demonPos.z;
   const distance = Math.sqrt(dx * dx + dz * dz);
 
   // Calculate direction
@@ -2574,8 +2599,8 @@ function calculatePathToPlayer(zombiePos, playerPos) {
   };
 }
 
-// Execute zombie attack behavior
-function executeZombieAttack(zombie, userData, direction) {
+// Execute demon attack behavior
+function executeDemonAttack(demon, userData, direction) {
   // Stop all movement during attack
   userData.isAttacking = true;
 
@@ -2586,20 +2611,20 @@ function executeZombieAttack(zombie, userData, direction) {
 
     // Attack animation - lunge forward
     const lungeDistance = 0.8;
-    zombie.position.x += Math.sin(direction) * lungeDistance;
-    zombie.position.z += Math.cos(direction) * lungeDistance;
+    demon.position.x += Math.sin(direction) * lungeDistance;
+    demon.position.z += Math.cos(direction) * lungeDistance;
 
     // Create attack effect
-    createZombieAttackEffect(zombie.position);
+    createDemonAttackEffect(demon.position);
 
     // Play attack sound
-    playZombieAttackSound();
+    playDemonAttackSound();
 
-    console.log("Zombie executing attack!");
+    console.log("Demon executing attack!");
   }
 
   // Face the player during attack
-  zombie.rotation.y = direction;
+  demon.rotation.y = direction;
 
   // Reset attack flag when cooldown ends
   if (userData.attackCooldown <= 60) {
@@ -2610,26 +2635,26 @@ function executeZombieAttack(zombie, userData, direction) {
 }
 
 // Prepare for attack - slow down and focus on player
-function prepareZombieAttack(zombie, userData, pathToPlayer) {
+function prepareDemonAttack(demon, userData, pathToPlayer) {
   userData.isAttacking = false;
 
   // Move slowly toward player while preparing
   const prepareSpeed = userData.walkSpeed * 0.6; // Slower approach
   const moveDistance = prepareSpeed * 0.016;
 
-  zombie.position.x += pathToPlayer.normalizedX * moveDistance;
-  zombie.position.z += pathToPlayer.normalizedZ * moveDistance;
+  demon.position.x += pathToPlayer.normalizedX * moveDistance;
+  demon.position.z += pathToPlayer.normalizedZ * moveDistance;
 
   // Face the player
-  zombie.rotation.y = pathToPlayer.direction;
+  demon.rotation.y = pathToPlayer.direction;
 
   // Add anticipation animation (more aggressive bobbing)
   const time = Date.now() * 0.008;
-  zombie.position.y = Math.sin(time) * 0.25;
+  demon.position.y = Math.sin(time) * 0.25;
 }
 
 // Execute aggressive chase behavior
-function executeZombieChase(zombie, userData, pathToPlayer) {
+function executeDemonChase(demon, userData, pathToPlayer) {
   userData.isAttacking = false;
 
   // Fast aggressive movement toward player
@@ -2637,19 +2662,19 @@ function executeZombieChase(zombie, userData, pathToPlayer) {
   const moveDistance = chaseSpeed * 0.016;
 
   // Move directly toward player using pathfinding
-  zombie.position.x += pathToPlayer.normalizedX * moveDistance;
-  zombie.position.z += pathToPlayer.normalizedZ * moveDistance;
+  demon.position.x += pathToPlayer.normalizedX * moveDistance;
+  demon.position.z += pathToPlayer.normalizedZ * moveDistance;
 
   // Face movement direction
-  zombie.rotation.y = pathToPlayer.direction;
+  demon.rotation.y = pathToPlayer.direction;
 
   // Add running animation (faster bobbing)
   const time = Date.now() * 0.006;
-  zombie.position.y = Math.sin(time) * 0.3;
+  demon.position.y = Math.sin(time) * 0.3;
 }
 
 // Execute wandering behavior when player is far
-function executeZombieWander(zombie, userData) {
+function executeDemonWander(demon, userData) {
   userData.isAttacking = false;
   userData.wanderTimer++;
 
@@ -2664,22 +2689,22 @@ function executeZombieWander(zombie, userData) {
   const wanderSpeed = userData.walkSpeed * 0.3; // Very slow when wandering
   const moveDistance = wanderSpeed * 0.016;
 
-  zombie.position.x += Math.sin(userData.wanderDirection) * moveDistance;
-  zombie.position.z += Math.cos(userData.wanderDirection) * moveDistance;
+  demon.position.x += Math.sin(userData.wanderDirection) * moveDistance;
+  demon.position.z += Math.cos(userData.wanderDirection) * moveDistance;
 
   // Face movement direction
-  zombie.rotation.y = userData.wanderDirection;
+  demon.rotation.y = userData.wanderDirection;
 
   // Normal idle animation
   const time = Date.now() * 0.002;
-  zombie.position.y = Math.sin(time) * 0.15;
+  demon.position.y = Math.sin(time) * 0.15;
 }
 
 // Update gun position to always stay at bottom center of screen
 function updateGunPosition() {
   if (!controls.isLocked) return;
 
-  const activeWeapon = currentWeapon === "rifle" ? gun : machineGun;
+  const activeWeapon = currentWeapon === "shotgun" ? gun : machineGun;
   if (!activeWeapon) return;
 
   // Update recoil animation
@@ -2730,7 +2755,7 @@ function updateGunRecoil() {
   }
 }
 
-// Check if player is aiming at a zombie for crosshair targeting
+// Check if player is aiming at a demon for crosshair targeting
 function updateCrosshairTargeting() {
   if (!controls || !controls.isLocked || gameState !== "playing") {
     isAimingAtZombie = false;
@@ -2746,28 +2771,28 @@ function updateCrosshairTargeting() {
   // Set up raycaster from camera position in camera direction
   raycaster.set(cameraPosition, cameraDirection);
 
-  // Create array of zombie objects for raycasting
-  const zombieObjects = [];
-  zombies.forEach((zombie) => {
+  // Create array of demon objects for raycasting
+  const demonObjects = [];
+  demons.forEach((demon) => {
     if (
-      zombie &&
-      zombie.userData &&
-      !zombie.userData.isDead &&
-      !zombie.userData.isFalling
+      demon &&
+      demon.userData &&
+      !demon.userData.isDead &&
+      !demon.userData.isFalling
     ) {
-      // Add all mesh children of the zombie group to the raycast targets
-      zombie.traverse((child) => {
+      // Add all mesh children of the demon group to the raycast targets
+      demon.traverse((child) => {
         if (child.isMesh) {
-          zombieObjects.push(child);
+          demonObjects.push(child);
         }
       });
     }
   });
 
   // Perform raycast
-  const intersects = raycaster.intersectObjects(zombieObjects);
+  const intersects = raycaster.intersectObjects(demonObjects);
 
-  // Check if we're aiming at a zombie within reasonable range
+  // Check if we're aiming at a demon within reasonable range
   const targetingRange = 50; // Maximum targeting range
   const wasAimingAtZombie = isAimingAtZombie;
 
@@ -2819,8 +2844,8 @@ function updateRadar() {
   // Draw radar grid
   drawRadarGrid();
 
-  // Draw zombies as dots
-  drawZombiesOnRadar(playerPos, centerX, centerY);
+  // Draw demons as dots
+  drawDemonsOnRadar(playerPos, centerX, centerY);
 
   // Draw player as center dot
   drawPlayerOnRadar(centerX, centerY);
@@ -2889,24 +2914,24 @@ function drawPlayerOnRadar(centerX, centerY) {
   radarContext.stroke();
 }
 
-// Draw zombies on radar
-function drawZombiesOnRadar(playerPos, centerX, centerY) {
-  zombies.forEach((zombie) => {
+// Draw demons on radar
+function drawDemonsOnRadar(playerPos, centerX, centerY) {
+  demons.forEach((demon) => {
     if (
-      !zombie ||
-      !zombie.userData ||
-      zombie.userData.isDead ||
-      zombie.userData.isFalling
+      !demon ||
+      !demon.userData ||
+      demon.userData.isDead ||
+      demon.userData.isFalling
     ) {
       return;
     }
 
     // Calculate relative position
-    const dx = zombie.position.x - playerPos.x;
-    const dz = zombie.position.z - playerPos.z;
+    const dx = demon.position.x - playerPos.x;
+    const dz = demon.position.z - playerPos.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
 
-    // Only show zombies within radar range
+    // Only show demons within radar range
     if (distance > RADAR_RANGE) return;
 
     // Convert world coordinates to radar coordinates
@@ -2920,51 +2945,51 @@ function drawZombiesOnRadar(playerPos, centerX, centerY) {
     );
     if (radarDistance > RADAR_SIZE / 2) return;
 
-    // Determine zombie color based on type and behavior
-    let zombieColor = "rgba(255, 0, 0, 0.8)"; // Default red
-    let zombieSize = 2;
+    // Determine demon color based on type and behavior
+    let demonColor = "rgba(255, 0, 0, 0.8)"; // Default red
+    let demonSize = 2;
 
-    if (zombie.userData.zombieType) {
-      switch (zombie.userData.zombieType) {
-        case "FAST":
-          zombieColor = "rgba(255, 165, 0, 0.8)"; // Orange for fast zombies
-          zombieSize = 1.5;
+    if (demon.userData.demonType) {
+      switch (demon.userData.demonType) {
+        case "DEMON":
+          demonColor = "rgba(255, 165, 0, 0.8)"; // Orange for fast demons
+          demonSize = 1.5;
           break;
-        case "TANK":
-          zombieColor = "rgba(255, 0, 255, 0.8)"; // Magenta for tank zombies
-          zombieSize = 3;
+        case "CACODEMON":
+          demonColor = "rgba(255, 0, 255, 0.8)"; // Magenta for tank demons
+          demonSize = 3;
           break;
-        case "BOSS":
-          zombieColor = "rgba(255, 255, 0, 0.8)"; // Yellow for boss zombies
-          zombieSize = 4;
+        case "BARON":
+          demonColor = "rgba(255, 255, 0, 0.8)"; // Yellow for boss demons
+          demonSize = 4;
           break;
         default:
-          zombieColor = "rgba(255, 0, 0, 0.8)"; // Red for normal zombies
-          zombieSize = 2;
+          demonColor = "rgba(255, 0, 0, 0.8)"; // Red for normal demons
+          demonSize = 2;
       }
     }
 
-    // Make zombies more visible if they're attacking
+    // Make demons more visible if they're attacking
     if (distance < 10) {
-      zombieSize += 1;
-      zombieColor = zombieColor.replace("0.8", "1.0");
+      demonSize += 1;
+      demonColor = demonColor.replace("0.8", "1.0");
     }
 
-    // Draw zombie dot
-    radarContext.fillStyle = zombieColor;
+    // Draw demon dot
+    radarContext.fillStyle = demonColor;
     radarContext.beginPath();
-    radarContext.arc(radarX, radarY, zombieSize, 0, Math.PI * 2);
+    radarContext.arc(radarX, radarY, demonSize, 0, Math.PI * 2);
     radarContext.fill();
 
-    // Add pulsing effect for very close zombies
+    // Add pulsing effect for very close demons
     if (distance < 5) {
       const pulseAlpha = 0.3 + 0.3 * Math.sin(Date.now() * 0.01);
-      radarContext.fillStyle = zombieColor.replace(
+      radarContext.fillStyle = demonColor.replace(
         "0.8",
         pulseAlpha.toString()
       );
       radarContext.beginPath();
-      radarContext.arc(radarX, radarY, zombieSize + 2, 0, Math.PI * 2);
+      radarContext.arc(radarX, radarY, demonSize + 2, 0, Math.PI * 2);
       radarContext.fill();
     }
   });
@@ -2979,21 +3004,27 @@ function initControls() {
   const blocker = document.getElementById("blocker");
   const instructions = document.getElementById("instructions");
 
-  instructions.addEventListener("click", function () {
-    controls.lock();
-  });
+  // Handle instructions menu clicks - dismiss the menu
+  if (instructions) {
+    instructions.addEventListener("click", function (event) {
+      // If clicking on the instructions menu itself, hide it and show main menu
+      hideAllMenus();
+      showMainMenu();
+    });
+  }
 
   controls.addEventListener("lock", function () {
     if (gameState === "playing") {
-      instructions.style.display = "none";
-      blocker.style.display = "none";
+      hideAllMenus();
+      if (blocker) blocker.style.display = "none";
+      document.getElementById("gameUI").style.display = "block";
     }
   });
 
   controls.addEventListener("unlock", function () {
     if (gameState === "playing") {
-      blocker.style.display = "block";
-      instructions.style.display = "";
+      document.getElementById("gameUI").style.display = "none";
+      showMainMenu();
     }
   });
 
@@ -3004,10 +3035,24 @@ function initControls() {
 
   // Add keyboard event listeners
   const onKeyDown = function (event) {
-    // Handle ESC key for pause
+    // Handle ESC key for pause/resume or menu dismissal
     if (event.code === "Escape") {
       if (gameState === "playing") {
         pauseGame();
+      } else if (gameState === "paused") {
+        resumeGame();
+      } else {
+        // If we're in a menu, go back to main menu
+        hideAllMenus();
+        showMainMenu();
+      }
+      return;
+    }
+
+    // Handle ENTER key to toggle interface visibility while staying in game
+    if (event.code === "Enter") {
+      if (gameState === "playing") {
+        toggleInterface();
       }
       return;
     }
@@ -3270,7 +3315,7 @@ function onMouseUp(event) {
 
     // Stop machine gun sound immediately when mouse is released
     if (
-      currentWeapon === "machinegun" &&
+      currentWeapon === "chaingun" &&
       sounds.machinegun &&
       sounds.machinegun.isPlaying
     ) {
@@ -3287,13 +3332,13 @@ function onContextMenu(event) {
 
 // Switch between weapons
 function switchWeapon() {
-  if (currentWeapon === "rifle") {
-    currentWeapon = "machinegun";
+  if (currentWeapon === "shotgun") {
+    currentWeapon = "chaingun";
     gun.visible = false;
     machineGun.visible = true;
     muzzleFlashLight = machineGun.userData.muzzleFlashLight;
   } else {
-    currentWeapon = "rifle";
+    currentWeapon = "shotgun";
     gun.visible = true;
     machineGun.visible = false;
     muzzleFlashLight = gun.children.find((child) => child.isLight);
@@ -3320,7 +3365,7 @@ function shoot() {
   }
 
   if (weapon.fireRate === 0) {
-    // Single shot weapon (rifle)
+    // Single shot weapon (shotgun)
     if (!mouseHeld) return; // Only fire once per click for single shot
     createBullet();
     weapon.currentAmmo--; // Consume ammo
@@ -3470,8 +3515,8 @@ function updateBullets() {
       userData.direction.clone().multiplyScalar(moveDistance)
     );
 
-    // Check collision with zombies
-    if (checkBulletZombieCollision(bullet)) {
+    // Check collision with demons
+    if (checkBulletDemonCollision(bullet)) {
       // Remove the bullet on hit
       scene.remove(bullet);
       bullets.splice(index, 1);
@@ -3486,69 +3531,69 @@ function updateBullets() {
   });
 }
 
-// Check collision between bullet and zombies
-function checkBulletZombieCollision(bullet) {
-  for (let i = 0; i < zombies.length; i++) {
-    const zombie = zombies[i];
-    if (!zombie) continue;
+// Check collision between bullet and demons
+function checkBulletDemonCollision(bullet) {
+  for (let i = 0; i < demons.length; i++) {
+    const demon = demons[i];
+    if (!demon) continue;
 
-    // Calculate distance between bullet and zombie
-    const distance = bullet.position.distanceTo(zombie.position);
+    // Calculate distance between bullet and demon
+    const distance = bullet.position.distanceTo(demon.position);
 
-    // If bullet is close enough to zombie (collision)
+    // If bullet is close enough to demon (collision)
     if (distance < 1.5) {
       // Collision radius
-      console.log("Zombie hit!");
-      hitZombie(zombie, i);
+      console.log("Demon hit!");
+      hitDemon(demon, i);
       return true; // Collision detected
     }
   }
   return false; // No collision
 }
 
-// Handle zombie being hit
-function hitZombie(zombie, zombieIndex) {
+// Handle demon being hit
+function hitDemon(demon, demonIndex) {
   // Create hit effect
-  createHitEffect(zombie.position);
+  createHitEffect(demon.position);
 
-  // Reduce zombie health
-  if (zombie.userData && zombie.userData.health !== undefined) {
-    zombie.userData.health--;
+  // Reduce demon health
+  if (demon.userData && demon.userData.health !== undefined) {
+    demon.userData.health--;
 
-    const zombieType = zombie.userData.zombieType || "NORMAL";
-    const typeData = ZOMBIE_TYPES[zombieType];
+    const demonType = demon.userData.demonType || "IMP";
+    const typeData = DEMON_TYPES[demonType];
 
     console.log(
-      `${typeData.emoji} ${typeData.name} hit! Health: ${zombie.userData.health}/${zombie.userData.maxHealth}`
+      `${typeData.emoji} ${typeData.name} hit! Health: ${demon.userData.health}/${demon.userData.maxHealth}`
     );
 
-    // Check if zombie is dead
-    if (zombie.userData.health <= 0) {
-      // Make zombie fall or remove it
+    // Check if demon is dead
+    if (demon.userData.health <= 0) {
+      // Make demon fall or remove it
       if (Math.random() < 0.5) {
-        // 50% chance zombie falls down
-        makeZombieFall(zombie);
+        // 50% chance demon falls down
+        makeDemonFall(demon);
       } else {
-        // 50% chance zombie disappears
-        removeZombie(zombie, zombieIndex);
+        // 50% chance demon disappears
+        removeDemon(demon, demonIndex);
       }
     } else {
-      // Zombie is wounded but still alive - create smaller hit effect
-      createWoundedEffect(zombie.position);
+      // Demon is wounded but still alive - create smaller hit effect
+      createWoundedEffect(demon.position);
     }
   } else {
-    // Fallback for zombies without health system
+    // Fallback for demons without health system
     if (Math.random() < 0.5) {
-      makeZombieFall(zombie);
+      makeDemonFall(demon);
     } else {
-      removeZombie(zombie, zombieIndex);
+      removeDemon(demon, demonIndex);
     }
   }
 }
 
-// Create effect for wounded (but not dead) zombies
+// Create effect for wounded (but not dead) demons
 function createWoundedEffect(position) {
-  // Create smaller red effect for wounded zombies
+  // Create smaller red effect for wounded demons
   const particles = [];
 
   for (let i = 0; i < 3; i++) {
@@ -3608,7 +3653,7 @@ function createWoundedEffect(position) {
   animateParticles();
 }
 
-// Create visual effect when zombie is hit
+// Create visual effect when demon is hit
 function createHitEffect(position) {
   // Create red explosion effect
   const particles = [];
@@ -3670,28 +3715,28 @@ function createHitEffect(position) {
   animateParticles();
 }
 
-// Make zombie fall down
-function makeZombieFall(zombie) {
-  if (!zombie.userData) return;
+// Make demon fall down
+function makeDemonFall(demon) {
+  if (!demon.userData) return;
 
-  zombie.userData.isFalling = true;
-  zombie.userData.fallSpeed = 0;
-  zombie.userData.originalRotation = zombie.rotation.x;
+  demon.userData.isFalling = true;
+  demon.userData.fallSpeed = 0;
+  demon.userData.originalRotation = demon.rotation.x;
 
-  console.log("Zombie is falling!");
+  console.log("Demon is falling!");
 }
 
-// Remove zombie completely
-function removeZombie(zombie, zombieIndex) {
-  scene.remove(zombie);
-  zombies.splice(zombieIndex, 1);
-  zombieKills++;
+// Remove demon completely
+function removeDemon(demon, demonIndex) {
+  scene.remove(demon);
+  demons.splice(demonIndex, 1);
+  demonKills++;
   updateKillCount();
   console.log(
-    "Zombie removed! Zombies remaining:",
-    zombies.length,
+    "Demon removed! Demons remaining:",
+    demons.length,
     "Kills:",
-    zombieKills
+    demonKills
   );
 }
 
@@ -3706,7 +3751,7 @@ function updateKillCount() {
     infoDiv.appendChild(killCountDiv);
   }
 
-  killCountDiv.textContent = `💀 Units Eliminated: ${zombieKills}`;
+  killCountDiv.textContent = `💀 Units Eliminated: ${demonKills}`;
 }
 
 // Update ammo pack count display
@@ -3752,7 +3797,7 @@ function updateWeaponDisplay() {
   const fireRateText =
     weapon.fireRate === 0 ? "Single Shot" : `${weapon.fireRate} RPM`;
 
-  // Show ammo count, but don't show for rifle (effectively unlimited)
+  // Show ammo count, but don't show for shotgun (effectively unlimited)
   const ammoText =
     weapon.maxAmmo < 500 ? ` | 🔋 ${weapon.currentAmmo}/${weapon.maxAmmo}` : "";
 
@@ -3791,8 +3836,8 @@ function updateHealthBar() {
   }
 }
 
-// Check collision between player and zombies
-function checkPlayerZombieCollision() {
+// Check collision between player and demons
+function checkPlayerDemonCollision() {
   if (isGameOver) return;
 
   const currentTime = Date.now();
@@ -3802,36 +3847,36 @@ function checkPlayerZombieCollision() {
 
   const playerPosition = controls.getObject().position;
 
-  zombies.forEach((zombie, index) => {
+  demons.forEach((demon, index) => {
     if (
-      !zombie ||
-      !zombie.userData ||
-      zombie.userData.isDead ||
-      zombie.userData.isFalling
+      !demon ||
+      !demon.userData ||
+      demon.userData.isDead ||
+      demon.userData.isFalling
     )
       return;
 
     // Calculate horizontal distance (ignore Y difference)
-    const dx = playerPosition.x - zombie.position.x;
-    const dz = playerPosition.z - zombie.position.z;
+    const dx = playerPosition.x - demon.position.x;
+    const dz = playerPosition.z - demon.position.z;
     const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
 
-    // If zombie is close enough to damage player
+    // If demon is close enough to damage player
     if (horizontalDistance < 3.0) {
-      const attackDamage = zombie.userData.attackDamage || 10;
+      const attackDamage = demon.userData.attackDamage || 10;
       takeDamage(attackDamage);
       lastDamageTime = currentTime;
 
       // Create damage effect
       createDamageEffect();
 
-      const zombieType = zombie.userData.zombieType || "NORMAL";
-      const typeData = ZOMBIE_TYPES[zombieType];
+      const demonType = demon.userData.demonType || "IMP";
+      const typeData = DEMON_TYPES[demonType];
       console.log(
         `${typeData.emoji} ${typeData.name} dealt ${attackDamage} damage!`
       );
 
-      return; // Only take damage from one zombie per frame
+      return; // Only take damage from one demon per frame
     }
   });
 }
@@ -3870,8 +3915,8 @@ function createDamageEffect() {
   }, 200);
 }
 
-// Create zombie attack effect
-function createZombieAttackEffect(position) {
+// Create demon attack effect
+function createDemonAttackEffect(position) {
   // Create orange/red swipe effect
   const attackGeometry = new THREE.ConeGeometry(0.5, 1.0, 6);
   const attackMaterial = new THREE.MeshBasicMaterial({
@@ -3881,7 +3926,7 @@ function createZombieAttackEffect(position) {
   });
   const attackEffect = new THREE.Mesh(attackGeometry, attackMaterial);
 
-  // Position at zombie attack location
+  // Position at demon attack location
   attackEffect.position.copy(position);
   attackEffect.position.y += 1.0; // Raise it up
   attackEffect.rotation.x = Math.PI / 2; // Rotate to be horizontal
@@ -4003,60 +4048,60 @@ function updateWaveDisplay() {
   }
 
   if (waveInProgress) {
-    const livingZombies = zombies.filter(
-      (zombie) =>
-        zombie.userData && !zombie.userData.isDead && !zombie.userData.isFalling
+    const livingDemons = demons.filter(
+      (demon) =>
+        demon.userData && !demon.userData.isDead && !demon.userData.isFalling
     ).length;
 
-    // Count zombies by type and state
+    // Count demons by type and state
     const playerPosition = controls.getObject().position;
-    let huntingZombies = 0;
-    let chasingZombies = 0;
-    let attackingZombies = 0;
-    let typeBreakdown = { NORMAL: 0, FAST: 0, TANK: 0, BOSS: 0 };
+    let huntingDemons = 0;
+    let chasingDemons = 0;
+    let attackingDemons = 0;
+    let typeBreakdown = { IMP: 0, DEMON: 0, CACODEMON: 0, BARON: 0 };
 
-    zombies.forEach((zombie) => {
+    demons.forEach((demon) => {
       if (
-        !zombie ||
-        !zombie.userData ||
-        zombie.userData.isDead ||
-        zombie.userData.isFalling
+        !demon ||
+        !demon.userData ||
+        demon.userData.isDead ||
+        demon.userData.isFalling
       )
         return;
 
       // Count by type
-      const zombieType = zombie.userData.zombieType || "NORMAL";
-      typeBreakdown[zombieType]++;
+      const demonType = demon.userData.demonType || "IMP";
+      typeBreakdown[demonType]++;
 
-      const dx = playerPosition.x - zombie.position.x;
-      const dz = playerPosition.z - zombie.position.z;
+      const dx = playerPosition.x - demon.position.x;
+      const dz = playerPosition.z - demon.position.z;
       const distance = Math.sqrt(dx * dx + dz * dz);
 
-      const detectRange = zombie.userData.detectRange || 60;
-      const attackRange = zombie.userData.attackRange || 3.5;
-      const chaseRange = zombie.userData.chaseRange || 8;
+      const detectRange = demon.userData.detectRange || 60;
+      const attackRange = demon.userData.attackRange || 3.5;
+      const chaseRange = demon.userData.chaseRange || 8;
 
       if (distance < detectRange) {
         // Detection range
         if (distance <= attackRange) {
           // Attack range
-          attackingZombies++;
+          attackingDemons++;
         } else if (distance <= chaseRange) {
           // Chase range
-          chasingZombies++;
+          chasingDemons++;
         } else {
-          huntingZombies++;
+          huntingDemons++;
         }
       }
     });
 
-    let status = `🌊 Protocol Wave ${currentWave} | Combat Units: ${livingZombies}/${zombiesThisWave}`;
+    let status = `🌊 Protocol Wave ${currentWave} | Combat Units: ${livingDemons}/${demonsThisWave}`;
 
     // Add type breakdown for variety
     const typeInfo = [];
     Object.keys(typeBreakdown).forEach((type) => {
       if (typeBreakdown[type] > 0) {
-        const typeData = ZOMBIE_TYPES[type];
+        const typeData = DEMON_TYPES[type];
         typeInfo.push(`${typeData.emoji}${typeBreakdown[type]}`);
       }
     });
@@ -4065,14 +4110,14 @@ function updateWaveDisplay() {
       status += ` | ${typeInfo.join(" ")}`;
     }
 
-    if (huntingZombies > 0) {
-      status += ` | 👁️ Scanning: ${huntingZombies}`;
+    if (huntingDemons > 0) {
+      status += ` | 👁️ Scanning: ${huntingDemons}`;
     }
-    if (chasingZombies > 0) {
-      status += ` | 🏃 Pursuing: ${chasingZombies}`;
+    if (chasingDemons > 0) {
+      status += ` | 🏃 Pursuing: ${chasingDemons}`;
     }
-    if (attackingZombies > 0) {
-      status += ` | ⚔️ Engaging: ${attackingZombies}`;
+    if (attackingDemons > 0) {
+      status += ` | ⚔️ Engaging: ${attackingDemons}`;
     }
 
     waveDiv.textContent = status;
@@ -4155,14 +4200,14 @@ function animate() {
 
   // Only run game systems when playing
   if (gameState === "playing" && !isGameOver) {
-    // Update zombie behavior
-    updateZombies();
+    // Update demon behavior
+    updateDemons();
 
     // Check if wave is complete
     checkWaveComplete();
 
-    // Check player-zombie collisions
-    checkPlayerZombieCollision();
+    // Check player-demon collisions
+    checkPlayerDemonCollision();
 
     // Update health pack system
     updateHealthPackSpawning();
@@ -4254,6 +4299,9 @@ function startGame() {
     startWaveSystem();
   }
 
+  // Request pointer lock to enable mouse controls
+  document.body.requestPointerLock();
+
   console.log("Starting game");
 }
 
@@ -4281,15 +4329,16 @@ function pauseGame() {
   if (gameState !== "playing") return;
 
   gameState = "paused";
-  hideAllMenus();
-  document.getElementById("pauseMenu").classList.add("active");
 
-  // Exit pointer lock
+  // Exit pointer lock to free the cursor
   if (document.exitPointerLock) {
     document.exitPointerLock();
   }
 
-  console.log("Game paused");
+  // Hide game UI temporarily
+  document.getElementById("gameUI").style.display = "none";
+
+  console.log("Game paused - press ESC again to resume");
 }
 
 function resumeGame() {
@@ -4298,15 +4347,30 @@ function resumeGame() {
   gameState = "playing";
   hideAllMenus();
   document.getElementById("gameUI").style.display = "block";
+  
+  // Request pointer lock to continue playing
+  document.body.requestPointerLock();
 
   console.log("Game resumed");
 }
 
+// Toggle interface visibility without affecting game state or pointer lock
+function toggleInterface() {
+  const gameUI = document.getElementById("gameUI");
+  if (gameUI.style.display === "none") {
+    gameUI.style.display = "block";
+    console.log("Interface shown");
+  } else {
+    gameUI.style.display = "none";
+    console.log("Interface hidden");
+  }
+}
+
 function quitToMainMenu() {
   // Stop all game timers and reset state
-  if (zombieSpawnTimer) {
-    clearTimeout(zombieSpawnTimer);
-    zombieSpawnTimer = null;
+  if (demonSpawnTimer) {
+    clearTimeout(demonSpawnTimer);
+    demonSpawnTimer = null;
   }
   if (nextWaveTimer) {
     clearTimeout(nextWaveTimer);
@@ -4334,9 +4398,9 @@ function gameOver() {
   console.log("Game Over!");
 
   // Stop all timers
-  if (zombieSpawnTimer) {
-    clearTimeout(zombieSpawnTimer);
-    zombieSpawnTimer = null;
+  if (demonSpawnTimer) {
+    clearTimeout(demonSpawnTimer);
+    demonSpawnTimer = null;
   }
   if (nextWaveTimer) {
     clearTimeout(nextWaveTimer);
@@ -4345,7 +4409,7 @@ function gameOver() {
 
   // Update final stats
   document.getElementById("finalWave").textContent = currentWave - 1;
-  document.getElementById("finalKills").textContent = zombieKills;
+  document.getElementById("finalKills").textContent = demonKills;
   document.getElementById("finalHealthPacks").textContent =
     healthPacksCollected;
   document.getElementById("finalHealth").textContent = playerHealth;
@@ -4375,22 +4439,22 @@ function resetGameState() {
   playerHealth = maxHealth;
   isGameOver = false;
   currentWave = 1;
-  zombieKills = 0;
-  zombiesThisWave = 0;
-  zombiesSpawnedThisWave = 0;
+  demonKills = 0;
+  demonsThisWave = 0;
+  demonsSpawnedThisWave = 0;
   waveInProgress = false;
   lastDamageTime = 0;
 
-  // Clear all zombies
-  zombies.forEach((zombie) => scene.remove(zombie));
-  zombies = [];
+  // Clear all demons
+  demons.forEach((demon) => scene.remove(demon));
+  demons = [];
 
-  // Reset zombie type counts
-  zombieTypeCounts = {
-    NORMAL: 0,
-    FAST: 0,
-    TANK: 0,
-    BOSS: 0,
+  // Reset demon type counts
+  demonTypeCounts = {
+    IMP: 0,
+    DEMON: 0,
+    CACODEMON: 0,
+    BARON: 0,
   };
 
   // Clear all bullets
@@ -4415,7 +4479,7 @@ function resetGameState() {
   }
 
   // Reset weapon system
-  currentWeapon = "rifle";
+  currentWeapon = "shotgun";
   isAutoFiring = false;
   mouseHeld = false;
   lastShotTime = 0;
@@ -4423,8 +4487,8 @@ function resetGameState() {
   gunRecoilVelocity = 0;
 
   // Reset weapon ammo
-  WEAPONS.rifle.currentAmmo = WEAPONS.rifle.maxAmmo;
-  WEAPONS.machinegun.currentAmmo = WEAPONS.machinegun.maxAmmo;
+  WEAPONS.shotgun.currentAmmo = WEAPONS.shotgun.maxAmmo;
+  WEAPONS.chaingun.currentAmmo = WEAPONS.chaingun.maxAmmo;
 
   // Reset crosshair targeting
   isAimingAtZombie = false;
@@ -4470,12 +4534,605 @@ function updateMasterVolume(value) {
   updateSoundVolumes();
 }
 
+// Remove the duplicate UI management functions since they'll be defined earlier
+
 // Make functions globally accessible
 window.startGame = startGame;
+window.startSinglePlayer = startSinglePlayer;
 window.showMainMenu = showMainMenu;
+window.showMultiplayerLobby = showMultiplayerLobby;
 window.showInstructions = showInstructions;
+window.createRoom = createRoom;
+window.refreshRooms = refreshRooms;
+window.joinRoom = joinRoom;
+window.leaveRoom = leaveRoom;
+window.sendChatMessage = sendChatMessage;
+window.sendGameChatMessage = sendGameChatMessage;
+window.startMultiplayerGame = startMultiplayerGame;
 window.pauseGame = pauseGame;
 window.resumeGame = resumeGame;
 window.quitToMainMenu = quitToMainMenu;
 window.restartGame = restartGame;
 window.updateMasterVolume = updateMasterVolume;
+
+// UI Management Functions
+function showMainMenu() {
+  hideAllMenus();
+  const mainMenu = document.getElementById('mainMenu');
+  if (mainMenu) {
+    mainMenu.classList.add('active');
+  }
+  gameState = "mainMenu";
+}
+
+function showMultiplayerLobby() {
+  hideAllMenus();
+  const multiplayerLobby = document.getElementById('multiplayerLobby');
+  if (multiplayerLobby) {
+    multiplayerLobby.classList.add('active');
+  }
+  gameState = "multiplayerLobby";
+  
+  if (!socket) {
+    initializeNetworking();
+  }
+  
+  // Auto-refresh rooms
+  setTimeout(() => {
+    if (isConnected) refreshRooms();
+  }, 500);
+}
+
+function showPartyRoom() {
+  hideAllMenus();
+  const partyRoom = document.getElementById('partyRoom');
+  if (partyRoom) {
+    partyRoom.classList.add('active');
+  }
+  gameState = "partyRoom";
+  
+  if (currentRoom) {
+    const roomTitle = document.getElementById('roomTitle');
+    if (roomTitle) {
+      roomTitle.textContent = `🔥 ${currentRoom.name} 🔥`;
+    }
+  }
+}
+
+function showInstructions() {
+  hideAllMenus();
+  const instructions = document.getElementById('instructions');
+  if (instructions) {
+    instructions.classList.add('active');
+  }
+  gameState = "instructions";
+}
+
+function startSinglePlayer() {
+  isMultiplayer = false;
+  startGame();
+}
+
+function hideAllMenus() {
+  const menus = ['mainMenu', 'multiplayerLobby', 'partyRoom', 'instructions', 'gameOver'];
+  menus.forEach(menuId => {
+    const element = document.getElementById(menuId);
+    if (element) {
+      element.classList.remove('active');
+    }
+  });
+}
+
+// Networking functions
+function initializeNetworking() {
+  if (socket) return;
+
+  // Check if io (Socket.IO) is available
+  if (typeof io === 'undefined') {
+    console.error('Socket.IO not loaded! Multiplayer features will not work.');
+    updateConnectionStatus('🔴 Socket.IO not available');
+    return;
+  }
+
+  try {
+    socket = io('http://localhost:3000');
+  } catch (error) {
+    console.error('Failed to initialize Socket.IO:', error);
+    updateConnectionStatus('🔴 Connection failed');
+    return;
+  }
+  
+  socket.on('connect', () => {
+    console.log('🔥 Connected to Hell Server');
+    isConnected = true;
+    updateConnectionStatus('🟢 Connected to Hell');
+  });
+
+  socket.on('disconnect', () => {
+    console.log('💀 Disconnected from Hell Server');
+    isConnected = false;
+    updateConnectionStatus('🔴 Disconnected from Hell');
+  });
+
+  // Room events
+  socket.on('room:created', (data) => {
+    console.log('🏰 Room created:', data);
+    currentRoom = data.room;
+    isRoomLeader = data.isLeader;
+    showPartyRoom();
+  });
+
+  socket.on('room:joined', (data) => {
+    console.log('👹 Joined room:', data);
+    currentRoom = data.room;
+    isRoomLeader = data.isLeader;
+    updatePartyMembers(data.players);
+    showPartyRoom();
+  });
+
+  socket.on('room:list', (rooms) => {
+    updateRoomsList(rooms);
+  });
+
+  socket.on('room:full', () => {
+    alert('🔥 Chamber is full! Try another one.');
+  });
+
+  socket.on('room:not_found', () => {
+    alert('👹 Chamber not found! It may have been destroyed.');
+  });
+
+  // Party events
+  socket.on('party:member_joined', (data) => {
+    console.log('👹 New demon joined:', data.player);
+    addPartyMember(data.player);
+    addChatMessage('system', `${data.player.name} entered the chamber`);
+  });
+
+  socket.on('party:member_left', (data) => {
+    console.log('👹 Demon left:', data);
+    removePartyMember(data.playerId);
+    addChatMessage('system', `${data.playerName} left the chamber`);
+  });
+
+  socket.on('party:leader_changed', (data) => {
+    console.log('👑 New leader:', data);
+    isRoomLeader = (data.newLeaderId === socket.id);
+    updatePartyLeader(data.newLeaderId);
+    addChatMessage('system', `${data.newLeaderName} is now the chamber leader`);
+  });
+
+  socket.on('party:ready_state', (data) => {
+    updatePlayerReadyState(data.playerId, data.ready);
+  });
+
+  socket.on('party:all_ready', (data) => {
+    if (isRoomLeader && data.canStart) {
+      const startButton = document.getElementById('startGameButton');
+      if (startButton) startButton.disabled = false;
+    }
+  });
+
+  // Chat events
+  socket.on('chat:lobby_message', (data) => {
+    addChatMessage('player', data.message, data.playerName);
+  });
+
+  socket.on('chat:game_message', (data) => {
+    addGameChatMessage('player', data.message, data.playerName);
+  });
+
+  // Game events
+  socket.on('game:start', (data) => {
+    console.log('🎮 Game starting:', data);
+    isMultiplayer = true;
+    initializeMultiplayerGame(data);
+  });
+
+  // Player synchronization
+  socket.on('player:position', (data) => {
+    updateRemotePlayerPosition(data);
+  });
+
+  socket.on('weapon:shoot', (data) => {
+    handleRemotePlayerShoot(data);
+  });
+
+  socket.on('combat:hit', (data) => {
+    handleRemotePlayerHit(data);
+  });
+}
+
+function updateConnectionStatus(status) {
+  const statusElement = document.getElementById('connectionStatus');
+  if (statusElement) {
+    statusElement.textContent = status;
+  }
+}
+
+// Add the rest of the missing multiplayer functions
+
+function createRoom() {
+  if (!isConnected) {
+    alert('🔥 Not connected to Hell Server!');
+    return;
+  }
+
+  const roomName = document.getElementById('roomName').value.trim();
+  const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+  const mapType = document.getElementById('mapType').value;
+  const playerName = document.getElementById('playerName').value.trim();
+
+  if (!roomName) {
+    alert('👹 Enter a chamber name!');
+    return;
+  }
+
+  if (!playerName) {
+    alert('👹 Enter your demon name!');
+    return;
+  }
+
+  // Join with player name first
+  socket.emit('user:joined', { name: playerName });
+
+  // Create room
+  socket.emit('room:create', {
+    name: roomName,
+    maxPlayers: maxPlayers,
+    mapType: mapType
+  });
+}
+
+function refreshRooms() {
+  if (!isConnected) {
+    alert('🔥 Not connected to Hell Server!');
+    return;
+  }
+  socket.emit('room:list');
+}
+
+function joinRoom(roomId) {
+  if (!isConnected) {
+    alert('🔥 Not connected to Hell Server!');
+    return;
+  }
+
+  const playerName = document.getElementById('playerName').value.trim();
+  if (!playerName) {
+    alert('👹 Enter your demon name!');
+    return;
+  }
+
+  // Join with player name first
+  socket.emit('user:joined', { name: playerName });
+
+  // Join room
+  socket.emit('room:join', { roomId: roomId });
+}
+
+function leaveRoom() {
+  if (socket && currentRoom) {
+    socket.emit('room:leave');
+    currentRoom = null;
+    isRoomLeader = false;
+    showMultiplayerLobby();
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  
+  if (message && socket && currentRoom) {
+    socket.emit('chat:lobby_message', { message: message });
+    input.value = '';
+  }
+}
+
+function sendGameChatMessage() {
+  const input = document.getElementById('gameChatInput');
+  const message = input.value.trim();
+  
+  if (message && socket && currentRoom) {
+    socket.emit('chat:game_message', { message: message });
+    input.value = '';
+    toggleGameChat();
+  }
+}
+
+function startMultiplayerGame() {
+  if (socket && currentRoom && isRoomLeader) {
+    socket.emit('game:start');
+  }
+}
+
+function updateRoomsList(rooms) {
+  const roomList = document.getElementById('roomList');
+  
+  if (!roomList) return;
+  
+  if (rooms.length === 0) {
+    roomList.innerHTML = '<div class="room-item empty">🏜️ No chambers found in Hell</div>';
+    return;
+  }
+
+  roomList.innerHTML = rooms.map(room => `
+    <div class="room-item" onclick="joinRoom('${room.id}')">
+      <div class="room-info">
+        <div class="room-name">🏰 ${room.name}</div>
+        <div class="room-details">
+          👹 ${room.players}/${room.maxPlayers} | 🗺️ ${room.mapType}
+        </div>
+      </div>
+      <div class="room-status">
+        ${room.players < room.maxPlayers ? '🟢 OPEN' : '🔴 FULL'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function updatePartyMembers(players) {
+  const container = document.getElementById('partyMembers');
+  
+  if (!container) return;
+  
+  container.innerHTML = players.map(player => `
+    <div class="party-member" id="player-${player.id}">
+      <div class="member-info">
+        <span class="member-name">${player.isLeader ? '👑' : '👹'} ${player.name}</span>
+        <span class="member-status ${player.ready ? 'ready' : 'not-ready'}">
+          ${player.ready ? '✅ READY' : '⏳ NOT READY'}
+        </span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addPartyMember(player) {
+  const container = document.getElementById('partyMembers');
+  if (!container) return;
+  
+  const memberDiv = document.createElement('div');
+  memberDiv.className = 'party-member';
+  memberDiv.id = `player-${player.id}`;
+  memberDiv.innerHTML = `
+    <div class="member-info">
+      <span class="member-name">${player.isLeader ? '👑' : '👹'} ${player.name}</span>
+      <span class="member-status ${player.ready ? 'ready' : 'not-ready'}">
+        ${player.ready ? '✅ READY' : '⏳ NOT READY'}
+      </span>
+    </div>
+  `;
+  container.appendChild(memberDiv);
+}
+
+function removePartyMember(playerId) {
+  const memberElement = document.getElementById(`player-${playerId}`);
+  if (memberElement) {
+    memberElement.remove();
+  }
+}
+
+function updatePartyLeader(leaderId) {
+  // Update UI to show new leader
+  const members = document.querySelectorAll('.party-member');
+  members.forEach(member => {
+    const nameSpan = member.querySelector('.member-name');
+    const playerId = member.id.replace('player-', '');
+    if (playerId === leaderId) {
+      nameSpan.textContent = nameSpan.textContent.replace('👹', '👑');
+    } else {
+      nameSpan.textContent = nameSpan.textContent.replace('👑', '👹');
+    }
+  });
+
+  // Update start button visibility
+  const startButton = document.getElementById('startGameButton');
+  if (startButton) {
+    if (isRoomLeader) {
+      startButton.style.display = 'block';
+    } else {
+      startButton.style.display = 'none';
+    }
+  }
+}
+
+function updatePlayerReadyState(playerId, ready) {
+  const memberElement = document.getElementById(`player-${playerId}`);
+  if (memberElement) {
+    const statusSpan = memberElement.querySelector('.member-status');
+    statusSpan.className = `member-status ${ready ? 'ready' : 'not-ready'}`;
+    statusSpan.textContent = ready ? '✅ READY' : '⏳ NOT READY';
+  }
+}
+
+function addChatMessage(type, message, playerName = null) {
+  const container = document.getElementById('chatMessages');
+  if (!container) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${type}`;
+  
+  const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  
+  if (type === 'system') {
+    messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="system-msg">🔥 ${message}</span>`;
+  } else {
+    messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="player-name">${playerName}:</span> ${message}`;
+  }
+  
+  container.appendChild(messageDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addGameChatMessage(type, message, playerName = null) {
+  const container = document.getElementById('gameChatMessages');
+  if (!container) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `game-chat-message ${type}`;
+  
+  const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  
+  if (type === 'system') {
+    messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="system-msg">🔥 ${message}</span>`;
+  } else {
+    messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="player-name">${playerName}:</span> ${message}`;
+  }
+  
+  container.appendChild(messageDiv);
+  container.scrollTop = container.scrollHeight;
+  
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    if (messageDiv.parentNode) {
+      messageDiv.style.opacity = '0.3';
+    }
+  }, 5000);
+}
+
+function toggleGameChat() {
+  const chatInput = document.querySelector('.game-chat-input');
+  const input = document.getElementById('gameChatInput');
+  
+  if (!chatInput || !input) return;
+  
+  if (chatInput.style.display === 'none' || !chatInput.style.display) {
+    chatInput.style.display = 'flex';
+    input.focus();
+  } else {
+    chatInput.style.display = 'none';
+    input.blur();
+  }
+}
+
+// Enhanced multiplayer game initialization
+function initializeMultiplayerGame(gameData) {
+  console.log('🎮 Initializing multiplayer game:', gameData);
+  
+  // Hide menu and show game
+  hideAllMenus();
+  document.getElementById('gameUI').style.display = 'block';
+  
+  // Initialize the game if not already done
+  if (!gameInitialized) {
+    init();
+    gameInitialized = true;
+  }
+  
+  // Set game state
+  gameState = "playing";
+  
+  // Update room info
+  if (currentRoom) {
+    const roomInfoElement = document.getElementById('roomInfo');
+    if (roomInfoElement) {
+      roomInfoElement.textContent = `🏰 Chamber: ${currentRoom.name}`;
+    }
+  }
+  
+  // Initialize remote players
+  gameData.players.forEach(player => {
+    if (player.id !== socket.id) {
+      createRemotePlayer(player);
+    }
+  });
+  
+  // Start position sync
+  startPositionSync();
+  
+  // Enable pointer lock
+  document.body.requestPointerLock();
+}
+
+function createRemotePlayer(playerData) {
+  // Create a simple representation for remote players
+  const geometry = new THREE.CapsuleGeometry(0.5, 2, 4, 8);
+  const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+  const playerMesh = new THREE.Mesh(geometry, material);
+  
+  // Add name tag
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  canvas.width = 256;
+  canvas.height = 64;
+  context.fillStyle = '#ffffff';
+  context.font = '24px Arial';
+  context.textAlign = 'center';
+  context.fillText(playerData.name, 128, 40);
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+  const nameSprite = new THREE.Sprite(spriteMaterial);
+  nameSprite.position.set(0, 1.5, 0);
+  nameSprite.scale.set(2, 0.5, 1);
+  
+  playerMesh.add(nameSprite);
+  playerMesh.position.set(
+    playerData.position.x,
+    playerData.position.y,
+    playerData.position.z
+  );
+  
+  scene.add(playerMesh);
+  remotePlayers.set(playerData.id, {
+    mesh: playerMesh,
+    data: playerData
+  });
+}
+
+function updateRemotePlayerPosition(data) {
+  const player = remotePlayers.get(data.playerId);
+  if (player) {
+    // Smooth interpolation
+    player.mesh.position.lerp(
+      new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+      0.1
+    );
+    player.mesh.rotation.set(data.rotation.x, data.rotation.y, data.rotation.z);
+  }
+}
+
+function handleRemotePlayerShoot(data) {
+  // Create visual effect for remote player shooting
+  console.log('Remote player shot:', data);
+  // Add muzzle flash, bullet trail, etc.
+}
+
+function handleRemotePlayerHit(data) {
+  // Handle when remote player hits something
+  console.log('Remote player hit:', data);
+}
+
+function startPositionSync() {
+  if (!socket || !isMultiplayer) return;
+  
+  setInterval(() => {
+    if (controls && gameState === "playing") {
+      const position = controls.getObject().position;
+      const rotation = controls.getObject().rotation;
+      
+      socket.emit('player:position', {
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+      });
+    }
+  }, 50); // 20 FPS position updates
+}
+
+// Event listeners for chat
+document.addEventListener('keydown', (event) => {
+  if (gameState === "partyRoom" && event.key === 'Enter') {
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput && document.activeElement !== chatInput) {
+      chatInput.focus();
+    } else if (chatInput) {
+      sendChatMessage();
+    }
+  }
+  
+  if (gameState === "playing" && event.key === 'Enter') {
+    toggleGameChat();
+  }
+});

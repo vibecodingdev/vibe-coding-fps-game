@@ -1,21 +1,21 @@
-# 多人 FPS 框架设计方案
+# Multiplayer FPS Framework Design Specification
 
-## 1. 项目概述
+## 1. Project Overview
 
-### 1.1 目标
+### 1.1 Objectives
 
-将现有的单人 FPS 僵尸生存游戏改造为支持多人实时对战的 FPS 游戏，保持原有的游戏机制并增加多人协作功能。
+Transform the existing single-player FPS zombie survival game into a real-time multiplayer FPS game that supports cooperative gameplay, while maintaining the original game mechanics and adding multiplayer collaboration features.
 
-### 1.2 技术栈
+### 1.2 Technology Stack
 
-- **前端**: Three.js + Socket.IO Client
-- **后端**: Node.js + Express + Socket.IO Server + TypeScript
-- **通信协议**: WebSocket (Socket.IO)
-- **数据同步**: 客户端预测 + 服务器权威 + 插值补偿
+- **Frontend**: Three.js + Socket.IO Client
+- **Backend**: Node.js + Express + Socket.IO Server + TypeScript
+- **Communication Protocol**: WebSocket (Socket.IO)
+- **Data Synchronization**: Client-side Prediction + Server Authority + Interpolation Compensation
 
-## 2. 架构设计
+## 2. Architecture Design
 
-### 2.1 总体架构图
+### 2.1 Overall Architecture Diagram
 
 ```
 ┌─────────────────┐    WebSocket     ┌─────────────────┐
@@ -34,62 +34,62 @@
 └─────────────────┘
 ```
 
-### 2.2 系统组件划分
+### 2.2 System Component Division
 
-#### 2.2.1 客户端组件
+#### 2.2.1 Client-side Components
 
-- **网络管理器 (NetworkManager)**: Socket.IO 连接管理
-- **玩家管理器 (PlayerManager)**: 本地和远程玩家状态管理
-- **输入管理器 (InputManager)**: 输入捕获和预测
-- **渲染管理器 (RenderManager)**: 场景渲染和插值
-- **音效管理器 (AudioManager)**: 3D 音效处理
-- **UI 管理器 (UIManager)**: 界面更新和状态显示
+- **Network Manager**: Socket.IO connection management
+- **Player Manager**: Local and remote player state management
+- **Input Manager**: Input capture and prediction
+- **Render Manager**: Scene rendering and interpolation
+- **Audio Manager**: 3D audio processing
+- **UI Manager**: Interface updates and status display
 
-#### 2.2.2 服务器端组件
+#### 2.2.2 Server-side Components
 
-- **房间管理器 (RoomManager)**: 游戏房间管理
-- **玩家管理器 (PlayerManager)**: 玩家状态验证
-- **游戏逻辑管理器 (GameLogicManager)**: 核心游戏逻辑
-- **碰撞检测器 (CollisionDetector)**: 服务器端碰撞验证
-- **事件广播器 (EventBroadcaster)**: 事件分发和同步
+- **Room Manager**: Game room management
+- **Player Manager**: Player state validation
+- **Game Logic Manager**: Core game logic
+- **Collision Detector**: Server-side collision validation
+- **Event Broadcaster**: Event distribution and synchronization
 
-## 3. 网络架构设计
+## 3. Network Architecture Design
 
-### 3.1 通信模式
+### 3.1 Communication Model
 
-采用 **客户端预测 + 服务器权威 + 延迟补偿** 的混合模式：
+Adopts a **Client-side Prediction + Server Authority + Lag Compensation** hybrid model:
 
-#### 3.1.1 客户端预测 (Client-side Prediction)
+#### 3.1.1 Client-side Prediction
 
-- 玩家移动立即在本地执行
-- 射击效果立即显示
-- 减少输入延迟，提升响应性
+- Player movement executes immediately on local client
+- Shooting effects display immediately
+- Reduces input lag and improves responsiveness
 
-#### 3.1.2 服务器权威 (Server Authority)
+#### 3.1.2 Server Authority
 
-- 服务器验证所有游戏状态变更
-- 碰撞检测在服务器端执行
-- 防止作弊和确保游戏公平性
+- Server validates all game state changes
+- Collision detection executes on server-side
+- Prevents cheating and ensures game fairness
 
-#### 3.1.3 延迟补偿 (Lag Compensation)
+#### 3.1.3 Lag Compensation
 
-- 服务器回溯玩家位置历史
-- 基于客户端时间戳验证命中
-- 插值平滑远程玩家移动
+- Server rewinds player position history
+- Validates hits based on client timestamps
+- Interpolates smooth remote player movement
 
-### 3.2 网络协议设计
+### 3.2 Network Protocol Design
 
-#### 3.2.1 连接和房间管理
+#### 3.2.1 Connection and Room Management
 
 ```typescript
-// 连接事件
+// Connection events
 GAME_EVENTS.CONNECTION = {
   CONNECT: "connection:connect",
   DISCONNECT: "connection:disconnect",
   RECONNECT: "connection:reconnect",
 };
 
-// 房间管理
+// Room management
 GAME_EVENTS.ROOM = {
   CREATE: "room:create",
   JOIN: "room:join",
@@ -100,39 +100,39 @@ GAME_EVENTS.ROOM = {
 };
 ```
 
-#### 3.2.2 玩家状态同步
+#### 3.2.2 Player State Synchronization
 
 ```typescript
-// 玩家状态
+// Player state
 GAME_EVENTS.PLAYER = {
   SPAWN: "player:spawn",
-  POSITION: "player:position", // 位置更新 (高频)
-  ROTATION: "player:rotation", // 视角更新 (高频)
-  STATUS: "player:status", // 状态更新 (中频)
-  HEALTH: "player:health", // 血量更新 (事件驱动)
-  DEATH: "player:death", // 死亡事件
-  RESPAWN: "player:respawn", // 重生事件
+  POSITION: "player:position", // Position updates (high frequency)
+  ROTATION: "player:rotation", // View angle updates (high frequency)
+  STATUS: "player:status", // Status updates (medium frequency)
+  HEALTH: "player:health", // Health updates (event-driven)
+  DEATH: "player:death", // Death events
+  RESPAWN: "player:respawn", // Respawn events
 };
 ```
 
-#### 3.2.3 战斗系统
+#### 3.2.3 Combat System
 
 ```typescript
-// 武器和战斗
+// Weapons and combat
 GAME_EVENTS.COMBAT = {
-  SHOOT: "combat:shoot", // 射击事件
-  HIT: "combat:hit", // 命中确认
-  DAMAGE: "combat:damage", // 伤害确认
-  KILL: "combat:kill", // 击杀确认
-  WEAPON_SWITCH: "combat:weapon:switch", // 武器切换
-  RELOAD: "combat:reload", // 重新装弹
+  SHOOT: "combat:shoot", // Shooting events
+  HIT: "combat:hit", // Hit confirmation
+  DAMAGE: "combat:damage", // Damage confirmation
+  KILL: "combat:kill", // Kill confirmation
+  WEAPON_SWITCH: "combat:weapon:switch", // Weapon switching
+  RELOAD: "combat:reload", // Reloading
 };
 ```
 
-#### 3.2.4 游戏世界状态
+#### 3.2.4 Game World State
 
 ```typescript
-// 游戏世界
+// Game world
 GAME_EVENTS.WORLD = {
   ZOMBIE_SPAWN: "world:zombie:spawn",
   ZOMBIE_DEATH: "world:zombie:death",
@@ -144,9 +144,9 @@ GAME_EVENTS.WORLD = {
 };
 ```
 
-### 3.3 数据包结构设计
+### 3.3 Data Packet Structure Design
 
-#### 3.3.1 玩家位置更新 (高频 - 20Hz)
+#### 3.3.1 Player Position Updates (High Frequency - 20Hz)
 
 ```typescript
 interface PlayerPositionUpdate {
@@ -155,11 +155,11 @@ interface PlayerPositionUpdate {
   position: { x: number; y: number; z: number };
   rotation: { x: number; y: number; z: number };
   velocity: { x: number; y: number; z: number };
-  sequence: number; // 用于客户端预测
+  sequence: number; // Used for client-side prediction
 }
 ```
 
-#### 3.3.2 射击事件 (事件驱动)
+#### 3.3.2 Shooting Events (Event-driven)
 
 ```typescript
 interface ShootEvent {
@@ -172,7 +172,7 @@ interface ShootEvent {
 }
 ```
 
-#### 3.3.3 游戏状态快照 (低频 - 2Hz)
+#### 3.3.3 Game State Snapshots (Low Frequency - 2Hz)
 
 ```typescript
 interface GameStateSnapshot {
@@ -184,18 +184,18 @@ interface GameStateSnapshot {
 }
 ```
 
-## 4. 游戏系统改造方案
+## 4. Game System Transformation Plan
 
-### 4.1 玩家系统改造
+### 4.1 Player System Transformation
 
-#### 4.1.1 多玩家支持
+#### 4.1.1 Multiplayer Support
 
 ```typescript
-// 原有单玩家状态
+// Original single-player state
 let playerHealth = 100;
 let playerPosition = new THREE.Vector3();
 
-// 改造为多玩家状态
+// Transformed to multiplayer state
 interface Player {
   id: string;
   name: string;
@@ -216,24 +216,24 @@ let localPlayer: Player;
 let remotePlayers: Map<string, Player> = new Map();
 ```
 
-#### 4.1.2 玩家渲染系统
+#### 4.1.2 Player Rendering System
 
-- **本地玩家**: 第一人称视角，只渲染武器模型
-- **远程玩家**: 第三人称模型，包含完整角色和武器
-- **玩家标识**: 名字显示、血条、队伍标识
+- **Local Player**: First-person perspective, only renders weapon model
+- **Remote Players**: Third-person model, includes complete character and weapons
+- **Player Identification**: Name display, health bars, team identification
 
-### 4.2 武器系统改造
+### 4.2 Weapon System Transformation
 
-#### 4.2.1 射击权威性
+#### 4.2.1 Shooting Authority
 
 ```typescript
-// 客户端预测射击
+// Client-side prediction shooting
 function clientShoot() {
-  // 1. 立即显示射击效果
+  // 1. Immediately display shooting effects
   createMuzzleFlash();
   playGunfireSound();
 
-  // 2. 发送射击事件到服务器
+  // 2. Send shooting event to server
   socket.emit(GAME_EVENTS.COMBAT.SHOOT, {
     timestamp: Date.now(),
     origin: gun.position.clone(),
@@ -241,21 +241,21 @@ function clientShoot() {
     weapon: currentWeapon,
   });
 
-  // 3. 客户端预测命中
+  // 3. Client-side prediction hit
   predictHit();
 }
 
-// 服务器验证射击
+// Server validates shooting
 function serverValidateShoot(shootData, playerId) {
-  // 1. 验证射击合法性
+  // 1. Validate shooting legality
   if (!canPlayerShoot(playerId, shootData.timestamp)) {
     return;
   }
 
-  // 2. 延迟补偿命中检测
+  // 2. Lag compensated hit detection
   const hit = lagCompensatedHitDetection(shootData, playerId);
 
-  // 3. 广播射击事件
+  // 3. Broadcast shooting event
   io.to(roomId).emit(GAME_EVENTS.COMBAT.SHOOT, {
     playerId,
     ...shootData,
@@ -264,16 +264,16 @@ function serverValidateShoot(shootData, playerId) {
 }
 ```
 
-### 4.3 僵尸系统改造
+### 4.3 Zombie System Transformation
 
-#### 4.3.1 服务器端僵尸管理
+#### 4.3.1 Server-side Zombie Management
 
-- **生成逻辑**: 服务器统一管理僵尸生成
-- **AI 行为**: 服务器计算僵尸行为和路径
-- **客户端渲染**: 基于服务器状态插值渲染
+- **Spawn Logic**: Server uniformly manages zombie spawning
+- **AI Behavior**: Server calculates zombie behavior and pathfinding
+- **Client Rendering**: Interpolated rendering based on server state
 
 ```typescript
-// 服务器端僵尸管理
+// Server-side zombie management
 class ServerZombieManager {
   private zombies: Map<string, Zombie> = new Map();
 
@@ -281,7 +281,7 @@ class ServerZombieManager {
     const zombie = this.createZombie();
     this.zombies.set(zombie.id, zombie);
 
-    // 广播僵尸生成
+    // Broadcast zombie spawn
     io.to(roomId).emit(GAME_EVENTS.WORLD.ZOMBIE_SPAWN, {
       id: zombie.id,
       type: zombie.type,
@@ -295,7 +295,7 @@ class ServerZombieManager {
       this.updateZombieAI(zombie, deltaTime);
     }
 
-    // 定期广播僵尸状态
+    // Periodically broadcast zombie state
     const zombieStates = Array.from(this.zombies.values()).map((z) => ({
       id: z.id,
       position: z.position,
@@ -309,13 +309,13 @@ class ServerZombieManager {
 }
 ```
 
-### 4.4 波次系统改造
+### 4.4 Wave System Transformation
 
-#### 4.4.1 协作波次机制
+#### 4.4.1 Cooperative Wave Mechanism
 
-- **统一波次**: 所有玩家共享波次进度
-- **难度调节**: 根据玩家数量调整僵尸数量和强度
-- **协作奖励**: 团队击杀奖励机制
+- **Unified Waves**: All players share wave progress
+- **Difficulty Adjustment**: Adjust zombie count and strength based on player count
+- **Cooperative Rewards**: Team kill reward mechanism
 
 ```typescript
 interface WaveInfo {
@@ -329,89 +329,89 @@ interface WaveInfo {
 }
 ```
 
-## 5. 性能优化策略
+## 5. Performance Optimization Strategies
 
-### 5.1 网络优化
+### 5.1 Network Optimization
 
-#### 5.1.1 更新频率分层
+#### 5.1.1 Update Frequency Layering
 
-- **关键数据** (位置、旋转): 20Hz
-- **状态数据** (血量、武器): 10Hz
-- **世界数据** (僵尸、道具): 5Hz
-- **UI 数据** (分数、波次): 2Hz
+- **Critical Data** (position, rotation): 20Hz
+- **State Data** (health, weapons): 10Hz
+- **World Data** (zombies, pickups): 5Hz
+- **UI Data** (scores, waves): 2Hz
 
-#### 5.1.2 数据压缩
+#### 5.1.2 Data Compression
 
-- 位置数据量化到合理精度
-- 使用增量更新减少数据量
-- 压缩重复和可预测的数据
+- Quantize position data to reasonable precision
+- Use delta updates to reduce data volume
+- Compress repetitive and predictable data
 
-#### 5.1.3 网络预测和补偿
+#### 5.1.3 Network Prediction and Compensation
 
 ```typescript
-// 客户端预测移动
+// Client-side prediction movement
 class ClientPlayerController {
   private inputBuffer: InputState[] = [];
   private stateBuffer: PlayerState[] = [];
 
   update(deltaTime: number) {
-    // 1. 记录输入
+    // 1. Record input
     const input = this.captureInput();
     input.sequence = this.nextSequence++;
     this.inputBuffer.push(input);
 
-    // 2. 预测移动
+    // 2. Predict movement
     this.predictMovement(input, deltaTime);
 
-    // 3. 发送输入到服务器
+    // 3. Send input to server
     this.sendInput(input);
 
-    // 4. 清理旧数据
+    // 4. Clean up old data
     this.cleanupBuffers();
   }
 
   onServerStateUpdate(serverState: PlayerState) {
-    // 1. 找到对应的本地状态
+    // 1. Find corresponding local state
     const localState = this.findLocalState(serverState.sequence);
 
-    // 2. 检查差异
+    // 2. Check differences
     if (this.hasSignificantDifference(localState, serverState)) {
-      // 3. 回滚并重放
+      // 3. Rollback and replay
       this.rollbackAndReplay(serverState);
     }
   }
 }
 ```
 
-### 5.2 渲染优化
+### 5.2 Rendering Optimization
 
-#### 5.2.1 LOD 系统
+#### 5.2.1 LOD System
 
-- 远距离玩家使用简化模型
-- 动态调整渲染质量
-- 视锥剔除优化
+- Use simplified models for distant players
+- Dynamically adjust rendering quality
+- Frustum culling optimization
 
-#### 5.2.2 插值平滑
+#### 5.2.2 Interpolation Smoothing
 
 ```typescript
-// 远程玩家位置插值
+// Remote player position interpolation
 class RemotePlayerController {
   private positionBuffer: PositionState[] = [];
 
   updatePosition(newPosition: PositionState) {
     this.positionBuffer.push(newPosition);
 
-    // 保持100ms的缓冲区
+    // Maintain 100ms buffer
     const renderTime = Date.now() - 100;
     this.interpolateToTime(renderTime);
   }
 
   interpolateToTime(targetTime: number) {
-    // 找到时间点前后的状态
+    // Find states before and after the time point
     const [before, after] = this.findSurroundingStates(targetTime);
 
     if (before && after) {
-      // 线性插值
+      // Linear interpolation
       const alpha =
         (targetTime - before.timestamp) / (after.timestamp - before.timestamp);
 
@@ -421,143 +421,143 @@ class RemotePlayerController {
 }
 ```
 
-## 6. 实现阶段规划
+## 6. Implementation Phase Planning
 
-### 6.1 第一阶段：基础多人框架 (1-2 周)
+### 6.1 Phase 1: Basic Multiplayer Framework (1-2 weeks)
 
-1. **服务器端基础设施**
+1. **Server-side Infrastructure**
 
-   - 房间管理系统
-   - 玩家连接管理
-   - 基础事件系统
+   - Room management system
+   - Player connection management
+   - Basic event system
 
-2. **客户端网络层**
+2. **Client-side Network Layer**
 
-   - Socket.IO 连接管理
-   - 基础事件处理
-   - 简单状态同步
+   - Socket.IO connection management
+   - Basic event handling
+   - Simple state synchronization
 
-3. **多玩家显示**
-   - 远程玩家模型渲染
-   - 基础位置同步
-   - 玩家列表 UI
+3. **Multiplayer Display**
+   - Remote player model rendering
+   - Basic position synchronization
+   - Player list UI
 
-### 6.2 第二阶段：战斗系统同步 (2-3 周)
+### 6.2 Phase 2: Combat System Synchronization (2-3 weeks)
 
-1. **射击同步**
+1. **Shooting Synchronization**
 
-   - 客户端预测射击
-   - 服务器验证命中
-   - 伤害确认系统
+   - Client-side prediction shooting
+   - Server hit validation
+   - Damage confirmation system
 
-2. **武器系统**
+2. **Weapon System**
 
-   - 多武器支持
-   - 弹药同步
-   - 重装系统
+   - Multi-weapon support
+   - Ammo synchronization
+   - Reload system
 
-3. **音效和特效**
-   - 3D 位置音效
-   - 多玩家特效同步
-   - 命中反馈
+3. **Audio and Effects**
+   - 3D positional audio
+   - Multiplayer effect synchronization
+   - Hit feedback
 
-### 6.3 第三阶段：游戏逻辑同步 (2-3 周)
+### 6.3 Phase 3: Game Logic Synchronization (2-3 weeks)
 
-1. **僵尸系统同步**
+1. **Zombie System Synchronization**
 
-   - 服务器端僵尸 AI
-   - 客户端插值渲染
-   - 碰撞检测同步
+   - Server-side zombie AI
+   - Client interpolation rendering
+   - Collision detection synchronization
 
-2. **波次系统**
+2. **Wave System**
 
-   - 多人协作波次
-   - 难度平衡调整
-   - 进度同步
+   - Multiplayer cooperative waves
+   - Difficulty balance adjustment
+   - Progress synchronization
 
-3. **道具系统**
-   - 道具生成同步
-   - 拾取冲突解决
-   - 效果同步
+3. **Pickup System**
+   - Pickup spawn synchronization
+   - Collection conflict resolution
+   - Effect synchronization
 
-### 6.4 第四阶段：优化和完善 (2-3 周)
+### 6.4 Phase 4: Optimization and Refinement (2-3 weeks)
 
-1. **性能优化**
+1. **Performance Optimization**
 
-   - 网络流量优化
-   - 渲染性能优化
-   - 内存管理
+   - Network traffic optimization
+   - Rendering performance optimization
+   - Memory management
 
-2. **用户体验**
+2. **User Experience**
 
-   - 连接状态提示
-   - 延迟显示
-   - 重连机制
+   - Connection status indicators
+   - Latency display
+   - Reconnection mechanism
 
-3. **平衡性调整**
-   - 多人游戏平衡
-   - 团队合作机制
-   - 竞技元素
+3. **Balance Adjustments**
+   - Multiplayer game balance
+   - Team cooperation mechanics
+   - Competitive elements
 
-### 6.5 第五阶段：高级功能 (2-4 周)
+### 6.5 Phase 5: Advanced Features (2-4 weeks)
 
-1. **观战系统**
+1. **Spectator System**
 
-   - 观察者模式
-   - 回放功能
-   - 统计数据
+   - Observer mode
+   - Replay functionality
+   - Statistical data
 
-2. **社交功能**
+2. **Social Features**
 
-   - 聊天系统
-   - 好友系统
-   - 排行榜
+   - Chat system
+   - Friend system
+   - Leaderboards
 
-3. **自定义功能**
-   - 地图编辑器
-   - 模组支持
-   - 服务器浏览器
+3. **Customization Features**
+   - Map editor
+   - Mod support
+   - Server browser
 
-## 7. 技术风险评估
+## 7. Technical Risk Assessment
 
-### 7.1 高风险项
+### 7.1 High Risk Items
 
-- **网络延迟处理**: 需要精细的预测和补偿算法
-- **作弊防护**: 客户端预测容易被利用
-- **状态同步**: 复杂的游戏状态需要精确同步
+- **Network Latency Handling**: Requires precise prediction and compensation algorithms
+- **Anti-cheat Protection**: Client-side prediction can be exploited
+- **State Synchronization**: Complex game states require precise synchronization
 
-### 7.2 中风险项
+### 7.2 Medium Risk Items
 
-- **性能优化**: 多人游戏对性能要求更高
-- **用户体验**: 网络问题影响游戏体验
-- **平衡性**: 多人协作需要重新平衡
+- **Performance Optimization**: Multiplayer games have higher performance requirements
+- **User Experience**: Network issues affect game experience
+- **Balance**: Multiplayer cooperation requires rebalancing
 
-### 7.3 应对策略
+### 7.3 Mitigation Strategies
 
-- 渐进式开发，及早测试网络功能
-- 建立完善的日志和监控系统
-- 预留充足的优化和调试时间
+- Progressive development with early network functionality testing
+- Establish comprehensive logging and monitoring systems
+- Reserve adequate time for optimization and debugging
 
-## 8. 部署和运维考虑
+## 8. Deployment and Operations Considerations
 
-### 8.1 服务器架构
+### 8.1 Server Architecture
 
-- 支持水平扩展的房间系统
-- 负载均衡和故障转移
-- 数据持久化和备份
+- Horizontally scalable room system
+- Load balancing and failover
+- Data persistence and backup
 
-### 8.2 监控和运维
+### 8.2 Monitoring and Operations
 
-- 实时性能监控
-- 错误日志收集
-- 玩家行为分析
+- Real-time performance monitoring
+- Error log collection
+- Player behavior analysis
 
-### 8.3 版本管理
+### 8.3 Version Management
 
-- 客户端版本检查
-- 热更新机制
-- 回滚策略
+- Client version checking
+- Hot update mechanism
+- Rollback strategy
 
 ---
 
-这个设计方案为将现有单人 FPS 游戏改造为多人游戏提供了完整的技术路线图。在实施过程中，建议先实现核心的多人连接和基础同步功能，然后逐步添加复杂的游戏机制。
+This design specification provides a complete technical roadmap for transforming the existing single-player FPS game into a multiplayer game. During implementation, it's recommended to first implement core multiplayer connection and basic synchronization features, then gradually add complex game mechanics.
