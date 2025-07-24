@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Exo+2:wght@300;400;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20250724-6" />
+    <link rel="stylesheet" href="styles.css?v=20250724-7" />
   </head>
   <body>
     <!-- Main Menu -->
@@ -76,45 +76,48 @@
     <div id="multiplayerLobby" class="menu-screen">
       <h1>🔥 HELLISH COMBAT LOBBY 🔥</h1>
       
-      <!-- Player Info -->
-      <div class="player-info">
-        <input 
-          type="text" 
-          id="playerName" 
-          placeholder="Enter your demon name..." 
-          maxlength="20" 
-          minlength="2"
-          pattern="[A-Za-z0-9_-]+"
-          title="Use only letters, numbers, underscores, and hyphens"
-          required
-          autocomplete="username"
-        />
-        <div id="usernameHelper" class="username-helper">👹 Choose your demonic identity (2-20 characters)</div>
-        <div id="connectionStatus">🔴 Disconnected from Hell</div>
-      </div>
-
-      <!-- Server Configuration -->
-      <div class="server-config">
-        <h3>🌐 SERVER CONNECTION</h3>
-        <div class="server-options">
-          <div class="server-option">
-            <input type="radio" id="localServer" name="serverType" value="local" checked />
-            <label for="localServer">🏠 Local Server (localhost:3000)</label>
-          </div>
-          <div class="server-option">
-            <input type="radio" id="lanServer" name="serverType" value="lan" />
-            <label for="lanServer">🌐 LAN Server</label>
-            <input type="text" id="lanServerIP" placeholder="192.168.1.100:3000" disabled />
-          </div>
-          <div class="server-option">
-            <input type="radio" id="customServer" name="serverType" value="custom" />
-            <label for="customServer">⚙️ Custom Server</label>
-            <input type="text" id="customServerIP" placeholder="server-ip:port" disabled />
-          </div>
+      <!-- Top Configuration Section -->
+      <div class="top-config-section">
+        <!-- Player Info -->
+        <div class="player-info">
+          <input 
+            type="text" 
+            id="playerName" 
+            placeholder="Enter your demon name..." 
+            maxlength="20" 
+            minlength="2"
+            pattern="[A-Za-z0-9_-]+"
+            title="Use only letters, numbers, underscores, and hyphens"
+            required
+            autocomplete="username"
+          />
+          <div id="usernameHelper" class="username-helper">👹 Choose your demonic identity (2-20 characters)</div>
+          <div id="connectionStatus">🔴 Disconnected from Hell</div>
         </div>
-        <button class="menu-button" onclick="connectToServer()">
-          🔗 CONNECT TO HELL
-        </button>
+
+        <!-- Server Configuration -->
+        <div class="server-config">
+          <h3>🌐 SERVER CONNECTION</h3>
+          <div class="server-options">
+            <div class="server-option">
+              <input type="radio" id="localServer" name="serverType" value="local" checked />
+              <label for="localServer">🏠 Local Server (localhost:3000)</label>
+            </div>
+            <div class="server-option">
+              <input type="radio" id="lanServer" name="serverType" value="lan" />
+              <label for="lanServer">🌐 LAN Server</label>
+              <input type="text" id="lanServerIP" placeholder="192.168.1.100:3000" disabled />
+            </div>
+            <div class="server-option">
+              <input type="radio" id="customServer" name="serverType" value="custom" />
+              <label for="customServer">⚙️ Custom Server</label>
+              <input type="text" id="customServerIP" placeholder="server-ip:port" disabled />
+            </div>
+          </div>
+          <button class="menu-button" onclick="connectToServer()">
+            🔗 CONNECT TO HELL
+          </button>
+        </div>
       </div>
 
       <!-- Room Management -->

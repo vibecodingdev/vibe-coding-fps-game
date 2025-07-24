@@ -5675,6 +5675,19 @@ function initializeNetworking() {
     currentRoom = data.room;
     isRoomLeader = data.isLeader;
     isPlayerReady = false; // Reset ready state when creating room
+
+    // Update party members with the current player (room creator)
+    const playerName = document.getElementById("playerName").value.trim();
+    if (playerName) {
+      const currentPlayer = {
+        id: socket.id,
+        name: playerName,
+        ready: false,
+        isLeader: true,
+      };
+      updatePartyMembers([currentPlayer]);
+    }
+
     showPartyRoom();
 
     // Reset ready button
