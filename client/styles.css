@@ -4,8 +4,7 @@ body {
   overflow: hidden;
   background: #000;
   font-family: "Orbitron", "Rajdhani", "Space Mono", monospace;
-  background-image: 
-    linear-gradient(rgba(139, 0, 0, 0.05) 1px, transparent 1px),
+  background-image: linear-gradient(rgba(139, 0, 0, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(139, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 30px 30px;
   animation: hellGrid 15s linear infinite;
@@ -87,7 +86,7 @@ canvas {
 }
 
 .menu-button {
-  background: linear-gradient(135deg, #8B0000, #B22222);
+  background: linear-gradient(135deg, #8b0000, #b22222);
   border: 2px solid #ff6600;
   color: #ffffff;
   padding: 1rem 2rem;
@@ -105,29 +104,29 @@ canvas {
 }
 
 .menu-button:hover {
-  background: linear-gradient(135deg, #B22222, #DC143C);
+  background: linear-gradient(135deg, #b22222, #dc143c);
   border-color: #ff4400;
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
   transform: translateY(-2px);
 }
 
 .menu-button.success {
-  background: linear-gradient(135deg, #8B4513, #A0522D);
+  background: linear-gradient(135deg, #8b4513, #a0522d);
   border-color: #ff6600;
 }
 
 .menu-button.success:hover {
-  background: linear-gradient(135deg, #A0522D, #CD853F);
+  background: linear-gradient(135deg, #a0522d, #cd853f);
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.7);
 }
 
 .menu-button.danger {
-  background: linear-gradient(135deg, #8B0000, #DC143C);
+  background: linear-gradient(135deg, #8b0000, #dc143c);
   border-color: #ff0000;
 }
 
 .menu-button.danger:hover {
-  background: linear-gradient(135deg, #DC143C, #FF0000);
+  background: linear-gradient(135deg, #dc143c, #ff0000);
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.7);
 }
 
@@ -214,7 +213,7 @@ canvas {
 }
 
 .room-creation select option {
-  background: #8B0000;
+  background: #8b0000;
   color: #ffffff;
 }
 
@@ -340,7 +339,7 @@ canvas {
   display: flex;
   flex-direction: column;
   height: 350px;
-  }
+}
 
 .chat-messages {
   flex: 1;
@@ -360,7 +359,7 @@ canvas {
 .chat-message .timestamp {
   color: #888;
   font-size: 0.8rem;
-  }
+}
 
 .chat-message .player-name {
   color: #ff6600;
@@ -387,7 +386,7 @@ canvas {
 }
 
 .chat-input button {
-  background: #8B0000;
+  background: #8b0000;
   border: 1px solid #ff6600;
   color: #ffffff;
   padding: 0.8rem 1rem;
@@ -396,7 +395,7 @@ canvas {
 }
 
 .chat-input button:hover {
-  background: #B22222;
+  background: #b22222;
 }
 
 .party-buttons {
@@ -404,6 +403,24 @@ canvas {
   justify-content: center;
   gap: 1rem;
   margin-top: 2rem;
+}
+
+#readyButton {
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+#readyButton.success {
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+  border-color: #28a745 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+}
+
+#readyButton:not(.success) {
+  background: linear-gradient(135deg, #8b0000, #b22222);
+  border-color: #ff6600;
+  color: #ffffff;
 }
 
 /* Instructions Styles */
@@ -433,7 +450,7 @@ canvas {
 }
 
 .key {
-  background: #8B0000;
+  background: #8b0000;
   color: #ffffff;
   padding: 0.2rem 0.5rem;
   font-weight: 600;
@@ -443,7 +460,7 @@ canvas {
 .weapon {
   color: #ff6600;
   font-weight: 600;
-  }
+}
 
 .enemy {
   color: #ff4400;
@@ -457,7 +474,7 @@ canvas {
   left: 15px;
   color: #ff6600;
   background: linear-gradient(
-      135deg,
+    135deg,
     rgba(0, 0, 0, 0.95) 0%,
     rgba(139, 0, 0, 0.3) 50%,
     rgba(0, 0, 0, 0.95) 100%
@@ -593,7 +610,7 @@ canvas {
 }
 
 .game-chat-input button {
-  background: #8B0000;
+  background: #8b0000;
   border: 1px solid #ff6600;
   color: #ffffff;
   padding: 0.5rem;
@@ -649,7 +666,7 @@ canvas {
 }
 
 .audio-controls input[type="range"] {
-  background: linear-gradient(to right, #8B0000, #ff6600);
+  background: linear-gradient(to right, #8b0000, #ff6600);
   height: 8px;
   border-radius: 0;
   outline: none;
@@ -773,11 +790,11 @@ canvas {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
-  
+
   .menu-screen h1 {
     font-size: 3rem;
-}
-  
+  }
+
   .instructions-content {
     max-width: 90%;
   }
@@ -789,28 +806,28 @@ canvas {
     font-size: 1rem;
     padding: 0.8rem 1.5rem;
   }
-  
+
   .menu-screen h1 {
     font-size: 2.5rem;
   }
-  
+
   .info {
     left: 10px;
     top: 10px;
     min-width: 200px;
     padding: 15px;
-}
-  
+  }
+
   .players-info {
     right: 10px;
     top: 10px;
     min-width: 150px;
   }
-  
+
   .game-chat {
     width: 300px;
     left: 10px;
-}
+  }
 }
 
 /* Game Over Screen */
@@ -842,7 +859,7 @@ canvas {
 
 #finalStats span {
   color: #ffffff;
-  }
+}
 
 /* Blocker and Instructions */
 #blocker {
@@ -881,7 +898,7 @@ canvas {
 }
 
 .highlight {
-  background: #8B0000;
+  background: #8b0000;
   color: #ff6600;
   padding: 0.2rem 0.5rem;
   font-weight: 600;

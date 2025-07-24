@@ -33,7 +33,7 @@ const DEMON_COUNT = 10;
 function initializeLoader() {
   // GLTFLoader disabled - using optimized built-in demon models
   loader = null;
-  console.log('Using built-in Doom-style demon models for optimal performance');
+  console.log("Using built-in Doom-style demon models for optimal performance");
 }
 
 // Demon types with Doom-style characteristics
@@ -44,7 +44,7 @@ const DEMON_TYPES = {
     health: 1,
     speed: 1.0,
     scale: 1.0,
-    color: 0x8B4513, // Brown
+    color: 0x8b4513, // Brown
     headColor: 0x654321, // Dark brown
     eyeColor: 0xff0000, // Red
     detectRange: 60,
@@ -59,8 +59,8 @@ const DEMON_TYPES = {
     health: 2,
     speed: 1.8,
     scale: 0.9,
-    color: 0x4B0000, // Dark red
-    headColor: 0x8B0000, // Red
+    color: 0x4b0000, // Dark red
+    headColor: 0x8b0000, // Red
     eyeColor: 0xff4400, // Orange-red
     detectRange: 70,
     attackRange: 4.0,
@@ -75,7 +75,7 @@ const DEMON_TYPES = {
     speed: 0.8,
     scale: 1.6,
     color: 0x800080, // Purple
-    headColor: 0x4B0082, // Indigo
+    headColor: 0x4b0082, // Indigo
     eyeColor: 0xff0000, // Red
     detectRange: 80,
     attackRange: 6.0,
@@ -90,7 +90,7 @@ const DEMON_TYPES = {
     speed: 0.6,
     scale: 2.2,
     color: 0x006400, // Dark green
-    headColor: 0x228B22, // Forest green
+    headColor: 0x228b22, // Forest green
     eyeColor: 0xff6600, // Bright orange
     detectRange: 100,
     attackRange: 8.0,
@@ -2238,9 +2238,7 @@ function spawnDemons() {
     scene.add(demon);
 
     console.log(
-      `Demon ${i + 1} spawned at position (${x.toFixed(2)}, 0, ${z.toFixed(
-        2
-      )})`
+      `Demon ${i + 1} spawned at position (${x.toFixed(2)}, 0, ${z.toFixed(2)})`
     );
   }
 
@@ -2984,10 +2982,7 @@ function drawDemonsOnRadar(playerPos, centerX, centerY) {
     // Add pulsing effect for very close demons
     if (distance < 5) {
       const pulseAlpha = 0.3 + 0.3 * Math.sin(Date.now() * 0.01);
-      radarContext.fillStyle = demonColor.replace(
-        "0.8",
-        pulseAlpha.toString()
-      );
+      radarContext.fillStyle = demonColor.replace("0.8", pulseAlpha.toString());
       radarContext.beginPath();
       radarContext.arc(radarX, radarY, demonSize + 2, 0, Math.PI * 2);
       radarContext.fill();
@@ -4347,7 +4342,7 @@ function resumeGame() {
   gameState = "playing";
   hideAllMenus();
   document.getElementById("gameUI").style.display = "block";
-  
+
   // Request pointer lock to continue playing
   document.body.requestPointerLock();
 
@@ -4558,25 +4553,25 @@ window.updateMasterVolume = updateMasterVolume;
 // UI Management Functions
 function showMainMenu() {
   hideAllMenus();
-  const mainMenu = document.getElementById('mainMenu');
+  const mainMenu = document.getElementById("mainMenu");
   if (mainMenu) {
-    mainMenu.classList.add('active');
+    mainMenu.classList.add("active");
   }
   gameState = "mainMenu";
 }
 
 function showMultiplayerLobby() {
   hideAllMenus();
-  const multiplayerLobby = document.getElementById('multiplayerLobby');
+  const multiplayerLobby = document.getElementById("multiplayerLobby");
   if (multiplayerLobby) {
-    multiplayerLobby.classList.add('active');
+    multiplayerLobby.classList.add("active");
   }
   gameState = "multiplayerLobby";
-  
+
   if (!socket) {
     initializeNetworking();
   }
-  
+
   // Auto-refresh rooms
   setTimeout(() => {
     if (isConnected) refreshRooms();
@@ -4585,14 +4580,14 @@ function showMultiplayerLobby() {
 
 function showPartyRoom() {
   hideAllMenus();
-  const partyRoom = document.getElementById('partyRoom');
+  const partyRoom = document.getElementById("partyRoom");
   if (partyRoom) {
-    partyRoom.classList.add('active');
+    partyRoom.classList.add("active");
   }
   gameState = "partyRoom";
-  
+
   if (currentRoom) {
-    const roomTitle = document.getElementById('roomTitle');
+    const roomTitle = document.getElementById("roomTitle");
     if (roomTitle) {
       roomTitle.textContent = `🔥 ${currentRoom.name} 🔥`;
     }
@@ -4601,9 +4596,9 @@ function showPartyRoom() {
 
 function showInstructions() {
   hideAllMenus();
-  const instructions = document.getElementById('instructions');
+  const instructions = document.getElementById("instructions");
   if (instructions) {
-    instructions.classList.add('active');
+    instructions.classList.add("active");
   }
   gameState = "instructions";
 }
@@ -4614,11 +4609,17 @@ function startSinglePlayer() {
 }
 
 function hideAllMenus() {
-  const menus = ['mainMenu', 'multiplayerLobby', 'partyRoom', 'instructions', 'gameOver'];
-  menus.forEach(menuId => {
+  const menus = [
+    "mainMenu",
+    "multiplayerLobby",
+    "partyRoom",
+    "instructions",
+    "gameOver",
+  ];
+  menus.forEach((menuId) => {
     const element = document.getElementById(menuId);
     if (element) {
-      element.classList.remove('active');
+      element.classList.remove("active");
     }
   });
 }
@@ -4628,123 +4629,139 @@ function initializeNetworking() {
   if (socket) return;
 
   // Check if io (Socket.IO) is available
-  if (typeof io === 'undefined') {
-    console.error('Socket.IO not loaded! Multiplayer features will not work.');
-    updateConnectionStatus('🔴 Socket.IO not available');
+  if (typeof io === "undefined") {
+    console.error("Socket.IO not loaded! Multiplayer features will not work.");
+    updateConnectionStatus("🔴 Socket.IO not available");
     return;
   }
 
   try {
-    socket = io('http://localhost:3000');
+    socket = io("http://localhost:3000");
   } catch (error) {
-    console.error('Failed to initialize Socket.IO:', error);
-    updateConnectionStatus('🔴 Connection failed');
+    console.error("Failed to initialize Socket.IO:", error);
+    updateConnectionStatus("🔴 Connection failed");
     return;
   }
-  
-  socket.on('connect', () => {
-    console.log('🔥 Connected to Hell Server');
+
+  socket.on("connect", () => {
+    console.log("🔥 Connected to Hell Server");
     isConnected = true;
-    updateConnectionStatus('🟢 Connected to Hell');
+    updateConnectionStatus("🟢 Connected to Hell");
   });
 
-  socket.on('disconnect', () => {
-    console.log('💀 Disconnected from Hell Server');
+  socket.on("disconnect", () => {
+    console.log("💀 Disconnected from Hell Server");
     isConnected = false;
-    updateConnectionStatus('🔴 Disconnected from Hell');
+    updateConnectionStatus("🔴 Disconnected from Hell");
   });
 
   // Room events
-  socket.on('room:created', (data) => {
-    console.log('🏰 Room created:', data);
+  socket.on("room:created", (data) => {
+    console.log("🏰 Room created:", data);
     currentRoom = data.room;
     isRoomLeader = data.isLeader;
+    isPlayerReady = false; // Reset ready state when creating room
     showPartyRoom();
+
+    // Reset ready button
+    const readyButton = document.getElementById("readyButton");
+    if (readyButton) {
+      readyButton.textContent = "⏳ NOT READY";
+      readyButton.classList.remove("success");
+    }
   });
 
-  socket.on('room:joined', (data) => {
-    console.log('👹 Joined room:', data);
+  socket.on("room:joined", (data) => {
+    console.log("👹 Joined room:", data);
     currentRoom = data.room;
     isRoomLeader = data.isLeader;
+    isPlayerReady = false; // Reset ready state when joining room
     updatePartyMembers(data.players);
     showPartyRoom();
+
+    // Reset ready button
+    const readyButton = document.getElementById("readyButton");
+    if (readyButton) {
+      readyButton.textContent = "⏳ NOT READY";
+      readyButton.classList.remove("success");
+    }
   });
 
-  socket.on('room:list', (rooms) => {
+  socket.on("room:list", (rooms) => {
     updateRoomsList(rooms);
   });
 
-  socket.on('room:full', () => {
-    alert('🔥 Chamber is full! Try another one.');
+  socket.on("room:full", () => {
+    alert("🔥 Chamber is full! Try another one.");
   });
 
-  socket.on('room:not_found', () => {
-    alert('👹 Chamber not found! It may have been destroyed.');
+  socket.on("room:not_found", () => {
+    alert("👹 Chamber not found! It may have been destroyed.");
   });
 
   // Party events
-  socket.on('party:member_joined', (data) => {
-    console.log('👹 New demon joined:', data.player);
+  socket.on("party:member_joined", (data) => {
+    console.log("👹 New demon joined:", data.player);
     addPartyMember(data.player);
-    addChatMessage('system', `${data.player.name} entered the chamber`);
+    addChatMessage("system", `${data.player.name} entered the chamber`);
   });
 
-  socket.on('party:member_left', (data) => {
-    console.log('👹 Demon left:', data);
+  socket.on("party:member_left", (data) => {
+    console.log("👹 Demon left:", data);
     removePartyMember(data.playerId);
-    addChatMessage('system', `${data.playerName} left the chamber`);
+    addChatMessage("system", `${data.playerName} left the chamber`);
   });
 
-  socket.on('party:leader_changed', (data) => {
-    console.log('👑 New leader:', data);
-    isRoomLeader = (data.newLeaderId === socket.id);
+  socket.on("party:leader_changed", (data) => {
+    console.log("👑 New leader:", data);
+    isRoomLeader = data.newLeaderId === socket.id;
     updatePartyLeader(data.newLeaderId);
-    addChatMessage('system', `${data.newLeaderName} is now the chamber leader`);
+    addChatMessage("system", `${data.newLeaderName} is now the chamber leader`);
   });
 
-  socket.on('party:ready_state', (data) => {
+  socket.on("party:ready_state", (data) => {
     updatePlayerReadyState(data.playerId, data.ready);
   });
 
-  socket.on('party:all_ready', (data) => {
+  socket.on("party:all_ready", (data) => {
     if (isRoomLeader && data.canStart) {
-      const startButton = document.getElementById('startGameButton');
+      const startButton = document.getElementById("startGameButton");
       if (startButton) startButton.disabled = false;
     }
   });
 
   // Chat events
-  socket.on('chat:lobby_message', (data) => {
-    addChatMessage('player', data.message, data.playerName);
+  socket.on("chat:lobby_message", (data) => {
+    addChatMessage("player", data.message, data.playerName);
   });
 
-  socket.on('chat:game_message', (data) => {
-    addGameChatMessage('player', data.message, data.playerName);
+  socket.on("chat:game_message", (data) => {
+    addGameChatMessage("player", data.message, data.playerName);
   });
 
   // Game events
-  socket.on('game:start', (data) => {
-    console.log('🎮 Game starting:', data);
+  socket.on("game:start", (data) => {
+    console.log("🎮 Game starting:", data);
     isMultiplayer = true;
     initializeMultiplayerGame(data);
   });
 
   // Player synchronization
-  socket.on('player:position', (data) => {
+  socket.on("player:position", (data) => {
     updateRemotePlayerPosition(data);
   });
 
-  socket.on('weapon:shoot', (data) => {
+  socket.on("weapon:shoot", (data) => {
     handleRemotePlayerShoot(data);
   });
 
-  socket.on('combat:hit', (data) => {
+  socket.on("combat:hit", (data) => {
     handleRemotePlayerHit(data);
   });
 }
 
 function updateConnectionStatus(status) {
-  const statusElement = document.getElementById('connectionStatus');
+  const statusElement = document.getElementById("connectionStatus");
   if (statusElement) {
     statusElement.textContent = status;
   }
@@ -4754,110 +4771,134 @@ function updateConnectionStatus(status) {
 
 function createRoom() {
   if (!isConnected) {
-    alert('🔥 Not connected to Hell Server!');
+    alert("🔥 Not connected to Hell Server!");
     return;
   }
 
-  const roomName = document.getElementById('roomName').value.trim();
-  const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
-  const mapType = document.getElementById('mapType').value;
-  const playerName = document.getElementById('playerName').value.trim();
+  const roomName = document.getElementById("roomName").value.trim();
+  const maxPlayers = parseInt(document.getElementById("maxPlayers").value);
+  const mapType = document.getElementById("mapType").value;
+  const playerName = document.getElementById("playerName").value.trim();
 
   if (!roomName) {
-    alert('👹 Enter a chamber name!');
+    alert("👹 Enter a chamber name!");
     return;
   }
 
   if (!playerName) {
-    alert('👹 Enter your demon name!');
+    alert("👹 Enter your demon name!");
     return;
   }
 
   // Join with player name first
-  socket.emit('user:joined', { name: playerName });
+  socket.emit("user:joined", { name: playerName });
 
   // Create room
-  socket.emit('room:create', {
+  socket.emit("room:create", {
     name: roomName,
     maxPlayers: maxPlayers,
-    mapType: mapType
+    mapType: mapType,
   });
 }
 
 function refreshRooms() {
   if (!isConnected) {
-    alert('🔥 Not connected to Hell Server!');
+    alert("🔥 Not connected to Hell Server!");
     return;
   }
-  socket.emit('room:list');
+  socket.emit("room:list");
 }
 
 function joinRoom(roomId) {
   if (!isConnected) {
-    alert('🔥 Not connected to Hell Server!');
+    alert("🔥 Not connected to Hell Server!");
     return;
   }
 
-  const playerName = document.getElementById('playerName').value.trim();
+  const playerName = document.getElementById("playerName").value.trim();
   if (!playerName) {
-    alert('👹 Enter your demon name!');
+    alert("👹 Enter your demon name!");
     return;
   }
 
   // Join with player name first
-  socket.emit('user:joined', { name: playerName });
+  socket.emit("user:joined", { name: playerName });
 
   // Join room
-  socket.emit('room:join', { roomId: roomId });
+  socket.emit("room:join", { roomId: roomId });
 }
 
 function leaveRoom() {
   if (socket && currentRoom) {
-    socket.emit('room:leave');
+    socket.emit("room:leave");
     currentRoom = null;
     isRoomLeader = false;
     showMultiplayerLobby();
   }
 }
 
+// Add ready state management
+let isPlayerReady = false;
+
+function toggleReady() {
+  if (!socket || !currentRoom) return;
+
+  isPlayerReady = !isPlayerReady;
+  socket.emit("player:ready", { ready: isPlayerReady });
+
+  const readyButton = document.getElementById("readyButton");
+  if (readyButton) {
+    if (isPlayerReady) {
+      readyButton.textContent = "✅ READY";
+      readyButton.classList.add("success");
+    } else {
+      readyButton.textContent = "⏳ NOT READY";
+      readyButton.classList.remove("success");
+    }
+  }
+}
+
 function sendChatMessage() {
-  const input = document.getElementById('chatInput');
+  const input = document.getElementById("chatInput");
   const message = input.value.trim();
-  
+
   if (message && socket && currentRoom) {
-    socket.emit('chat:lobby_message', { message: message });
-    input.value = '';
+    socket.emit("chat:lobby_message", { message: message });
+    input.value = "";
   }
 }
 
 function sendGameChatMessage() {
-  const input = document.getElementById('gameChatInput');
+  const input = document.getElementById("gameChatInput");
   const message = input.value.trim();
-  
+
   if (message && socket && currentRoom) {
-    socket.emit('chat:game_message', { message: message });
-    input.value = '';
+    socket.emit("chat:game_message", { message: message });
+    input.value = "";
     toggleGameChat();
   }
 }
 
 function startMultiplayerGame() {
   if (socket && currentRoom && isRoomLeader) {
-    socket.emit('game:start');
+    socket.emit("game:start");
   }
 }
 
 function updateRoomsList(rooms) {
-  const roomList = document.getElementById('roomList');
-  
+  const roomList = document.getElementById("roomList");
+
   if (!roomList) return;
-  
+
   if (rooms.length === 0) {
-    roomList.innerHTML = '<div class="room-item empty">🏜️ No chambers found in Hell</div>';
+    roomList.innerHTML =
+      '<div class="room-item empty">🏜️ No chambers found in Hell</div>';
     return;
   }
 
-  roomList.innerHTML = rooms.map(room => `
+  roomList.innerHTML = rooms
+    .map(
+      (room) => `
     <div class="room-item" onclick="joinRoom('${room.id}')">
       <div class="room-info">
         <div class="room-name">🏰 ${room.name}</div>
@@ -4866,41 +4907,51 @@ function updateRoomsList(rooms) {
         </div>
       </div>
       <div class="room-status">
-        ${room.players < room.maxPlayers ? '🟢 OPEN' : '🔴 FULL'}
+        ${room.players < room.maxPlayers ? "🟢 OPEN" : "🔴 FULL"}
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join("");
 }
 
 function updatePartyMembers(players) {
-  const container = document.getElementById('partyMembers');
-  
+  const container = document.getElementById("partyMembers");
+
   if (!container) return;
-  
-  container.innerHTML = players.map(player => `
+
+  container.innerHTML = players
+    .map(
+      (player) => `
     <div class="party-member" id="player-${player.id}">
       <div class="member-info">
-        <span class="member-name">${player.isLeader ? '👑' : '👹'} ${player.name}</span>
-        <span class="member-status ${player.ready ? 'ready' : 'not-ready'}">
-          ${player.ready ? '✅ READY' : '⏳ NOT READY'}
+        <span class="member-name">${player.isLeader ? "👑" : "👹"} ${
+        player.name
+      }</span>
+        <span class="member-status ${player.ready ? "ready" : "not-ready"}">
+          ${player.ready ? "✅ READY" : "⏳ NOT READY"}
         </span>
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join("");
 }
 
 function addPartyMember(player) {
-  const container = document.getElementById('partyMembers');
+  const container = document.getElementById("partyMembers");
   if (!container) return;
-  
-  const memberDiv = document.createElement('div');
-  memberDiv.className = 'party-member';
+
+  const memberDiv = document.createElement("div");
+  memberDiv.className = "party-member";
   memberDiv.id = `player-${player.id}`;
   memberDiv.innerHTML = `
     <div class="member-info">
-      <span class="member-name">${player.isLeader ? '👑' : '👹'} ${player.name}</span>
-      <span class="member-status ${player.ready ? 'ready' : 'not-ready'}">
-        ${player.ready ? '✅ READY' : '⏳ NOT READY'}
+      <span class="member-name">${player.isLeader ? "👑" : "👹"} ${
+    player.name
+  }</span>
+      <span class="member-status ${player.ready ? "ready" : "not-ready"}">
+        ${player.ready ? "✅ READY" : "⏳ NOT READY"}
       </span>
     </div>
   `;
@@ -4916,24 +4967,24 @@ function removePartyMember(playerId) {
 
 function updatePartyLeader(leaderId) {
   // Update UI to show new leader
-  const members = document.querySelectorAll('.party-member');
-  members.forEach(member => {
-    const nameSpan = member.querySelector('.member-name');
-    const playerId = member.id.replace('player-', '');
+  const members = document.querySelectorAll(".party-member");
+  members.forEach((member) => {
+    const nameSpan = member.querySelector(".member-name");
+    const playerId = member.id.replace("player-", "");
     if (playerId === leaderId) {
-      nameSpan.textContent = nameSpan.textContent.replace('👹', '👑');
+      nameSpan.textContent = nameSpan.textContent.replace("👹", "👑");
     } else {
-      nameSpan.textContent = nameSpan.textContent.replace('👑', '👹');
+      nameSpan.textContent = nameSpan.textContent.replace("👑", "👹");
     }
   });
 
   // Update start button visibility
-  const startButton = document.getElementById('startGameButton');
+  const startButton = document.getElementById("startGameButton");
   if (startButton) {
     if (isRoomLeader) {
-      startButton.style.display = 'block';
+      startButton.style.display = "block";
     } else {
-      startButton.style.display = 'none';
+      startButton.style.display = "none";
     }
   }
 }
@@ -4941,107 +4992,113 @@ function updatePartyLeader(leaderId) {
 function updatePlayerReadyState(playerId, ready) {
   const memberElement = document.getElementById(`player-${playerId}`);
   if (memberElement) {
-    const statusSpan = memberElement.querySelector('.member-status');
-    statusSpan.className = `member-status ${ready ? 'ready' : 'not-ready'}`;
-    statusSpan.textContent = ready ? '✅ READY' : '⏳ NOT READY';
+    const statusSpan = memberElement.querySelector(".member-status");
+    statusSpan.className = `member-status ${ready ? "ready" : "not-ready"}`;
+    statusSpan.textContent = ready ? "✅ READY" : "⏳ NOT READY";
   }
 }
 
 function addChatMessage(type, message, playerName = null) {
-  const container = document.getElementById('chatMessages');
+  const container = document.getElementById("chatMessages");
   if (!container) return;
-  
-  const messageDiv = document.createElement('div');
+
+  const messageDiv = document.createElement("div");
   messageDiv.className = `chat-message ${type}`;
-  
-  const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  
-  if (type === 'system') {
+
+  const timestamp = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (type === "system") {
     messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="system-msg">🔥 ${message}</span>`;
   } else {
     messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="player-name">${playerName}:</span> ${message}`;
   }
-  
+
   container.appendChild(messageDiv);
   container.scrollTop = container.scrollHeight;
 }
 
 function addGameChatMessage(type, message, playerName = null) {
-  const container = document.getElementById('gameChatMessages');
+  const container = document.getElementById("gameChatMessages");
   if (!container) return;
-  
-  const messageDiv = document.createElement('div');
+
+  const messageDiv = document.createElement("div");
   messageDiv.className = `game-chat-message ${type}`;
-  
-  const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  
-  if (type === 'system') {
+
+  const timestamp = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (type === "system") {
     messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="system-msg">🔥 ${message}</span>`;
   } else {
     messageDiv.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="player-name">${playerName}:</span> ${message}`;
   }
-  
+
   container.appendChild(messageDiv);
   container.scrollTop = container.scrollHeight;
-  
+
   // Auto-hide after 5 seconds
   setTimeout(() => {
     if (messageDiv.parentNode) {
-      messageDiv.style.opacity = '0.3';
+      messageDiv.style.opacity = "0.3";
     }
   }, 5000);
 }
 
 function toggleGameChat() {
-  const chatInput = document.querySelector('.game-chat-input');
-  const input = document.getElementById('gameChatInput');
-  
+  const chatInput = document.querySelector(".game-chat-input");
+  const input = document.getElementById("gameChatInput");
+
   if (!chatInput || !input) return;
-  
-  if (chatInput.style.display === 'none' || !chatInput.style.display) {
-    chatInput.style.display = 'flex';
+
+  if (chatInput.style.display === "none" || !chatInput.style.display) {
+    chatInput.style.display = "flex";
     input.focus();
   } else {
-    chatInput.style.display = 'none';
+    chatInput.style.display = "none";
     input.blur();
   }
 }
 
 // Enhanced multiplayer game initialization
 function initializeMultiplayerGame(gameData) {
-  console.log('🎮 Initializing multiplayer game:', gameData);
-  
+  console.log("🎮 Initializing multiplayer game:", gameData);
+
   // Hide menu and show game
   hideAllMenus();
-  document.getElementById('gameUI').style.display = 'block';
-  
+  document.getElementById("gameUI").style.display = "block";
+
   // Initialize the game if not already done
   if (!gameInitialized) {
     init();
     gameInitialized = true;
   }
-  
+
   // Set game state
   gameState = "playing";
-  
+
   // Update room info
   if (currentRoom) {
-    const roomInfoElement = document.getElementById('roomInfo');
+    const roomInfoElement = document.getElementById("roomInfo");
     if (roomInfoElement) {
       roomInfoElement.textContent = `🏰 Chamber: ${currentRoom.name}`;
     }
   }
-  
+
   // Initialize remote players
-  gameData.players.forEach(player => {
+  gameData.players.forEach((player) => {
     if (player.id !== socket.id) {
       createRemotePlayer(player);
     }
   });
-  
+
   // Start position sync
   startPositionSync();
-  
+
   // Enable pointer lock
   document.body.requestPointerLock();
 }
@@ -5051,34 +5108,34 @@ function createRemotePlayer(playerData) {
   const geometry = new THREE.CapsuleGeometry(0.5, 2, 4, 8);
   const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
   const playerMesh = new THREE.Mesh(geometry, material);
-  
+
   // Add name tag
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
   canvas.width = 256;
   canvas.height = 64;
-  context.fillStyle = '#ffffff';
-  context.font = '24px Arial';
-  context.textAlign = 'center';
+  context.fillStyle = "#ffffff";
+  context.font = "24px Arial";
+  context.textAlign = "center";
   context.fillText(playerData.name, 128, 40);
-  
+
   const texture = new THREE.CanvasTexture(canvas);
   const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
   const nameSprite = new THREE.Sprite(spriteMaterial);
   nameSprite.position.set(0, 1.5, 0);
   nameSprite.scale.set(2, 0.5, 1);
-  
+
   playerMesh.add(nameSprite);
   playerMesh.position.set(
     playerData.position.x,
     playerData.position.y,
     playerData.position.z
   );
-  
+
   scene.add(playerMesh);
   remotePlayers.set(playerData.id, {
     mesh: playerMesh,
-    data: playerData
+    data: playerData,
   });
 }
 
@@ -5096,43 +5153,43 @@ function updateRemotePlayerPosition(data) {
 
 function handleRemotePlayerShoot(data) {
   // Create visual effect for remote player shooting
-  console.log('Remote player shot:', data);
+  console.log("Remote player shot:", data);
   // Add muzzle flash, bullet trail, etc.
 }
 
 function handleRemotePlayerHit(data) {
   // Handle when remote player hits something
-  console.log('Remote player hit:', data);
+  console.log("Remote player hit:", data);
 }
 
 function startPositionSync() {
   if (!socket || !isMultiplayer) return;
-  
+
   setInterval(() => {
     if (controls && gameState === "playing") {
       const position = controls.getObject().position;
       const rotation = controls.getObject().rotation;
-      
-      socket.emit('player:position', {
+
+      socket.emit("player:position", {
         position: { x: position.x, y: position.y, z: position.z },
-        rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+        rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
       });
     }
   }, 50); // 20 FPS position updates
 }
 
 // Event listeners for chat
-document.addEventListener('keydown', (event) => {
-  if (gameState === "partyRoom" && event.key === 'Enter') {
-    const chatInput = document.getElementById('chatInput');
+document.addEventListener("keydown", (event) => {
+  if (gameState === "partyRoom" && event.key === "Enter") {
+    const chatInput = document.getElementById("chatInput");
     if (chatInput && document.activeElement !== chatInput) {
       chatInput.focus();
     } else if (chatInput) {
       sendChatMessage();
     }
   }
-  
-  if (gameState === "playing" && event.key === 'Enter') {
+
+  if (gameState === "playing" && event.key === "Enter") {
     toggleGameChat();
   }
 });
