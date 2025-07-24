@@ -29,11 +29,19 @@ let demonModel = null;
 let loader = null;
 const DEMON_COUNT = 10;
 
-// =================== BASIC VOICE CHAT SUPPORT ===================
-// Basic voice chat object for pause menu settings (simplified version)
+// =================== VOICE CHAT VARIABLES ===================
 let voiceChat = {
+  mediaRecorder: null,
+  audioStream: null,
+  isRecording: false,
+  isPushToTalkPressed: false,
+  recognition: null,
+  audioContext: null,
+  audioChunks: [],
+  remoteAudios: new Map(), // Store remote player audio elements
+  lastKeyPress: 0, // Timestamp of last key press to prevent spam
   settings: {
-    mode: "disabled", // 'speech-to-text', 'voice-transmission', 'disabled'
+    mode: "speech-to-text", // 'speech-to-text', 'voice-transmission', 'disabled'
     pushToTalkKey: "KeyT",
     voiceVolume: 80,
   },
@@ -483,12 +491,496 @@ function init() {
   // Initialize radar
   initRadar();
 
+  // Initialize voice chat
+  initVoiceChat();
+
   // Initialize pause menu settings
   initializePauseMenuSettings();
 
   // Start animation loop
   animate();
 }
+
+// =================== VOICE CHAT SYSTEM ===================
+
+// Initialize voice chat system
+async function initVoiceChat() {
+  console.log("Initializing voice chat system...");
+
+  // Load settings from localStorage
+  loadVoiceChatSettings();
+
+  // Setup UI event listeners
+  setupVoiceChatUI();
+
+  // Initialize speech recognition for speech-to-text mode
+  if (voiceChat.settings.mode === "speech-to-text") {
+    initSpeechRecognition();
+  }
+
+  // Request microphone permission only if needed
+  try {
+    if (voiceChat.settings.mode !== "disabled") {
+      voiceChat.audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100,
+          channelCount: 1, // Use mono audio to reduce bandwidth
+        },
+      });
+
+      // Create audio context for processing with error handling
+      try {
+        voiceChat.audioContext = new (window.AudioContext ||
+          window.webkitAudioContext)();
+
+        // Handle audio context state changes
+        voiceChat.audioContext.addEventListener("statechange", () => {
+          console.log("AudioContext state:", voiceChat.audioContext.state);
+          if (voiceChat.audioContext.state === "suspended") {
+            // Try to resume when user interaction occurs
+            document.addEventListener("click", resumeAudioContext, {
+              once: true,
+            });
+          }
+        });
+      } catch (audioError) {
+        console.warn("AudioContext creation failed:", audioError);
+        voiceChat.audioContext = null;
+      }
+    }
+
+    console.log("Voice chat initialized successfully");
+    updateVoiceChatStatus("ready");
+  } catch (error) {
+    console.error("Failed to initialize voice chat:", error);
+    updateVoiceChatStatus("error");
+  }
+}
+
+// Resume audio context if suspended
+function resumeAudioContext() {
+  if (voiceChat.audioContext && voiceChat.audioContext.state === "suspended") {
+    voiceChat.audioContext
+      .resume()
+      .then(() => {
+        console.log("AudioContext resumed");
+      })
+      .catch((error) => {
+        console.error("Failed to resume AudioContext:", error);
+      });
+  }
+}
+
+// Load voice chat settings from localStorage
+function loadVoiceChatSettings() {
+  const savedSettings = localStorage.getItem("voiceChatSettings");
+  if (savedSettings) {
+    const settings = JSON.parse(savedSettings);
+    voiceChat.settings = { ...voiceChat.settings, ...settings };
+  }
+
+  // Update UI elements
+  const voiceChatMode = document.getElementById("voiceChatMode");
+  const voiceVolume = document.getElementById("voiceVolume");
+  const pushToTalkKey = document.getElementById("pushToTalkKey");
+
+  if (voiceChatMode) voiceChatMode.value = voiceChat.settings.mode;
+  if (voiceVolume) voiceVolume.value = voiceChat.settings.voiceVolume;
+  if (pushToTalkKey) pushToTalkKey.value = voiceChat.settings.pushToTalkKey;
+}
+
+// Save voice chat settings to localStorage
+function saveVoiceChatSettings() {
+  localStorage.setItem("voiceChatSettings", JSON.stringify(voiceChat.settings));
+}
+
+// Setup voice chat UI event listeners
+function setupVoiceChatUI() {
+  // Mode change
+  const voiceChatMode = document.getElementById("voiceChatMode");
+  if (voiceChatMode) {
+    voiceChatMode.addEventListener("change", (e) => {
+      const newMode = e.target.value;
+      const oldMode = voiceChat.settings.mode;
+
+      voiceChat.settings.mode = newMode;
+      saveVoiceChatSettings();
+
+      // Stop any current recording
+      if (voiceChat.isRecording) {
+        stopVoiceRecording();
+      }
+
+      if (newMode === "speech-to-text") {
+        if (oldMode !== "speech-to-text") {
+          initSpeechRecognition();
+        }
+        updateVoiceChatStatus("ready");
+      } else if (newMode === "disabled") {
+        disableVoiceChat();
+      } else {
+        updateVoiceChatStatus("ready");
+      }
+    });
+  }
+
+  // Voice volume change
+  const voiceVolume = document.getElementById("voiceVolume");
+  if (voiceVolume) {
+    voiceVolume.addEventListener("input", (e) => {
+      voiceChat.settings.voiceVolume = parseInt(e.target.value);
+      saveVoiceChatSettings();
+      updateVoiceVolume(e.target.value);
+    });
+  }
+
+  // Push-to-talk key change
+  const pushToTalkKey = document.getElementById("pushToTalkKey");
+  if (pushToTalkKey) {
+    pushToTalkKey.addEventListener("change", (e) => {
+      voiceChat.settings.pushToTalkKey = e.target.value;
+      saveVoiceChatSettings();
+      updatePushToTalkDisplay();
+    });
+  }
+}
+
+// Initialize speech recognition for speech-to-text mode
+function initSpeechRecognition() {
+  if (
+    !("webkitSpeechRecognition" in window) &&
+    !("SpeechRecognition" in window)
+  ) {
+    console.warn("Speech recognition not supported in this browser");
+    updateVoiceChatStatus("error");
+    return;
+  }
+
+  // Clean up existing recognition if any
+  if (voiceChat.recognition) {
+    if (voiceChat.recognition.state === "active") {
+      voiceChat.recognition.stop();
+    }
+    voiceChat.recognition = null;
+  }
+
+  try {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    voiceChat.recognition = new SpeechRecognition();
+
+    voiceChat.recognition.continuous = false;
+    voiceChat.recognition.interimResults = false;
+    voiceChat.recognition.lang = "en-US";
+    voiceChat.recognition.maxAlternatives = 1;
+
+    voiceChat.recognition.onresult = (event) => {
+      if (event.results.length > 0) {
+        const transcript = event.results[0][0].transcript;
+        if (transcript.trim()) {
+          sendVoiceMessage(transcript, "speech-to-text");
+        }
+      }
+    };
+
+    voiceChat.recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      // Don't immediately stop on certain errors
+      if (event.error === "audio-capture" || event.error === "not-allowed") {
+        updateVoiceChatStatus("error");
+      }
+      stopVoiceRecording();
+    };
+
+    voiceChat.recognition.onstart = () => {
+      console.log("Speech recognition started");
+    };
+
+    voiceChat.recognition.onend = () => {
+      console.log("Speech recognition ended");
+      // Only stop if we're actually recording
+      if (voiceChat.isRecording) {
+        stopVoiceRecording();
+      }
+    };
+
+    console.log("Speech recognition initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize speech recognition:", error);
+    updateVoiceChatStatus("error");
+  }
+}
+
+// Start voice recording based on current mode
+function startVoiceRecording() {
+  if (voiceChat.settings.mode === "disabled" || voiceChat.isRecording) {
+    return;
+  }
+
+  // Check if recognition is already active
+  if (voiceChat.recognition && voiceChat.recognition.state === "active") {
+    console.warn("Speech recognition already active, skipping start");
+    return;
+  }
+
+  voiceChat.isRecording = true;
+  updateVoiceChatStatus("recording");
+
+  try {
+    if (voiceChat.settings.mode === "speech-to-text") {
+      startSpeechToText();
+    } else if (voiceChat.settings.mode === "voice-transmission") {
+      startVoiceTransmission();
+    }
+  } catch (error) {
+    console.error("Failed to start voice recording:", error);
+    stopVoiceRecording();
+  }
+}
+
+// Stop voice recording
+function stopVoiceRecording() {
+  if (!voiceChat.isRecording) {
+    return;
+  }
+
+  voiceChat.isRecording = false;
+  updateVoiceChatStatus("ready");
+
+  try {
+    if (voiceChat.recognition && voiceChat.settings.mode === "speech-to-text") {
+      // Only stop if it's active
+      if (voiceChat.recognition.state === "active") {
+        voiceChat.recognition.stop();
+      }
+    }
+
+    if (
+      voiceChat.mediaRecorder &&
+      voiceChat.settings.mode === "voice-transmission" &&
+      voiceChat.mediaRecorder.state === "recording"
+    ) {
+      voiceChat.mediaRecorder.stop();
+    }
+  } catch (error) {
+    console.error("Error stopping voice recording:", error);
+  }
+}
+
+// Start speech-to-text recording
+function startSpeechToText() {
+  if (!voiceChat.recognition) {
+    console.warn("Speech recognition not initialized");
+    stopVoiceRecording();
+    return;
+  }
+
+  // Check if already running
+  if (voiceChat.recognition.state === "active") {
+    console.warn("Speech recognition already active");
+    return;
+  }
+
+  try {
+    voiceChat.recognition.start();
+  } catch (error) {
+    console.error("Failed to start speech recognition:", error);
+    stopVoiceRecording();
+  }
+}
+
+// Start voice transmission recording
+function startVoiceTransmission() {
+  if (!voiceChat.audioStream) {
+    console.error("No audio stream available");
+    stopVoiceRecording();
+    return;
+  }
+
+  voiceChat.audioChunks = [];
+
+  try {
+    voiceChat.mediaRecorder = new MediaRecorder(voiceChat.audioStream, {
+      mimeType: "audio/webm;codecs=opus",
+    });
+
+    voiceChat.mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        voiceChat.audioChunks.push(event.data);
+      }
+    };
+
+    voiceChat.mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(voiceChat.audioChunks, {
+        type: "audio/webm;codecs=opus",
+      });
+      sendVoiceData(audioBlob);
+    };
+
+    voiceChat.mediaRecorder.start(100); // Collect data every 100ms
+  } catch (error) {
+    console.error("Failed to start voice transmission:", error);
+    stopVoiceRecording();
+  }
+}
+
+// Send voice message (text or audio data)
+function sendVoiceMessage(message, type) {
+  if (!socket || !socket.connected) {
+    console.warn("Not connected to server");
+    return;
+  }
+
+  const voiceMessage = {
+    type: type,
+    message: message,
+    playerId: socket.id,
+    playerName: document.getElementById("playerName").value || "Anonymous",
+    timestamp: Date.now(),
+  };
+
+  socket.emit("voice:message", voiceMessage);
+
+  // Add to local chat
+  addGameChatMessage("voice", message, voiceMessage.playerName);
+}
+
+// Send voice audio data
+function sendVoiceData(audioBlob) {
+  if (!socket || !socket.connected) {
+    console.warn("Not connected to server");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const voiceData = {
+      type: "voice-transmission",
+      audioData: reader.result,
+      playerId: socket.id,
+      playerName: document.getElementById("playerName").value || "Anonymous",
+      timestamp: Date.now(),
+    };
+
+    socket.emit("voice:data", voiceData);
+  };
+
+  reader.readAsArrayBuffer(audioBlob);
+}
+
+// Update voice chat status display
+function updateVoiceChatStatus(status) {
+  const statusIndicator = document.querySelector(".voice-status-indicator");
+  const recordingIndicator = document.querySelector(
+    ".voice-recording-indicator"
+  );
+
+  if (!statusIndicator || !recordingIndicator) {
+    return; // UI elements not available
+  }
+
+  if (status === "recording") {
+    statusIndicator.style.display = "none";
+    recordingIndicator.style.display = "flex";
+  } else {
+    statusIndicator.style.display = "flex";
+    recordingIndicator.style.display = "none";
+
+    const icon = statusIndicator.querySelector("i");
+    const text = statusIndicator.querySelector("span");
+
+    if (icon && text) {
+      switch (status) {
+        case "ready":
+          icon.className = "fas fa-microphone";
+          text.textContent = `Hold ${getPushToTalkKeyDisplay()} to speak`;
+          break;
+        case "error":
+          icon.className = "fas fa-microphone-slash";
+          text.textContent = "Voice chat unavailable";
+          break;
+        case "disabled":
+          icon.className = "fas fa-microphone-slash";
+          text.textContent = "Voice chat disabled";
+          break;
+      }
+    }
+  }
+}
+
+// Get display name for push-to-talk key
+function getPushToTalkKeyDisplay() {
+  const keyMap = {
+    KeyT: "T",
+    KeyV: "V",
+    KeyB: "B",
+    KeyG: "G",
+  };
+  return keyMap[voiceChat.settings.pushToTalkKey] || "T";
+}
+
+// Update push-to-talk display
+function updatePushToTalkDisplay() {
+  updateVoiceChatStatus(
+    voiceChat.settings.mode === "disabled" ? "disabled" : "ready"
+  );
+}
+
+// Disable voice chat
+function disableVoiceChat() {
+  if (voiceChat.isRecording) {
+    stopVoiceRecording();
+  }
+
+  if (voiceChat.audioStream) {
+    voiceChat.audioStream.getTracks().forEach((track) => track.stop());
+    voiceChat.audioStream = null;
+  }
+
+  if (voiceChat.audioContext) {
+    voiceChat.audioContext.close().catch((error) => {
+      console.warn("Failed to close AudioContext:", error);
+    });
+    voiceChat.audioContext = null;
+  }
+
+  if (voiceChat.recognition) {
+    if (voiceChat.recognition.state === "active") {
+      voiceChat.recognition.stop();
+    }
+    voiceChat.recognition = null;
+  }
+
+  updateVoiceChatStatus("disabled");
+}
+
+// Clean up voice chat resources when page unloads
+window.addEventListener("beforeunload", () => {
+  disableVoiceChat();
+});
+
+// Debug function to check voice chat status
+function debugVoiceChat() {
+  console.log("Voice Chat Debug Info:", {
+    mode: voiceChat.settings.mode,
+    isRecording: voiceChat.isRecording,
+    isPushToTalkPressed: voiceChat.isPushToTalkPressed,
+    hasAudioStream: !!voiceChat.audioStream,
+    hasAudioContext: !!voiceChat.audioContext,
+    audioContextState: voiceChat.audioContext?.state,
+    hasRecognition: !!voiceChat.recognition,
+    recognitionState: voiceChat.recognition?.state,
+    pushToTalkKey: voiceChat.settings.pushToTalkKey,
+    gameState: gameState,
+    isMultiplayer: isMultiplayer,
+  });
+}
+
+// Make debug function globally accessible
+window.debugVoiceChat = debugVoiceChat;
 
 // Create ground plane
 function createGround() {
@@ -3207,6 +3699,27 @@ function initControls() {
       return;
     }
 
+    // Handle push-to-talk key for voice chat
+    if (event.code === voiceChat.settings.pushToTalkKey && !event.repeat) {
+      const now = Date.now();
+      // Prevent rapid key presses (throttle to 200ms)
+      if (now - voiceChat.lastKeyPress < 200) {
+        return;
+      }
+      voiceChat.lastKeyPress = now;
+
+      if (
+        gameState === "playing" &&
+        isMultiplayer &&
+        !voiceChat.isPushToTalkPressed &&
+        voiceChat.settings.mode !== "disabled"
+      ) {
+        voiceChat.isPushToTalkPressed = true;
+        startVoiceRecording();
+      }
+      return;
+    }
+
     // Only handle movement keys when game is active
     if (gameState !== "playing") return;
 
@@ -3231,6 +3744,15 @@ function initControls() {
   };
 
   const onKeyUp = function (event) {
+    // Handle push-to-talk key release for voice chat
+    if (event.code === voiceChat.settings.pushToTalkKey) {
+      if (voiceChat.isPushToTalkPressed) {
+        voiceChat.isPushToTalkPressed = false;
+        stopVoiceRecording();
+      }
+      return;
+    }
+
     // Only handle movement keys when game is active
     if (gameState !== "playing") return;
 
@@ -4545,6 +5067,9 @@ function pauseGame() {
   if (voiceChatSettings) {
     voiceChatSettings.style.display = isMultiplayer ? "block" : "none";
   }
+
+  // Update pause menu UI with current settings
+  updatePauseMenuUI();
 
   // Show pause menu
   hideAllMenus();
@@ -6051,7 +6576,7 @@ function handleVoiceMessage(data) {
   }
 }
 
-// Handle received voice data
+// Handle received voice data (restored full version)
 async function handleVoiceData(data) {
   if (data.type === "voice-transmission" && data.audioData) {
     try {
@@ -6424,21 +6949,31 @@ function setupPauseMenuEventListeners() {
 
   if (pauseVoiceChatMode) {
     pauseVoiceChatMode.addEventListener("change", (e) => {
-      voiceChat.settings.mode = e.target.value;
+      const newMode = e.target.value;
+      const oldMode = voiceChat.settings.mode;
+
+      voiceChat.settings.mode = newMode;
       saveVoiceChatSettings();
-      console.log("Voice chat mode changed:", e.target.value);
+
+      // Apply the voice chat mode change
+      if (newMode === "speech-to-text") {
+        if (oldMode !== "speech-to-text") {
+          initSpeechRecognition();
+        }
+        updateVoiceChatStatus("ready");
+      } else if (newMode === "disabled") {
+        disableVoiceChat();
+      } else {
+        updateVoiceChatStatus("ready");
+      }
+
+      console.log("Voice chat mode changed:", newMode);
     });
   }
 
   if (pauseVoiceVolume) {
     pauseVoiceVolume.addEventListener("input", (e) => {
-      voiceChat.settings.voiceVolume = parseInt(e.target.value);
-      saveVoiceChatSettings();
-
-      // Update display
-      const display = document.getElementById("voiceVolumeDisplay");
-      if (display) display.textContent = e.target.value + "%";
-
+      updateVoiceVolume(e.target.value);
       console.log("Voice volume changed:", e.target.value);
     });
   }
@@ -6447,24 +6982,28 @@ function setupPauseMenuEventListeners() {
     pausePushToTalkKey.addEventListener("change", (e) => {
       voiceChat.settings.pushToTalkKey = e.target.value;
       saveVoiceChatSettings();
+      updatePushToTalkDisplay();
       console.log("Push-to-talk key changed:", e.target.value);
     });
   }
 }
 
-// Save voice chat settings to localStorage
-function saveVoiceChatSettings() {
-  localStorage.setItem("voiceChatSettings", JSON.stringify(voiceChat.settings));
-}
-
-// Update voice volume (placeholder function)
+// Voice volume control function (restored full version)
 function updateVoiceVolume(value) {
+  const volume = value / 100;
   voiceChat.settings.voiceVolume = parseInt(value);
+
+  // Update all remote audio elements
+  voiceChat.remoteAudios.forEach((audio) => {
+    audio.volume = volume;
+  });
+
+  // Save settings
   saveVoiceChatSettings();
 
   // Update display
   const display = document.getElementById("voiceVolumeDisplay");
   if (display) display.textContent = value + "%";
 
-  console.log("Voice volume updated:", value);
+  console.log("Voice volume:", volume);
 }
