@@ -423,7 +423,7 @@ function init() {
     0.1, // Near clipping plane
     1000 // Far clipping plane
   );
-  camera.position.set(0, 5, 20);
+  camera.position.set(0, 1.8, 20);
 
   // Create renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -4354,7 +4354,7 @@ function animate() {
 
     // Keep camera above ground
     controls.getObject().position.y = Math.max(
-      2,
+      1.8,
       controls.getObject().position.y
     );
   }
@@ -4674,7 +4674,7 @@ function resetGameState() {
 
   // Reset player position
   if (controls) {
-    controls.getObject().position.set(0, 2, 0);
+    controls.getObject().position.set(0, 1.8, 0);
   }
 
   // Reset weapon system
