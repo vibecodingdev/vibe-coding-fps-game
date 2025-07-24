@@ -78,7 +78,18 @@
       
       <!-- Player Info -->
       <div class="player-info">
-        <input type="text" id="playerName" placeholder="Enter your demon name..." maxlength="20" />
+        <input 
+          type="text" 
+          id="playerName" 
+          placeholder="Enter your demon name..." 
+          maxlength="20" 
+          minlength="2"
+          pattern="[A-Za-z0-9_-]+"
+          title="Use only letters, numbers, underscores, and hyphens"
+          required
+          autocomplete="username"
+        />
+        <div id="usernameHelper" class="username-helper">👹 Choose your demonic identity (2-20 characters)</div>
         <div id="connectionStatus">🔴 Disconnected from Hell</div>
       </div>
 

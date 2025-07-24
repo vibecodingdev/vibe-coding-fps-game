@@ -1868,10 +1868,11 @@ function checkAmmoPackCollision() {
   if (isGameOver) return;
 
   const playerPosition = controls.getObject().position;
+  const shotgun = WEAPONS.shotgun;
   const chaingun = WEAPONS.chaingun;
 
-  // Don't collect if chaingun is already at max ammo
-  if (chaingun.currentAmmo >= chaingun.maxAmmo) return;
+  // Don't collect if both weapons are at max ammo
+  if (shotgun.currentAmmo >= shotgun.maxAmmo && chaingun.currentAmmo >= chaingun.maxAmmo) return;
 
   ammoPacks.forEach((ammoPack, index) => {
     if (!ammoPack) return;
@@ -1913,15 +1914,45 @@ function checkHealthPackCollision() {
 
 // Collect an ammo pack
 function collectAmmoPack(ammoPack, index) {
+  const shotgun = WEAPONS.shotgun;
   const chaingun = WEAPONS.chaingun;
 
-  // Calculate ammo to add
-  const oldAmmo = chaingun.currentAmmo;
-  chaingun.currentAmmo = Math.min(
-    chaingun.maxAmmo,
-    chaingun.currentAmmo + AMMO_PACK_REFILL_AMOUNT
-  );
-  const actualRefill = chaingun.currentAmmo - oldAmmo;
+  // Calculate ammo to add for each weapon
+  let totalRefill = 0;
+  let refillDetails = [];
+
+  // Refill shotgun if needed
+  if (shotgun.currentAmmo < shotgun.maxAmmo) {
+    const shotgunRefillAmount = Math.floor(AMMO_PACK_REFILL_AMOUNT * 0.4); // 40% for shotgun (24 shells)
+    const oldShotgunAmmo = shotgun.currentAmmo;
+    shotgun.currentAmmo = Math.min(
+      shotgun.maxAmmo,
+      shotgun.currentAmmo + shotgunRefillAmount
+    );
+    const actualShotgunRefill = shotgun.currentAmmo - oldShotgunAmmo;
+    if (actualShotgunRefill > 0) {
+      totalRefill += actualShotgunRefill;
+      refillDetails.push(`${actualShotgunRefill} shells`);
+    }
+  }
+
+  // Refill chaingun if needed
+  if (chaingun.currentAmmo < chaingun.maxAmmo) {
+    const chainguRefillAmount = Math.floor(AMMO_PACK_REFILL_AMOUNT * 0.6); // 60% for chaingun (36 rounds)
+    const oldChainguAmmo = chaingun.currentAmmo;
+    chaingun.currentAmmo = Math.min(
+      chaingun.maxAmmo,
+      chaingun.currentAmmo + chainguRefillAmount
+    );
+    const actualChainguRefill = chaingun.currentAmmo - oldChainguAmmo;
+    if (actualChainguRefill > 0) {
+      totalRefill += actualChainguRefill;
+      refillDetails.push(`${actualChainguRefill} rounds`);
+    }
+  }
+
+  // Only proceed if we actually refilled something
+  if (totalRefill === 0) return;
 
   // Update weapon display
   updateWeaponDisplay();
@@ -1942,12 +1973,11 @@ function collectAmmoPack(ammoPack, index) {
   // Update UI
   updateAmmoPackCount();
 
-  console.log(
-    `🔋 Energy cell collected! Refilled ${actualRefill} energy (${oldAmmo} → ${chaingun.currentAmmo})`
-  );
+  const refillText = refillDetails.join(" + ");
+  console.log(`🔋 Energy cell collected! Refilled ${refillText}`);
 
   // Show floating text
-  showFloatingText(`+${actualRefill} AMMO`, ammoPack.position, 0x00aaff);
+  showFloatingText(`+${totalRefill} AMMO`, ammoPack.position, 0x00aaff);
 }
 
 // Collect a health pack
@@ -2279,6 +2309,13 @@ function spawnDemons() {
 function startWaveSystem() {
   console.log("Starting wave system...");
   updateWaveDisplay();
+  
+  // In multiplayer, waves are controlled by the server
+  if (isMultiplayer) {
+    console.log("🌐 Multiplayer mode: Wave system controlled by server");
+    return;
+  }
+  
   startWave();
 }
 
@@ -2290,8 +2327,10 @@ function startWave() {
 
   updateWaveDisplay();
 
-  // Start spawning demons for this wave
-  spawnWaveDemons();
+  // Start spawning demons for this wave (single player only)
+  if (!isMultiplayer) {
+    spawnWaveDemons();
+  }
 }
 
 function getDemonsForWave(waveNumber) {
@@ -2434,6 +2473,9 @@ function spawnSingleDemon() {
 
 function checkWaveComplete() {
   if (!waveInProgress || isGameOver) return;
+  
+  // In multiplayer, wave completion is handled by server
+  if (isMultiplayer) return;
 
   // Count living demons (not dead or falling)
   const livingDemons = demons.filter(
@@ -4595,6 +4637,75 @@ function setupServerConfigListeners() {
       }
     });
   }
+
+  // Setup username input enhancements
+  setupUsernameInput();
+}
+
+function setupUsernameInput() {
+  const usernameInput = document.getElementById("playerName");
+  const usernameHelper = document.getElementById("usernameHelper");
+  
+  if (!usernameInput || !usernameHelper) return;
+
+  // Load saved username
+  const savedUsername = localStorage.getItem('demonUsername');
+  if (savedUsername) {
+    usernameInput.value = savedUsername;
+  }
+
+  // Real-time validation and feedback
+  usernameInput.addEventListener('input', (e) => {
+    const value = e.target.value;
+    const length = value.length;
+    
+    // Update helper text based on input
+    if (length === 0) {
+      usernameHelper.textContent = "👹 Choose your demonic identity (2-20 characters)";
+    } else if (length < 2) {
+      usernameHelper.textContent = `⚠️ Too short! Need ${2 - length} more character${2 - length > 1 ? 's' : ''}`;
+    } else if (length > 20) {
+      usernameHelper.textContent = "⚠️ Too long! Maximum 20 characters";
+    } else if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+      usernameHelper.textContent = "⚠️ Use only letters, numbers, _ and -";
+    } else {
+      usernameHelper.textContent = `✅ Perfect demon name! (${length}/20 characters)`;
+      // Save valid username
+      localStorage.setItem('demonUsername', value);
+    }
+  });
+
+  // Enhanced focus/blur effects
+  usernameInput.addEventListener('focus', () => {
+    usernameInput.parentElement.style.transform = 'scale(1.02)';
+    usernameInput.parentElement.style.boxShadow = '0 0 40px rgba(255, 102, 0, 0.7)';
+  });
+
+  usernameInput.addEventListener('blur', () => {
+    usernameInput.parentElement.style.transform = 'scale(1)';
+    usernameInput.parentElement.style.boxShadow = '0 0 30px rgba(255, 102, 0, 0.5)';
+  });
+
+  // Auto-generate username suggestion
+  usernameInput.addEventListener('dblclick', () => {
+    if (!usernameInput.value) {
+      const demonNames = [
+        'HellSpawn', 'DoomSlayer', 'InfernoWalker', 'ShadowDemon', 'BlazeFury',
+        'DarkReaper', 'FireStorm', 'VoidHunter', 'CrimsonBeast', 'NightTerror',
+        'BurningSkull', 'DeathBringer', 'HellRaiser', 'DemonLord', 'SoulEater'
+      ];
+      const randomName = demonNames[Math.floor(Math.random() * demonNames.length)];
+      const randomNum = Math.floor(Math.random() * 999) + 1;
+      usernameInput.value = `${randomName}${randomNum}`;
+      usernameInput.dispatchEvent(new Event('input'));
+      
+      // Show suggestion hint
+      usernameHelper.textContent = "🎲 Random demon name generated! Double-click again for another";
+      setTimeout(() => {
+        usernameInput.dispatchEvent(new Event('input'));
+      }, 2000);
+    }
+  });
 }
 
 // Master volume control function
@@ -4892,6 +5003,31 @@ function initializeNetworking() {
     initializeMultiplayerGame(data);
   });
 
+  // World/Demon synchronization events
+  socket.on("world:wave:start", (data) => {
+    console.log("🌊 Wave starting:", data);
+    handleServerWaveStart(data);
+  });
+
+  socket.on("world:demon:spawn", (data) => {
+    console.log("👹 Demon spawned by server:", data);
+    handleServerDemonSpawn(data);
+  });
+
+  socket.on("world:demon:death", (data) => {
+    console.log("💀 Demon killed:", data);
+    handleServerDemonDeath(data);
+  });
+
+  socket.on("world:demon:update", (data) => {
+    handleServerDemonUpdate(data);
+  });
+
+  socket.on("world:wave:complete", (data) => {
+    console.log("✅ Wave complete:", data);
+    handleServerWaveComplete(data);
+  });
+
   // Player synchronization
   socket.on("player:position", (data) => {
     updateRemotePlayerPosition(data);
@@ -4903,6 +5039,10 @@ function initializeNetworking() {
 
   socket.on("combat:hit", (data) => {
     handleRemotePlayerHit(data);
+  });
+
+  socket.on("combat:damage", (data) => {
+    handleDemonDamage(data);
   });
 }
 
@@ -5350,6 +5490,192 @@ function requestPointerLockFallback() {
   document.addEventListener("click", handleClick);
 }
 
+// Server-synchronized demon management functions
+function handleServerWaveStart(data) {
+  currentWave = data.wave;
+  waveInProgress = true;
+  
+  // Clear existing demons if any
+  demons.forEach((demon) => scene.remove(demon));
+  demons = [];
+  
+  // Reset demon type counts
+  demonTypeCounts = {
+    IMP: 0,
+    DEMON: 0,
+    CACODEMON: 0,
+    BARON: 0,
+  };
+  
+  updateWaveDisplay();
+  console.log(`🌊 Starting server-synchronized wave ${data.wave} with ${data.demonsCount} demons`);
+}
+
+function handleServerDemonSpawn(data) {
+  const demon = createDemonModel(data.demon.type);
+  if (!demon) return;
+  
+  // Set position and rotation from server
+  demon.position.set(data.demon.position.x, data.demon.position.y, data.demon.position.z);
+  demon.rotation.set(data.demon.rotation.x, data.demon.rotation.y, data.demon.rotation.z);
+  
+  // Get demon type data for proper initialization
+  const demonType = data.demon.type;
+  const typeData = DEMON_TYPES[demonType];
+  
+  // Initialize complete userData for server demons (matching client demon structure)
+  demon.userData = {
+    serverId: data.demon.id,
+    serverHealth: data.demon.health,
+    maxHealth: data.demon.maxHealth,
+    isServerControlled: true,
+    demonType: demonType,
+    
+    // AI properties needed for client-side behavior
+    walkSpeed: typeData.speed * 0.3,
+    rotationSpeed: 0.01 + Math.random() * 0.02,
+    wanderDirection: Math.random() * Math.PI * 2,
+    wanderTimer: Math.random() * 100,
+    attackCooldown: 0,
+    isAttacking: false,
+    hasAttacked: false,
+    originalScale: typeData.scale,
+    attackScaleSet: false,
+    
+    // Type-specific properties
+    detectRange: typeData.detectRange,
+    attackRange: typeData.attackRange,
+    chaseRange: typeData.chaseRange,
+    attackDamage: typeData.attackDamage,
+    
+    // State flags
+    isDead: false,
+    isFalling: false,
+    fallSpeed: 0
+  };
+  
+  // Set proper scale
+  demon.scale.setScalar(typeData.scale);
+  
+  // Add to scene and demons array
+  scene.add(demon);
+  demons.push(demon);
+  
+  // Update demon type counts
+  if (demonTypeCounts[demonType] !== undefined) {
+    demonTypeCounts[demonType]++;
+  }
+  
+  console.log(`👹 Spawned server demon ${data.demon.id} of type ${data.demon.type} at (${data.demon.position.x.toFixed(2)}, ${data.demon.position.z.toFixed(2)})`);
+}
+
+function handleServerDemonDeath(data) {
+  // Find the demon by server ID
+  const demonIndex = demons.findIndex(demon => 
+    demon.userData.serverId === data.demonId
+  );
+  
+  if (demonIndex !== -1) {
+    const demon = demons[demonIndex];
+    
+    // Create death effects
+    createWoundedEffect(demon.position);
+    createHitEffect(demon.position);
+    
+    // Update demon type counts
+    const demonType = demon.userData.demonType;
+    if (demonTypeCounts[demonType] !== undefined && demonTypeCounts[demonType] > 0) {
+      demonTypeCounts[demonType]--;
+    }
+    
+    // Remove from scene and array
+    scene.remove(demon);
+    demons.splice(demonIndex, 1);
+    
+    // Update kill count if this player killed it
+    if (data.killerId === socket?.id) {
+      demonKills++;
+      updateKillCount();
+    }
+    
+    console.log(`💀 Removed server demon ${data.demonId}, killed by ${data.killerName}`);
+  }
+}
+
+function handleServerDemonUpdate(data) {
+  // Find the demon by server ID
+  const demon = demons.find(demon => 
+    demon.userData.serverId === data.demonId
+  );
+  
+  if (demon) {
+    // Update position and rotation from server
+    demon.position.set(data.position.x, data.position.y, data.position.z);
+    demon.rotation.set(data.rotation.x, data.rotation.y, data.rotation.z);
+  }
+}
+
+function handleServerWaveComplete(data) {
+  waveInProgress = false;
+  currentWave = data.nextWave;
+  
+  // Show wave completion message
+  const waveMessage = `🌊 Wave ${data.wave} Complete! Next wave: ${data.nextWave}`;
+  console.log(waveMessage);
+  
+  // Update UI
+  updateWaveDisplay();
+  
+  // Show player stats if available
+  if (data.playersStats) {
+    data.playersStats.forEach(player => {
+      console.log(`👹 ${player.name}: ${player.kills} kills, ${player.score} score`);
+    });
+  }
+}
+
+// Override demon hit detection for multiplayer
+function hitDemon(demon, demonIndex) {
+  if (isMultiplayer && demon.userData.isServerControlled) {
+    // In multiplayer, notify server of demon hit
+    if (socket && demon.userData.serverId) {
+      socket.emit("world:demon:death", {
+        demonId: demon.userData.serverId,
+      });
+    }
+    // Don't remove the demon here - wait for server confirmation
+    return;
+  }
+  
+  // Single player logic (original)
+  const demonType = demon.userData.demonType;
+  if (demonTypeCounts[demonType] !== undefined && demonTypeCounts[demonType] > 0) {
+    demonTypeCounts[demonType]--;
+  }
+
+  // Create visual effects
+  createWoundedEffect(demon.position);
+  createHitEffect(demon.position);
+
+  // Make demon fall
+  makeDemonFall(demon);
+
+  // Remove demon after fall animation
+  setTimeout(() => {
+    removeDemon(demon, demonIndex);
+  }, 1000);
+
+  // Update kill count
+  demonKills++;
+  updateKillCount();
+  console.log(
+    "Demon removed! Demons remaining:",
+    demons.length,
+    "Kills:",
+    demonKills
+  );
+}
+
 function createRemotePlayer(playerData) {
   // Create a simple representation for remote players using CylinderGeometry (compatible with Three.js r128)
   const geometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
@@ -5407,6 +5733,42 @@ function handleRemotePlayerShoot(data) {
 function handleRemotePlayerHit(data) {
   // Handle when remote player hits something
   console.log("Remote player hit:", data);
+}
+
+function handleDemonDamage(data) {
+  // Only apply damage if this is the target player
+  if (data.playerId === socket?.id) {
+    const currentTime = Date.now();
+    
+    // Check for damage invulnerability
+    if (currentTime - lastDamageTime < damageInvulnerabilityTime) {
+      return; // Still invulnerable
+    }
+    
+    // Apply damage
+    takeDamage(data.damage);
+    lastDamageTime = currentTime;
+    
+    // Create damage effect
+    createDamageEffect();
+    
+    // Find the demon that attacked for visual feedback
+    const attackingDemon = demons.find(demon => 
+      demon.userData && demon.userData.serverId === data.demonId
+    );
+    
+    if (attackingDemon) {
+      // Create attack effect at demon position
+      createDemonAttackEffect(attackingDemon.position);
+      
+      // Play attack sound
+      playDemonAttackSound();
+      
+      const demonType = attackingDemon.userData.demonType || "IMP";
+      const typeData = DEMON_TYPES[demonType];
+      console.log(`${typeData.emoji} Server ${typeData.name} dealt ${data.damage} damage!`);
+    }
+  }
 }
 
 function startPositionSync() {

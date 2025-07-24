@@ -48,6 +48,27 @@ type Player = {
   roomId?: string;
 };
 
+type Demon = {
+  id: string;
+  type: string;
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  health: number;
+  maxHealth: number;
+  isAlive: boolean;
+  spawnTime: number;
+};
+
+type GameState = {
+  currentWave: number;
+  demons: Map<string, Demon>;
+  waveInProgress: boolean;
+  waveStartTime: number;
+  demonsSpawnedThisWave: number;
+  demonsKilledThisWave: number;
+  aiInterval?: NodeJS.Timeout;
+};
+
 type Room = {
   id: string;
   name: string;
@@ -58,6 +79,7 @@ type Room = {
   leaderId: string;
   gameStarted: boolean;
   createdAt: Date;
+  gameState?: GameState;
 };
 
 type LeaderBoard = Record<string, Player>;
@@ -88,9 +110,248 @@ function broadcastToRoom(roomId: string, event: string, data: any) {
   io.to(roomId).emit(event, data);
 }
 
+// Demon type definitions (matching client-side)
+const DEMON_TYPES = {
+  IMP: {
+    name: "Imp",
+    health: 1,
+    speed: 1.0,
+    scale: 1.0,
+    spawnWeight: 100,
+    attackDamage: 10,
+  },
+  DEMON: {
+    name: "Demon", 
+    health: 2,
+    speed: 1.8,
+    scale: 0.9,
+    spawnWeight: 60,
+    attackDamage: 15,
+  },
+  CACODEMON: {
+    name: "Cacodemon",
+    health: 4,
+    speed: 0.8,
+    scale: 1.6,
+    spawnWeight: 30,
+    attackDamage: 20,
+  },
+  BARON: {
+    name: "Baron of Hell",
+    health: 8,
+    speed: 0.6,
+    scale: 2.2,
+    spawnWeight: 5,
+    attackDamage: 35,
+  },
+};
+
+function generateDemonId(): string {
+  return Math.random().toString(36).substring(2, 12);
+}
+
+function getRandomSpawnPosition(): { x: number; y: number; z: number } {
+  const angle = Math.random() * Math.PI * 2;
+  const distance = 30 + Math.random() * 20; // Spawn 30-50 units away
+  return {
+    x: Math.cos(angle) * distance,
+    y: 0,
+    z: Math.sin(angle) * distance,
+  };
+}
+
+function selectDemonType(waveNumber: number): string {
+  const availableTypes = [];
+  
+  // Add demons based on wave progression
+  if (waveNumber >= 1) availableTypes.push(...Array(DEMON_TYPES.IMP.spawnWeight).fill('IMP'));
+  if (waveNumber >= 2) availableTypes.push(...Array(DEMON_TYPES.DEMON.spawnWeight).fill('DEMON'));
+  if (waveNumber >= 4) availableTypes.push(...Array(DEMON_TYPES.CACODEMON.spawnWeight).fill('CACODEMON'));
+  if (waveNumber >= 7) availableTypes.push(...Array(DEMON_TYPES.BARON.spawnWeight).fill('BARON'));
+  
+  return availableTypes[Math.floor(Math.random() * availableTypes.length)] || 'IMP';
+}
+
+function spawnDemon(room: Room): Demon | null {
+  if (!room.gameState) return null;
+  
+  const demonType = selectDemonType(room.gameState.currentWave);
+  const typeData = DEMON_TYPES[demonType as keyof typeof DEMON_TYPES];
+  
+  const demon: Demon = {
+    id: generateDemonId(),
+    type: demonType,
+    position: getRandomSpawnPosition(),
+    rotation: { x: 0, y: Math.random() * Math.PI * 2, z: 0 },
+    health: typeData.health,
+    maxHealth: typeData.health,
+    isAlive: true,
+    spawnTime: Date.now(),
+  };
+  
+  room.gameState.demons.set(demon.id, demon);
+  room.gameState.demonsSpawnedThisWave++;
+  
+  return demon;
+}
+
+function initializeGameState(room: Room): void {
+  room.gameState = {
+    currentWave: 1,
+    demons: new Map(),
+    waveInProgress: false,
+    waveStartTime: Date.now(),
+    demonsSpawnedThisWave: 0,
+    demonsKilledThisWave: 0,
+  };
+}
+
+function startWave(room: Room): void {
+  if (!room.gameState) return;
+  
+  room.gameState.waveInProgress = true;
+  room.gameState.waveStartTime = Date.now();
+  room.gameState.demonsSpawnedThisWave = 0;
+  room.gameState.demonsKilledThisWave = 0;
+  
+  // Calculate demons for this wave
+  const demonsThisWave = Math.min(5 + room.gameState.currentWave * 2, 20);
+  
+  // Broadcast wave start
+  broadcastToRoom(room.id, GAME_EVENTS.WORLD.WAVE_START, {
+    wave: room.gameState.currentWave,
+    demonsCount: demonsThisWave,
+  });
+  
+  // Spawn demons over time
+  const spawnInterval = setInterval(() => {
+    if (!room.gameState || !room.gameState.waveInProgress || 
+        room.gameState.demonsSpawnedThisWave >= demonsThisWave) {
+      clearInterval(spawnInterval);
+      return;
+    }
+    
+    const demon = spawnDemon(room);
+    if (demon) {
+      broadcastToRoom(room.id, GAME_EVENTS.WORLD.DEMON_SPAWN, {
+        demon: {
+          id: demon.id,
+          type: demon.type,
+          position: demon.position,
+          rotation: demon.rotation,
+          health: demon.health,
+          maxHealth: demon.maxHealth,
+        },
+      });
+    }
+  }, 2000); // Spawn every 2 seconds
+  
+  // Start demon AI update loop for this room
+  startDemonAI(room);
+}
+
 function getPlayersByRoom(roomId: string): Player[] {
   const room = rooms.get(roomId);
   return room ? room.players : [];
+}
+
+// Server-side demon AI system
+function startDemonAI(room: Room): void {
+  if (!room.gameState || room.gameState.aiInterval) return;
+  
+  // Update demon AI every 100ms
+  room.gameState.aiInterval = setInterval(() => {
+    if (!room.gameState || !room.gameState.waveInProgress || room.players.length === 0) {
+      return;
+    }
+    
+    updateDemonAI(room);
+  }, 100);
+}
+
+function updateDemonAI(room: Room): void {
+  if (!room.gameState) return;
+  
+  const players = room.players;
+  if (players.length === 0) return;
+  
+  room.gameState.demons.forEach((demon, demonId) => {
+    if (!demon.isAlive) return;
+    
+    // Find closest player
+    let closestPlayer = null;
+    let closestDistance = Infinity;
+    
+    for (const player of players) {
+      const dx = player.position.x - demon.position.x;
+      const dz = player.position.z - demon.position.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestPlayer = player;
+      }
+    }
+    
+    if (!closestPlayer) return;
+    
+    const typeData = DEMON_TYPES[demon.type as keyof typeof DEMON_TYPES];
+    const detectRange = typeData ? 60 : 60; // Default detection range
+    const attackRange = typeData ? 3.5 : 3.5; // Default attack range
+    const speed = typeData ? typeData.speed * 0.02 : 0.02; // Movement speed
+    
+    // If player is within detection range
+    if (closestDistance < detectRange) {
+      // Calculate direction to player
+      const dx = closestPlayer.position.x - demon.position.x;
+      const dz = closestPlayer.position.z - demon.position.z;
+      const direction = Math.atan2(dx, dz);
+      
+      // Update demon rotation to face player
+      demon.rotation.y = direction;
+      
+      // If within attack range, deal damage
+      if (closestDistance < attackRange) {
+        // Attack player (damage handling will be done client-side)
+        const attackDamage = typeData ? typeData.attackDamage || 10 : 10;
+        
+        // Broadcast demon attack to all clients
+        broadcastToRoom(room.id, GAME_EVENTS.COMBAT.DAMAGE, {
+          demonId: demon.id,
+          playerId: closestPlayer.id,
+          damage: attackDamage,
+          position: demon.position,
+          timestamp: Date.now(),
+        });
+      } else {
+        // Move towards player
+        const normalizedX = dx / closestDistance;
+        const normalizedZ = dz / closestDistance;
+        
+        demon.position.x += normalizedX * speed;
+        demon.position.z += normalizedZ * speed;
+        
+        // Keep demon within bounds
+        demon.position.x = Math.max(-45, Math.min(45, demon.position.x));
+        demon.position.z = Math.max(-45, Math.min(45, demon.position.z));
+      }
+      
+      // Broadcast position update to all clients
+      broadcastToRoom(room.id, GAME_EVENTS.WORLD.DEMON_UPDATE, {
+        demonId: demon.id,
+        position: demon.position,
+        rotation: demon.rotation,
+        timestamp: Date.now(),
+      });
+    }
+  });
+}
+
+function stopDemonAI(room: Room): void {
+  if (room.gameState && room.gameState.aiInterval) {
+    clearInterval(room.gameState.aiInterval);
+    room.gameState.aiInterval = undefined;
+  }
 }
 
 server.listen(Number(PORT), HOST, () => {
@@ -300,6 +561,8 @@ io.on("connection", (socket) => {
 
     // If room is empty or leader left, handle room cleanup
     if (room.players.length === 0) {
+      // Stop demon AI when room is empty
+      stopDemonAI(room);
       rooms.delete(player.roomId);
       console.log(`🏰 Room ${player.roomId} destroyed (empty)`);
     } else if (room.leaderId === socket.id) {
@@ -383,6 +646,10 @@ io.on("connection", (socket) => {
     if (!room || room.leaderId !== socket.id) return;
 
     room.gameStarted = true;
+    
+    // Initialize game state
+    initializeGameState(room);
+    
     broadcastToRoom(player.roomId, GAME_EVENTS.GAME.START, {
       roomId: player.roomId,
       mapType: room.mapType,
@@ -395,6 +662,13 @@ io.on("connection", (socket) => {
     });
 
     console.log(`🎮 Game started in room ${player.roomId}`);
+    
+    // Start first wave after a short delay
+    setTimeout(() => {
+      if (room.gameState) {
+        startWave(room);
+      }
+    }, 3000);
   });
 
   // Game state synchronization
@@ -437,6 +711,82 @@ io.on("connection", (socket) => {
       weapon: payload.weapon,
       timestamp: Date.now(),
     });
+  });
+
+  // Handle demon death
+  socket.on(GAME_EVENTS.WORLD.DEMON_DEATH, (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    const room = rooms.get(player.roomId);
+    if (!room || !room.gameState) return;
+
+    const demon = room.gameState.demons.get(payload.demonId);
+    if (demon && demon.isAlive) {
+      demon.isAlive = false;
+      room.gameState.demonsKilledThisWave++;
+      
+      // Update player stats
+      player.kills++;
+      player.score += 100;
+
+      // Broadcast demon death to all players
+      broadcastToRoom(player.roomId, GAME_EVENTS.WORLD.DEMON_DEATH, {
+        demonId: payload.demonId,
+        killerId: socket.id,
+        killerName: player.name,
+        position: demon.position,
+      });
+
+      // Check if wave is complete
+      const demonsThisWave = Math.min(5 + room.gameState.currentWave * 2, 20);
+      if (room.gameState.demonsKilledThisWave >= demonsThisWave) {
+        // Wave complete
+        room.gameState.waveInProgress = false;
+        room.gameState.currentWave++;
+        
+        broadcastToRoom(player.roomId, GAME_EVENTS.WORLD.WAVE_COMPLETE, {
+          wave: room.gameState.currentWave - 1,
+          nextWave: room.gameState.currentWave,
+          playersStats: room.players.map(p => ({
+            id: p.id,
+            name: p.name,
+            kills: p.kills,
+            score: p.score,
+          })),
+        });
+
+        // Start next wave after delay
+        setTimeout(() => {
+          if (room.gameState && room.gameStarted) {
+            startWave(room);
+          }
+        }, 5000);
+      }
+    }
+  });
+
+  // Handle demon position updates (for AI movement sync)
+  socket.on(GAME_EVENTS.WORLD.DEMON_UPDATE, (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    const room = rooms.get(player.roomId);
+    if (!room || !room.gameState) return;
+
+    const demon = room.gameState.demons.get(payload.demonId);
+    if (demon && demon.isAlive) {
+      demon.position = payload.position;
+      demon.rotation = payload.rotation;
+      
+      // Broadcast to other players (but not the sender)
+      socket.to(player.roomId).emit(GAME_EVENTS.WORLD.DEMON_UPDATE, {
+        demonId: payload.demonId,
+        position: payload.position,
+        rotation: payload.rotation,
+        timestamp: Date.now(),
+      });
+    }
   });
 
   // Disconnect handling
