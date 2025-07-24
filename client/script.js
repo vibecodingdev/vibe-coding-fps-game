@@ -3856,32 +3856,39 @@ function updateHealthPackCount() {
 
 // Update weapon display
 function updateWeaponDisplay() {
-  const infoDiv = document.querySelector(".info");
-  let weaponDiv = document.getElementById("weaponInfo");
+  const weaponNameElement = document.getElementById("weaponName");
+  const ammoCountElement = document.getElementById("ammoCount");
 
-  if (!weaponDiv) {
-    weaponDiv = document.createElement("div");
-    weaponDiv.id = "weaponInfo";
-    infoDiv.appendChild(weaponDiv);
+  if (!weaponNameElement || !ammoCountElement) {
+    console.warn("Weapon display elements not found");
+    return;
   }
 
   const weapon = WEAPONS[currentWeapon];
-  const fireRateText =
-    weapon.fireRate === 0 ? "Single Shot" : `${weapon.fireRate} RPM`;
+  if (!weapon) {
+    console.warn("Weapon data not found for:", currentWeapon);
+    return;
+  }
 
-  // Show ammo count, but don't show for shotgun (effectively unlimited)
-  const ammoText =
-    weapon.maxAmmo < 500 ? ` | 🔋 ${weapon.currentAmmo}/${weapon.maxAmmo}` : "";
+  // Update weapon name
+  weaponNameElement.textContent = `${weapon.emoji} ${weapon.name}`;
 
-  weaponDiv.textContent = `${weapon.emoji} ${weapon.name} | ${fireRateText}${ammoText}`;
+  // Update ammo count - show ammo for weapons with limited ammo
+  if (weapon.maxAmmo < 500) {
+    ammoCountElement.textContent = `${weapon.currentAmmo}/${weapon.maxAmmo}`;
 
-  // Change color if ammo is low
-  if (weapon.currentAmmo <= 30 && weapon.maxAmmo < 500) {
-    weaponDiv.style.color = "#ff4444"; // Red for low ammo
-  } else if (weapon.currentAmmo <= 60 && weapon.maxAmmo < 500) {
-    weaponDiv.style.color = "#ffaa00"; // Orange for medium ammo
+    // Change color if ammo is low
+    if (weapon.currentAmmo <= 10) {
+      ammoCountElement.style.color = "#ff4444"; // Red for very low ammo
+    } else if (weapon.currentAmmo <= 30) {
+      ammoCountElement.style.color = "#ffaa00"; // Orange for low ammo
+    } else {
+      ammoCountElement.style.color = "#ffffff"; // White for normal ammo
+    }
   } else {
-    weaponDiv.style.color = ""; // Default color
+    // For weapons with "unlimited" ammo (like shotgun)
+    ammoCountElement.textContent = "∞";
+    ammoCountElement.style.color = "#ffffff";
   }
 }
 
