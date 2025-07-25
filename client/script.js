@@ -242,24 +242,58 @@ let damageInvulnerabilityTime = 1000; // 1 second invulnerability after damage
 let audioListener;
 let audioLoader;
 let backgroundMusic;
-let gunfireSound;
-let demonGrowlSound;
-let demonAttackSound;
+let currentBackgroundTrack = null;
+let backgroundTracks = [];
+let menuMusic = null;
+let isMenuMusicPlaying = false;
+
+// Enhanced sound system with Doom-style audio
 let sounds = {
+  // Background music tracks
   backgroundMusic: null,
+  menuMusic: null,
+  quantumMysticIntro: null,
+  quantumMysticRiff1: null,
+  quantumMysticRiff2: null,
+  suspenseTrack: null,
+
+  // Weapon sounds
   gunfire: null,
   machinegun: null,
-  demonGrowl: null,
-  demonAttack: null,
+  doomShotgun: null,
+
+  // Demon sounds (variety of monster sounds)
+  demonGrowl1: null,
+  demonGrowl2: null,
+  demonRoar1: null,
+  demonRoar2: null,
+  demonRoar3: null,
+  demonWarriorRoar: null,
+  demonShriek: null,
+  demonBite: null,
+  demonBreath: null,
+  monsterGeneric: null,
+
+  // Environmental sounds
+  bigExplosion: null,
+  doomedEffect: null,
+  hornOfDoom: null,
 };
-let musicVolume = 0.3;
-let effectsVolume = 0.7;
+
+let musicVolume = 0.4;
+let effectsVolume = 0.8;
 let lastGrowlTime = 0;
-let growlCooldownTime = 2000; // 2 seconds between growls
+let growlCooldownTime = 1500; // Reduced for more frequent demon sounds
+let backgroundMusicEnabled = true;
+
+// Background music playlist management
+let musicPlaylist = [];
+let currentTrackIndex = 0;
+let isPlaylistPlaying = false;
 
 // Initialize audio system
 function initAudio() {
-  console.log("Initializing audio system...");
+  console.log("🎵 Initializing enhanced Doom-style audio system...");
 
   // Create audio listener
   audioListener = new THREE.AudioListener();
@@ -268,109 +302,524 @@ function initAudio() {
   // Create audio loader
   audioLoader = new THREE.AudioLoader();
 
-  // Initialize sounds
+  // Initialize all sound categories
   initBackgroundMusic();
-  initSoundEffects();
+  initWeaponSounds();
+  initDemonSounds();
+  initEnvironmentalSounds();
 
-  console.log("Audio system initialized");
+  console.log("🎵 Enhanced audio system initialized successfully");
 }
 
-// Initialize background music
+// Initialize background music with multiple tracks
 function initBackgroundMusic() {
-  backgroundMusic = new THREE.Audio(audioListener);
+  console.log("🎼 Loading background music tracks...");
 
-  // For now we'll use ambient background without loading music
-  // You can add music file loading here if needed
-  console.log("Background music system ready");
+  // Create audio objects for background music
+  const quantumMysticIntro = new THREE.Audio(audioListener);
+  const quantumMysticRiff1 = new THREE.Audio(audioListener);
+  const quantumMysticRiff2 = new THREE.Audio(audioListener);
+  const suspenseTrack = new THREE.Audio(audioListener);
+  const hornOfDoom = new THREE.Audio(audioListener);
+
+  // Load atmospheric intro track
+  audioLoader.load(
+    "assets/quantum-mystic-unnerving-intro-323481.mp3",
+    function (buffer) {
+      console.log("🎵 Quantum Mystic Intro loaded successfully");
+      quantumMysticIntro.setBuffer(buffer);
+      quantumMysticIntro.setVolume(musicVolume * 0.8);
+      quantumMysticIntro.setLoop(false);
+      sounds.quantumMysticIntro = quantumMysticIntro;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading quantum mystic intro:", error);
+    }
+  );
+
+  // Load main gameplay track 1
+  audioLoader.load(
+    "assets/quantum-mystic-riff-1-323475.mp3",
+    function (buffer) {
+      console.log("🎵 Quantum Mystic Riff 1 loaded successfully");
+      quantumMysticRiff1.setBuffer(buffer);
+      quantumMysticRiff1.setVolume(musicVolume);
+      quantumMysticRiff1.setLoop(true);
+      sounds.quantumMysticRiff1 = quantumMysticRiff1;
+      backgroundTracks.push(quantumMysticRiff1);
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading quantum mystic riff 1:", error);
+    }
+  );
+
+  // Load main gameplay track 2
+  audioLoader.load(
+    "assets/quantum-mystic-riff-2-323476.mp3",
+    function (buffer) {
+      console.log("🎵 Quantum Mystic Riff 2 loaded successfully");
+      quantumMysticRiff2.setBuffer(buffer);
+      quantumMysticRiff2.setVolume(musicVolume);
+      quantumMysticRiff2.setLoop(true);
+      sounds.quantumMysticRiff2 = quantumMysticRiff2;
+      backgroundTracks.push(quantumMysticRiff2);
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading quantum mystic riff 2:", error);
+    }
+  );
+
+  // Load suspense track for tense moments
+  audioLoader.load(
+    "assets/suspense-6002.mp3",
+    function (buffer) {
+      console.log("🎵 Suspense track loaded successfully");
+      suspenseTrack.setBuffer(buffer);
+      suspenseTrack.setVolume(musicVolume * 1.2);
+      suspenseTrack.setLoop(true);
+      sounds.suspenseTrack = suspenseTrack;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading suspense track:", error);
+    }
+  );
+
+  // Load horn of doom for dramatic moments
+  audioLoader.load(
+    "assets/horn-of-doom-101734.mp3",
+    function (buffer) {
+      console.log("🎵 Horn of Doom loaded successfully");
+      hornOfDoom.setBuffer(buffer);
+      hornOfDoom.setVolume(musicVolume * 1.5);
+      hornOfDoom.setLoop(false);
+      sounds.hornOfDoom = hornOfDoom;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading horn of doom:", error);
+    }
+  );
+
+  console.log("🎼 Background music loading initiated");
 }
 
-// Initialize sound effects
-function initSoundEffects() {
-  // Create sound objects
-  gunfireSound = new THREE.Audio(audioListener);
-  demonGrowlSound = new THREE.Audio(audioListener);
-  demonAttackSound = new THREE.Audio(audioListener);
+// Initialize weapon sounds with Doom-style audio
+function initWeaponSounds() {
+  console.log("🔫 Loading weapon sound effects...");
 
-  // Load actual sound files
-  console.log("Loading sound effects...");
+  // Create weapon sound objects
+  const gunfireSound = new THREE.Audio(audioListener);
+  const machineGunSound = new THREE.Audio(audioListener);
+  const doomShotgunSound = new THREE.Audio(audioListener);
 
   // Load single shot gunfire sound
   audioLoader.load(
     "assets/single gun shot.mp3",
     function (buffer) {
-      console.log("Single gun shot loaded successfully");
+      console.log("🔫 Single gun shot loaded successfully");
       gunfireSound.setBuffer(buffer);
       gunfireSound.setVolume(effectsVolume);
       sounds.gunfire = gunfireSound;
     },
     undefined,
     function (error) {
-      console.error("Error loading single gun shot:", error);
-      sounds.gunfire = null;
+      console.error("❌ Error loading single gun shot:", error);
     }
   );
 
   // Load machine gun sound for rapid fire
-  const machineGunSound = new THREE.Audio(audioListener);
   audioLoader.load(
     "assets/machine gun (rapid fire).mp3",
     function (buffer) {
-      console.log("Machine gun sound loaded successfully");
+      console.log("🔫 Machine gun sound loaded successfully");
       machineGunSound.setBuffer(buffer);
-      machineGunSound.setVolume(effectsVolume);
+      machineGunSound.setVolume(effectsVolume * 0.9);
       sounds.machinegun = machineGunSound;
     },
     undefined,
     function (error) {
-      console.error("Error loading machine gun sound:", error);
-      sounds.machinegun = null;
+      console.error("❌ Error loading machine gun sound:", error);
     }
   );
 
-  // Load zombie sound
+  // Load Doom-style shotgun sound
   audioLoader.load(
-    "assets/zombie.mp3",
+    "assets/doom-shotgun-2017-80549.mp3",
     function (buffer) {
-      console.log("Zombie sound loaded successfully");
-      demonGrowlSound.setBuffer(buffer);
-      demonGrowlSound.setVolume(effectsVolume);
-      demonAttackSound.setBuffer(buffer); // Use same sound for attack
-      demonAttackSound.setVolume(effectsVolume);
-      sounds.demonGrowl = demonGrowlSound;
-      sounds.demonAttack = demonAttackSound;
+      console.log("🔫 Doom shotgun sound loaded successfully");
+      doomShotgunSound.setBuffer(buffer);
+      doomShotgunSound.setVolume(effectsVolume * 1.1);
+      sounds.doomShotgun = doomShotgunSound;
     },
     undefined,
     function (error) {
-      console.error("Error loading zombie sound:", error);
-      sounds.demonGrowl = null;
-      sounds.demonAttack = null;
+      console.error("❌ Error loading doom shotgun sound:", error);
     }
   );
 
-  console.log("Sound effects loading initiated");
+  console.log("🔫 Weapon sounds loading initiated");
 }
 
-// Update volume for loaded sounds
+// Initialize demon sounds with variety
+function initDemonSounds() {
+  console.log("👹 Loading demon sound effects...");
+
+  // Create demon sound objects
+  const demonGrowl1 = new THREE.Audio(audioListener);
+  const demonGrowl2 = new THREE.Audio(audioListener);
+  const demonRoar1 = new THREE.Audio(audioListener);
+  const demonRoar2 = new THREE.Audio(audioListener);
+  const demonRoar3 = new THREE.Audio(audioListener);
+  const demonWarriorRoar = new THREE.Audio(audioListener);
+  const demonShriek = new THREE.Audio(audioListener);
+  const demonBite = new THREE.Audio(audioListener);
+  const demonBreath = new THREE.Audio(audioListener);
+  const monsterGeneric = new THREE.Audio(audioListener);
+
+  // Load demon growl sounds
+  audioLoader.load(
+    "assets/monster-growl-6311.mp3",
+    function (buffer) {
+      console.log("👹 Demon growl 1 loaded successfully");
+      demonGrowl1.setBuffer(buffer);
+      demonGrowl1.setVolume(effectsVolume * 0.7);
+      sounds.demonGrowl1 = demonGrowl1;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading demon growl 1:", error);
+    }
+  );
+
+  audioLoader.load(
+    "assets/monster-growl-376892.mp3",
+    function (buffer) {
+      console.log("👹 Demon growl 2 loaded successfully");
+      demonGrowl2.setBuffer(buffer);
+      demonGrowl2.setVolume(effectsVolume * 0.7);
+      sounds.demonGrowl2 = demonGrowl2;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading demon growl 2:", error);
+    }
+  );
+
+  // Load demon roar sounds
+  audioLoader.load(
+    "assets/low-monster-roar-97413.mp3",
+    function (buffer) {
+      console.log("👹 Low monster roar loaded successfully");
+      demonRoar1.setBuffer(buffer);
+      demonRoar1.setVolume(effectsVolume * 0.8);
+      sounds.demonRoar1 = demonRoar1;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading low monster roar:", error);
+    }
+  );
+
+  audioLoader.load(
+    "assets/monster-roar-02-102957.mp3",
+    function (buffer) {
+      console.log("👹 Monster roar 2 loaded successfully");
+      demonRoar2.setBuffer(buffer);
+      demonRoar2.setVolume(effectsVolume * 0.8);
+      sounds.demonRoar2 = demonRoar2;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading monster roar 2:", error);
+    }
+  );
+
+  audioLoader.load(
+    "assets/deep-sea-monster-roar-329857.mp3",
+    function (buffer) {
+      console.log("👹 Deep sea monster roar loaded successfully");
+      demonRoar3.setBuffer(buffer);
+      demonRoar3.setVolume(effectsVolume * 0.9);
+      sounds.demonRoar3 = demonRoar3;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading deep sea monster roar:", error);
+    }
+  );
+
+  // Load warrior roar for stronger demons
+  audioLoader.load(
+    "assets/monster-warrior-roar-195877.mp3",
+    function (buffer) {
+      console.log("👹 Monster warrior roar loaded successfully");
+      demonWarriorRoar.setBuffer(buffer);
+      demonWarriorRoar.setVolume(effectsVolume);
+      sounds.demonWarriorRoar = demonWarriorRoar;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading monster warrior roar:", error);
+    }
+  );
+
+  // Load demon shriek for special moments
+  audioLoader.load(
+    "assets/monster-shriek-100292.mp3",
+    function (buffer) {
+      console.log("👹 Monster shriek loaded successfully");
+      demonShriek.setBuffer(buffer);
+      demonShriek.setVolume(effectsVolume * 0.9);
+      sounds.demonShriek = demonShriek;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading monster shriek:", error);
+    }
+  );
+
+  // Load demon bite for attacks
+  audioLoader.load(
+    "assets/monster-bite-44538.mp3",
+    function (buffer) {
+      console.log("👹 Monster bite loaded successfully");
+      demonBite.setBuffer(buffer);
+      demonBite.setVolume(effectsVolume * 0.8);
+      sounds.demonBite = demonBite;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading monster bite:", error);
+    }
+  );
+
+  // Load horror breathing sound
+  audioLoader.load(
+    "assets/horror-sound-monster-breath-189934.mp3",
+    function (buffer) {
+      console.log("👹 Horror monster breath loaded successfully");
+      demonBreath.setBuffer(buffer);
+      demonBreath.setVolume(effectsVolume * 0.6);
+      sounds.demonBreath = demonBreath;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading horror monster breath:", error);
+    }
+  );
+
+  // Load generic monster sound
+  audioLoader.load(
+    "assets/monster-105850.mp3",
+    function (buffer) {
+      console.log("👹 Generic monster sound loaded successfully");
+      monsterGeneric.setBuffer(buffer);
+      monsterGeneric.setVolume(effectsVolume * 0.7);
+      sounds.monsterGeneric = monsterGeneric;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading generic monster sound:", error);
+    }
+  );
+
+  // Keep original zombie sound as fallback
+  const zombieSound = new THREE.Audio(audioListener);
+  audioLoader.load(
+    "assets/zombie.mp3",
+    function (buffer) {
+      console.log("👹 Zombie sound loaded successfully");
+      zombieSound.setBuffer(buffer);
+      zombieSound.setVolume(effectsVolume * 0.6);
+      sounds.zombie = zombieSound;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading zombie sound:", error);
+    }
+  );
+
+  console.log("👹 Demon sounds loading initiated");
+}
+
+// Initialize environmental sounds
+function initEnvironmentalSounds() {
+  console.log("💥 Loading environmental sound effects...");
+
+  // Create environmental sound objects
+  const bigExplosion = new THREE.Audio(audioListener);
+  const doomedEffect = new THREE.Audio(audioListener);
+
+  // Load big explosion sound
+  audioLoader.load(
+    "assets/big-explosion-41783.mp3",
+    function (buffer) {
+      console.log("💥 Big explosion sound loaded successfully");
+      bigExplosion.setBuffer(buffer);
+      bigExplosion.setVolume(effectsVolume * 1.2);
+      sounds.bigExplosion = bigExplosion;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading big explosion sound:", error);
+    }
+  );
+
+  // Load doomed effect
+  audioLoader.load(
+    "assets/doomed-effect-37231.mp3",
+    function (buffer) {
+      console.log("💥 Doomed effect loaded successfully");
+      doomedEffect.setBuffer(buffer);
+      doomedEffect.setVolume(effectsVolume);
+      sounds.doomedEffect = doomedEffect;
+    },
+    undefined,
+    function (error) {
+      console.error("❌ Error loading doomed effect:", error);
+    }
+  );
+
+  console.log("💥 Environmental sounds loading initiated");
+}
+
+// Enhanced background music management
+function startBackgroundMusic() {
+  if (!backgroundMusicEnabled || backgroundTracks.length === 0) {
+    console.log("🎵 Background music disabled or no tracks available");
+    return;
+  }
+
+  // Stop any currently playing music
+  stopBackgroundMusic();
+
+  // Play intro track if available and not already played
+  if (
+    sounds.quantumMysticIntro &&
+    !sounds.quantumMysticIntro.userData?.hasPlayed
+  ) {
+    console.log("🎵 Starting with atmospheric intro...");
+    currentBackgroundTrack = sounds.quantumMysticIntro;
+    sounds.quantumMysticIntro.userData = { hasPlayed: true };
+
+    // Set up intro to transition to main tracks
+    sounds.quantumMysticIntro.onEnded = () => {
+      setTimeout(() => {
+        startMainBackgroundMusic();
+      }, 1000); // 1 second pause between intro and main music
+    };
+
+    try {
+      sounds.quantumMysticIntro.play();
+      console.log("🎵 Atmospheric intro playing");
+    } catch (error) {
+      console.error("❌ Failed to play intro music:", error);
+      startMainBackgroundMusic();
+    }
+  } else {
+    startMainBackgroundMusic();
+  }
+}
+
+function startMainBackgroundMusic() {
+  if (backgroundTracks.length === 0) {
+    console.log("⚠️ No background tracks available");
+    return;
+  }
+
+  // Select a random track from the available background tracks
+  const randomIndex = Math.floor(Math.random() * backgroundTracks.length);
+  const selectedTrack = backgroundTracks[randomIndex];
+
+  if (selectedTrack && selectedTrack.buffer) {
+    currentBackgroundTrack = selectedTrack;
+    currentTrackIndex = randomIndex;
+
+    try {
+      selectedTrack.play();
+      console.log(`🎵 Playing background track ${randomIndex + 1}`);
+    } catch (error) {
+      console.error("❌ Failed to play background music:", error);
+    }
+  }
+}
+
+function stopBackgroundMusic() {
+  if (currentBackgroundTrack && currentBackgroundTrack.isPlaying) {
+    currentBackgroundTrack.stop();
+    console.log("🎵 Background music stopped");
+  }
+  currentBackgroundTrack = null;
+}
+
+function pauseBackgroundMusic() {
+  if (currentBackgroundTrack && currentBackgroundTrack.isPlaying) {
+    currentBackgroundTrack.pause();
+    console.log("🎵 Background music paused");
+  }
+}
+
+function resumeBackgroundMusic() {
+  if (currentBackgroundTrack && !currentBackgroundTrack.isPlaying) {
+    try {
+      currentBackgroundTrack.play();
+      console.log("🎵 Background music resumed");
+    } catch (error) {
+      console.error("❌ Failed to resume background music:", error);
+    }
+  }
+}
+
+// Enhanced sound volume management
 function updateSoundVolumes() {
-  if (sounds.gunfire && sounds.gunfire.setVolume) {
-    sounds.gunfire.setVolume(effectsVolume);
-  }
-  if (sounds.machinegun && sounds.machinegun.setVolume) {
-    sounds.machinegun.setVolume(effectsVolume);
-  }
-  if (sounds.demonGrowl && sounds.demonGrowl.setVolume) {
-    sounds.demonGrowl.setVolume(effectsVolume);
-  }
-  if (sounds.demonAttack && sounds.demonAttack.setVolume) {
-    sounds.demonAttack.setVolume(effectsVolume);
-  }
+  // Update weapon sounds
+  if (sounds.gunfire) sounds.gunfire.setVolume(effectsVolume);
+  if (sounds.machinegun) sounds.machinegun.setVolume(effectsVolume * 0.9);
+  if (sounds.doomShotgun) sounds.doomShotgun.setVolume(effectsVolume * 1.1);
+
+  // Update demon sounds
+  if (sounds.demonGrowl1) sounds.demonGrowl1.setVolume(effectsVolume * 0.7);
+  if (sounds.demonGrowl2) sounds.demonGrowl2.setVolume(effectsVolume * 0.7);
+  if (sounds.demonRoar1) sounds.demonRoar1.setVolume(effectsVolume * 0.8);
+  if (sounds.demonRoar2) sounds.demonRoar2.setVolume(effectsVolume * 0.8);
+  if (sounds.demonRoar3) sounds.demonRoar3.setVolume(effectsVolume * 0.9);
+  if (sounds.demonWarriorRoar) sounds.demonWarriorRoar.setVolume(effectsVolume);
+  if (sounds.demonShriek) sounds.demonShriek.setVolume(effectsVolume * 0.9);
+  if (sounds.demonBite) sounds.demonBite.setVolume(effectsVolume * 0.8);
+  if (sounds.demonBreath) sounds.demonBreath.setVolume(effectsVolume * 0.6);
+  if (sounds.monsterGeneric)
+    sounds.monsterGeneric.setVolume(effectsVolume * 0.7);
+  if (sounds.zombie) sounds.zombie.setVolume(effectsVolume * 0.6);
+
+  // Update environmental sounds
+  if (sounds.bigExplosion) sounds.bigExplosion.setVolume(effectsVolume * 1.2);
+  if (sounds.doomedEffect) sounds.doomedEffect.setVolume(effectsVolume);
+
+  // Update background music
+  if (sounds.quantumMysticRiff1)
+    sounds.quantumMysticRiff1.setVolume(musicVolume);
+  if (sounds.quantumMysticRiff2)
+    sounds.quantumMysticRiff2.setVolume(musicVolume);
+  if (sounds.suspenseTrack) sounds.suspenseTrack.setVolume(musicVolume * 1.2);
+  if (sounds.hornOfDoom) sounds.hornOfDoom.setVolume(musicVolume * 1.5);
+  if (sounds.quantumMysticIntro)
+    sounds.quantumMysticIntro.setVolume(musicVolume * 0.8);
 }
 
-// Play gunfire sound
+// Enhanced gunfire sound function
 function playGunfireSound() {
-  // Use appropriate sound based on current weapon
-  const weaponSound =
-    currentWeapon === "shotgun" ? sounds.gunfire : sounds.machinegun;
+  let weaponSound;
+
+  // Use Doom shotgun sound for shotgun, machine gun for chaingun
+  if (currentWeapon === "shotgun") {
+    weaponSound = sounds.doomShotgun || sounds.gunfire;
+  } else {
+    weaponSound = sounds.machinegun;
+  }
 
   if (!weaponSound) {
     console.warn(`No sound loaded for ${currentWeapon}`);
@@ -383,47 +832,192 @@ function playGunfireSound() {
   }
 
   // Update volume and play
-  weaponSound.setVolume(effectsVolume);
-  weaponSound.play();
+  weaponSound.setVolume(
+    effectsVolume * (currentWeapon === "shotgun" ? 1.1 : 0.9)
+  );
+  try {
+    weaponSound.play();
+  } catch (error) {
+    console.error("❌ Failed to play weapon sound:", error);
+  }
 }
 
-// Play demon growl sound
+// Enhanced demon sound functions with variety
 function playDemonGrowlSound() {
-  if (!sounds.demonGrowl) {
-    console.warn("No demon growl sound loaded");
-    return;
-  }
-
   const currentTime = Date.now();
   if (currentTime - lastGrowlTime < growlCooldownTime) return;
 
-  lastGrowlTime = currentTime;
+  // Select random demon sound based on availability
+  const availableSounds = [];
 
-  // Stop the sound if it's already playing
-  if (sounds.demonGrowl.isPlaying) {
-    sounds.demonGrowl.stop();
-  }
+  if (sounds.demonGrowl1) availableSounds.push(sounds.demonGrowl1);
+  if (sounds.demonGrowl2) availableSounds.push(sounds.demonGrowl2);
+  if (sounds.demonRoar1) availableSounds.push(sounds.demonRoar1);
+  if (sounds.demonRoar2) availableSounds.push(sounds.demonRoar2);
+  if (sounds.monsterGeneric) availableSounds.push(sounds.monsterGeneric);
+  if (sounds.zombie) availableSounds.push(sounds.zombie);
 
-  // Update volume and play
-  sounds.demonGrowl.setVolume(effectsVolume * 0.6);
-  sounds.demonGrowl.play();
-}
-
-// Play demon attack sound
-function playDemonAttackSound() {
-  if (!sounds.demonAttack) {
-    console.warn("No demon attack sound loaded");
+  if (availableSounds.length === 0) {
+    console.warn("⚠️ No demon sounds available");
     return;
   }
 
+  const randomSound =
+    availableSounds[Math.floor(Math.random() * availableSounds.length)];
+  lastGrowlTime = currentTime;
+
   // Stop the sound if it's already playing
-  if (sounds.demonAttack.isPlaying) {
-    sounds.demonAttack.stop();
+  if (randomSound.isPlaying) {
+    randomSound.stop();
   }
 
-  // Update volume and play
-  sounds.demonAttack.setVolume(effectsVolume * 0.8);
-  sounds.demonAttack.play();
+  try {
+    randomSound.play();
+    console.log("👹 Playing random demon sound");
+  } catch (error) {
+    console.error("❌ Failed to play demon sound:", error);
+  }
+}
+
+function playDemonAttackSound() {
+  // Use more aggressive sounds for attacks
+  const attackSounds = [];
+
+  if (sounds.demonBite) attackSounds.push(sounds.demonBite);
+  if (sounds.demonShriek) attackSounds.push(sounds.demonShriek);
+  if (sounds.demonWarriorRoar) attackSounds.push(sounds.demonWarriorRoar);
+  if (sounds.demonRoar3) attackSounds.push(sounds.demonRoar3);
+
+  if (attackSounds.length === 0) {
+    console.warn("⚠️ No demon attack sounds available");
+    return;
+  }
+
+  const randomAttackSound =
+    attackSounds[Math.floor(Math.random() * attackSounds.length)];
+
+  // Stop the sound if it's already playing
+  if (randomAttackSound.isPlaying) {
+    randomAttackSound.stop();
+  }
+
+  try {
+    randomAttackSound.play();
+    console.log("👹 Playing demon attack sound");
+  } catch (error) {
+    console.error("❌ Failed to play demon attack sound:", error);
+  }
+}
+
+// Play special demon sounds based on demon type
+function playDemonTypeSound(demonType) {
+  let soundToPlay = null;
+
+  switch (demonType) {
+    case "IMP":
+      soundToPlay = sounds.demonGrowl1 || sounds.monsterGeneric;
+      break;
+    case "DEMON":
+      soundToPlay = sounds.demonGrowl2 || sounds.demonRoar1;
+      break;
+    case "CACODEMON":
+      soundToPlay = sounds.demonRoar3 || sounds.demonBreath;
+      break;
+    case "BARON":
+      soundToPlay = sounds.demonWarriorRoar || sounds.demonRoar2;
+      break;
+    default:
+      soundToPlay = sounds.zombie;
+  }
+
+  if (soundToPlay && !soundToPlay.isPlaying) {
+    try {
+      soundToPlay.play();
+      console.log(`👹 Playing ${demonType} specific sound`);
+    } catch (error) {
+      console.error("❌ Failed to play demon type sound:", error);
+    }
+  }
+}
+
+// Environmental sound functions
+function playExplosionSound() {
+  if (sounds.bigExplosion && !sounds.bigExplosion.isPlaying) {
+    try {
+      sounds.bigExplosion.play();
+      console.log("💥 Playing explosion sound");
+    } catch (error) {
+      console.error("❌ Failed to play explosion sound:", error);
+    }
+  }
+}
+
+function playDoomedEffect() {
+  if (sounds.doomedEffect && !sounds.doomedEffect.isPlaying) {
+    try {
+      sounds.doomedEffect.play();
+      console.log("💀 Playing doomed effect");
+    } catch (error) {
+      console.error("❌ Failed to play doomed effect:", error);
+    }
+  }
+}
+
+function playHornOfDoom() {
+  if (sounds.hornOfDoom && !sounds.hornOfDoom.isPlaying) {
+    try {
+      sounds.hornOfDoom.play();
+      console.log("📯 Playing Horn of Doom");
+    } catch (error) {
+      console.error("❌ Failed to play Horn of Doom:", error);
+    }
+  }
+}
+
+// Dynamic music system based on game state
+function updateMusicBasedOnGameState() {
+  if (!backgroundMusicEnabled) return;
+
+  const livingDemons = demons.filter(
+    (demon) =>
+      demon.userData && !demon.userData.isDead && !demon.userData.isFalling
+  ).length;
+
+  // Switch to suspense music when many demons are near
+  const nearbyDemons = demons.filter((demon) => {
+    if (!demon.userData || demon.userData.isDead || demon.userData.isFalling)
+      return false;
+
+    const playerPos = controls.getObject().position;
+    const dx = playerPos.x - demon.position.x;
+    const dz = playerPos.z - demon.position.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+
+    return distance < 15; // Demons within 15 units
+  }).length;
+
+  // Dynamic music switching
+  if (
+    nearbyDemons >= 3 &&
+    sounds.suspenseTrack &&
+    currentBackgroundTrack !== sounds.suspenseTrack
+  ) {
+    console.log("🎵 Switching to suspense music - danger nearby!");
+    stopBackgroundMusic();
+    currentBackgroundTrack = sounds.suspenseTrack;
+    try {
+      sounds.suspenseTrack.play();
+    } catch (error) {
+      console.error("❌ Failed to play suspense music:", error);
+    }
+  } else if (
+    nearbyDemons < 2 &&
+    currentBackgroundTrack === sounds.suspenseTrack
+  ) {
+    console.log("🎵 Switching back to main background music");
+    stopBackgroundMusic();
+    startMainBackgroundMusic();
+  }
 }
 
 // Initialize the scene
@@ -644,8 +1238,29 @@ function setupVoiceChatUI() {
       voiceChat.settings.pushToTalkKey = e.target.value;
       saveVoiceChatSettings();
       updatePushToTalkDisplay();
+      console.log("Push-to-talk key changed:", e.target.value);
     });
   }
+}
+
+// Voice volume control function (restored full version)
+function updateVoiceVolume(value) {
+  const volume = value / 100;
+  voiceChat.settings.voiceVolume = parseInt(value);
+
+  // Update all remote audio elements
+  voiceChat.remoteAudios.forEach((audio) => {
+    audio.volume = volume;
+  });
+
+  // Save settings
+  saveVoiceChatSettings();
+
+  // Update display
+  const display = document.getElementById("voiceVolumeDisplay");
+  if (display) display.textContent = value + "%";
+
+  console.log("Voice volume:", volume);
 }
 
 // Initialize speech recognition for speech-to-text mode
@@ -2874,6 +3489,11 @@ function startWaveSystem() {
   console.log("Starting wave system...");
   updateWaveDisplay();
 
+  // Start background music when game begins
+  setTimeout(() => {
+    startBackgroundMusic();
+  }, 2000); // Delay to allow audio to initialize
+
   // In multiplayer, waves are controlled by the server
   if (isMultiplayer) {
     console.log("🌐 Multiplayer mode: Wave system controlled by server");
@@ -2888,6 +3508,11 @@ function startWave() {
   waveInProgress = true;
   demonsThisWave = getDemonsForWave(currentWave);
   demonsSpawnedThisWave = 0;
+
+  // Play dramatic sound for new wave
+  if (currentWave > 1) {
+    playHornOfDoom();
+  }
 
   updateWaveDisplay();
 
@@ -3030,6 +3655,14 @@ function spawnSingleDemon() {
   // Update type count for UI
   demonTypeCounts[demonType]++;
 
+  // Play demon spawn sound based on type (occasionally)
+  if (Math.random() < 0.3) {
+    // 30% chance to play spawn sound
+    setTimeout(() => {
+      playDemonTypeSound(demonType);
+    }, 500 + Math.random() * 1000); // Random delay between 0.5-1.5 seconds
+  }
+
   console.log(
     `${typeData.emoji} ${typeData.name} deployed for protocol wave ${currentWave} (${demonsSpawnedThisWave}/${demonsThisWave})`
   );
@@ -3056,6 +3689,12 @@ function completeWave() {
   console.log(`Wave ${currentWave} completed!`);
   waveInProgress = false;
   currentWave++;
+
+  // Play victory sound for wave completion
+  if (currentWave > 2) {
+    // Play for wave 2 and onwards
+    playExplosionSound();
+  }
 
   // Clear any remaining spawn timers
   if (demonSpawnTimer) {
@@ -3221,8 +3860,17 @@ function executeDemonAttack(demon, userData, direction) {
     // Create attack effect
     createDemonAttackEffect(demon.position);
 
-    // Play attack sound
-    playDemonAttackSound();
+    // Play attack sound based on demon type
+    const demonType = userData.demonType || "IMP";
+    if (demonType === "BARON" || demonType === "CACODEMON") {
+      // Stronger demons use warrior roar
+      if (sounds.demonWarriorRoar && !sounds.demonWarriorRoar.isPlaying) {
+        sounds.demonWarriorRoar.play();
+      }
+    } else {
+      // Regular attack sound
+      playDemonAttackSound();
+    }
 
     console.log("Demon executing attack!");
   }
@@ -4981,6 +5629,9 @@ function animate() {
 
     // Update mini radar
     updateRadar();
+
+    // Update dynamic music system based on game state
+    updateMusicBasedOnGameState();
   }
 
   // Always render animated objects for visual interest
@@ -5109,6 +5760,9 @@ function pauseGame() {
 
   gameState = "paused";
 
+  // Pause background music
+  pauseBackgroundMusic();
+
   // Exit pointer lock to free the cursor
   if (document.exitPointerLock) {
     document.exitPointerLock();
@@ -5136,6 +5790,9 @@ function resumeGame() {
   gameState = "playing";
   hideAllMenus();
   document.getElementById("gameUI").style.display = "block";
+
+  // Resume background music
+  resumeBackgroundMusic();
 
   // Request pointer lock to continue playing
   setTimeout(() => {
@@ -5168,6 +5825,9 @@ function quitToMainMenu() {
     nextWaveTimer = null;
   }
 
+  // Stop background music
+  stopBackgroundMusic();
+
   // Reset all game variables
   resetGameState();
 
@@ -5193,6 +5853,12 @@ function gameOver() {
   isGameOver = true;
   gameState = "gameOver";
   console.log("Game Over!");
+
+  // Stop background music and play doom effect
+  stopBackgroundMusic();
+  setTimeout(() => {
+    playDoomedEffect();
+  }, 500);
 
   // Stop all timers
   if (demonSpawnTimer) {
@@ -5453,13 +6119,20 @@ function setupUsernameInput() {
 // Master volume control function
 function updateMasterVolume(value) {
   const volume = value / 100;
-  musicVolume = volume;
-  effectsVolume = volume;
-  console.log("Master volume:", volume);
+  musicVolume = volume * 0.4; // Music at 40% of master volume
+  effectsVolume = volume * 0.8; // Effects at 80% of master volume
+  console.log(
+    "Master volume:",
+    volume,
+    "Music:",
+    musicVolume,
+    "Effects:",
+    effectsVolume
+  );
 
-  // Update background music volume if loaded
-  if (backgroundMusic && backgroundMusic.setVolume) {
-    backgroundMusic.setVolume(musicVolume);
+  // Update current background music volume if playing
+  if (currentBackgroundTrack && currentBackgroundTrack.setVolume) {
+    currentBackgroundTrack.setVolume(musicVolume);
   }
 
   // Update all sound effect volumes
@@ -7053,7 +7726,7 @@ function setupPauseMenuEventListeners() {
   }
 }
 
-// Voice volume control function (restored full version)
+// Voice volume control function
 function updateVoiceVolume(value) {
   const volume = value / 100;
   voiceChat.settings.voiceVolume = parseInt(value);
