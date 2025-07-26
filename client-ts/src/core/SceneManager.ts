@@ -7,6 +7,7 @@ export class SceneManager {
 
   private ground: THREE.Mesh | null = null;
   private sky: THREE.Mesh | null = null;
+  private fog: THREE.Fog | null = null;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -27,6 +28,7 @@ export class SceneManager {
   }
 
   public async initialize(): Promise<void> {
+    this.createHellishAtmosphere();
     this.createGround();
     this.createSky();
     this.addLighting();
@@ -38,7 +40,8 @@ export class SceneManager {
 
   private setupRenderer(): void {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x87ceeb);
+    // DOOM-style dark reddish background
+    this.renderer.setClearColor(0x2d1b1b);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -52,59 +55,155 @@ export class SceneManager {
   }
 
   private setupCamera(): void {
-    // 设置与原版JavaScript一致的摄像头位置
+    // Camera position for DOOM-style view
     this.camera.position.set(0, 1.8, 20);
-    // 确保摄像头方向正确
     this.camera.lookAt(0, 1.8, 0);
-    // 设置更安全的clip planes
     this.camera.near = 0.01;
     this.camera.far = 3000;
     this.camera.updateProjectionMatrix();
 
-    // Clear color to match sky
-    this.renderer.setClearColor(0x87ceeb, 1.0);
+    // Set dark hellish background color
+    this.renderer.setClearColor(0x2d1b1b, 1.0);
+  }
+
+  private createHellishAtmosphere(): void {
+    // Add fog for atmospheric depth - DOOM-style red/brown fog
+    this.fog = new THREE.Fog(0x4a2c2c, 50, 300);
+    this.scene.fog = this.fog;
   }
 
   private createGround(): void {
-    const groundGeometry = new THREE.PlaneGeometry(2000, 2000); // Much larger ground
+    const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+
+    // Create a hellish ground texture with mixed materials
     const groundMaterial = new THREE.MeshLambertMaterial({
-      color: 0x4a4a4a,
+      color: 0x3d2914, // Dark brown like dried blood and dirt
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.9,
     });
 
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.receiveShadow = true;
-    this.ground.position.y = 0; // Ensure ground is at y=0
+    this.ground.position.y = 0;
     this.scene.add(this.ground);
+
+    // Add cracks and blood stains on the ground
+    this.addGroundDetails();
+  }
+
+  private addGroundDetails(): void {
+    // Add blood stains and cracks
+    for (let i = 0; i < 30; i++) {
+      const stainGeometry = new THREE.CircleGeometry(Math.random() * 3 + 1, 8);
+      const stainMaterial = new THREE.MeshBasicMaterial({
+        color: 0x4a0000, // Dark blood red
+        transparent: true,
+        opacity: 0.7,
+      });
+
+      const stain = new THREE.Mesh(stainGeometry, stainMaterial);
+      stain.rotation.x = -Math.PI / 2;
+      stain.position.set(
+        (Math.random() - 0.5) * 200,
+        0.01,
+        (Math.random() - 0.5) * 200
+      );
+      this.scene.add(stain);
+    }
+
+    // Add scattered debris
+    for (let i = 0; i < 50; i++) {
+      const debris = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          Math.random() * 0.5 + 0.1,
+          Math.random() * 0.2 + 0.1,
+          Math.random() * 0.5 + 0.1
+        ),
+        new THREE.MeshLambertMaterial({
+          color: [0x2f2f2f, 0x1a1a1a, 0x4a2c2c][Math.floor(Math.random() * 3)],
+        })
+      );
+
+      debris.position.set(
+        (Math.random() - 0.5) * 200,
+        Math.random() * 0.1,
+        (Math.random() - 0.5) * 200
+      );
+      debris.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      this.scene.add(debris);
+    }
   }
 
   private createSky(): void {
-    const skyGeometry = new THREE.SphereGeometry(1500, 60, 40); // Even larger radius
+    const skyGeometry = new THREE.SphereGeometry(1500, 60, 40);
+
+    // Create DOOM-style hellish sky gradient
     const skyMaterial = new THREE.MeshBasicMaterial({
-      color: 0x87ceeb,
-      side: THREE.BackSide, // Render inside of sphere
-      depthWrite: false, // Prevent depth issues
-      fog: false, // Disable fog for sky
+      color: 0x4a2c2c, // Dark reddish-brown
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
     });
 
     this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
-    this.sky.renderOrder = -1000; // Render sky first with high priority
-    this.sky.frustumCulled = false; // Never cull the sky
+    this.sky.renderOrder = -1000;
+    this.sky.frustumCulled = false;
     this.scene.add(this.sky);
 
-    // Skip gradient shader for now to avoid errors
-    console.log("Sky created with basic material to prevent rendering errors");
+    // Add hellish sky effects
+    this.addSkyEffects();
+  }
+
+  private addSkyEffects(): void {
+    // Add floating embers/ash particles
+    const particleCount = 200;
+    const particles = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 1000;
+      positions[i + 1] = Math.random() * 200 + 50;
+      positions[i + 2] = (Math.random() - 0.5) * 1000;
+    }
+
+    particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+    const particleMaterial = new THREE.PointsMaterial({
+      color: 0xff4400,
+      size: 2,
+      transparent: true,
+      opacity: 0.6,
+    });
+
+    const particleSystem = new THREE.Points(particles, particleMaterial);
+    this.scene.add(particleSystem);
+
+    // Add distant hellish glow
+    const glowGeometry = new THREE.SphereGeometry(800, 32, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x660000,
+      transparent: true,
+      opacity: 0.1,
+      side: THREE.BackSide,
+    });
+
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.position.y = -400;
+    this.scene.add(glow);
   }
 
   private addLighting(): void {
-    // Ambient light for general illumination
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    // Reduced ambient light for darker DOOM atmosphere
+    const ambientLight = new THREE.AmbientLight(0x331111, 0.3);
     this.scene.add(ambientLight);
 
-    // Directional light for shadows
-    const directionalLight = new THREE.DirectionalLight(0xff6600, 1.0);
+    // Main directional light with hellish orange tint
+    const directionalLight = new THREE.DirectionalLight(0xff3300, 0.8);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
@@ -117,43 +216,77 @@ export class SceneManager {
     directionalLight.shadow.camera.bottom = -100;
     this.scene.add(directionalLight);
 
-    // Hellish red point lights
-    const redLight1 = new THREE.PointLight(0xff0000, 0.8, 30);
-    redLight1.position.set(-20, 5, -20);
-    this.scene.add(redLight1);
+    // Multiple hellish point lights for atmospheric lighting
+    const hellLights: Array<{
+      pos: [number, number, number];
+      color: number;
+      intensity: number;
+    }> = [
+      { pos: [-30, 8, -30], color: 0xff0000, intensity: 1.2 },
+      { pos: [40, 12, 20], color: 0xff3300, intensity: 1.0 },
+      { pos: [-15, 6, 35], color: 0xff6600, intensity: 0.8 },
+      { pos: [25, 10, -40], color: 0xcc3300, intensity: 0.9 },
+      { pos: [-45, 15, 10], color: 0xff4400, intensity: 1.1 },
+    ];
 
-    const redLight2 = new THREE.PointLight(0xff4400, 0.6, 25);
-    redLight2.position.set(25, 8, 15);
-    this.scene.add(redLight2);
+    hellLights.forEach(({ pos, color, intensity }) => {
+      const light = new THREE.PointLight(color, intensity, 40);
+      light.position.set(pos[0], pos[1], pos[2]);
+      this.scene.add(light);
+    });
+
+    // Add flickering fire lights
+    this.createFlickeringLights();
+  }
+
+  private createFlickeringLights(): void {
+    // Create flickering lights that simulate fire/lava
+    for (let i = 0; i < 8; i++) {
+      const fireLight = new THREE.PointLight(0xff4400, 0.8, 25);
+      fireLight.position.set(
+        (Math.random() - 0.5) * 150,
+        Math.random() * 8 + 3,
+        (Math.random() - 0.5) * 150
+      );
+
+      // Add flickering animation
+      const originalIntensity = fireLight.intensity;
+      setInterval(() => {
+        fireLight.intensity = originalIntensity * (0.7 + Math.random() * 0.6);
+      }, Math.floor(100 + Math.random() * 200));
+
+      this.scene.add(fireLight);
+    }
   }
 
   private addEnvironmentObjects(): void {
-    // Add grid helper for better depth perception
-    const gridHelper = new THREE.GridHelper(200, 100, 0x606060, 0x404040);
-    (gridHelper.material as THREE.Material).opacity = 0.5;
+    // Reduced grid opacity for darker atmosphere
+    const gridHelper = new THREE.GridHelper(200, 100, 0x442222, 0x221111);
+    (gridHelper.material as THREE.Material).opacity = 0.3;
     (gridHelper.material as THREE.Material).transparent = true;
     this.scene.add(gridHelper);
 
-    // Create apocalyptic environment
-    this.createBurnedBuildings();
-    this.createAbandonedVehicles();
-    this.createDeadTrees();
-    this.createDebrisAndWreckage();
-    this.createStreetLights();
-    this.createBarricades();
+    // Create DOOM-style hellish environment
+    this.createDemonArchitecture();
+    this.createHellishStructures();
+    this.createDeadVegetation();
+    this.createHellPortals();
+    this.createTechDebris();
+    this.createHellishBarricades();
   }
 
-  private createBurnedBuildings(): void {
-    for (let i = 0; i < 8; i++) {
-      const width = 3 + Math.random() * 4;
-      const height = 8 + Math.random() * 12;
-      const depth = 3 + Math.random() * 4;
+  private createDemonArchitecture(): void {
+    // Create hell-fortress style buildings
+    for (let i = 0; i < 6; i++) {
+      const width = 4 + Math.random() * 6;
+      const height = 12 + Math.random() * 15;
+      const depth = 4 + Math.random() * 6;
 
       const geometry = new THREE.BoxGeometry(width, height, depth);
       const material = new THREE.MeshLambertMaterial({
-        color: 0x2a2a2a,
+        color: 0x2a1111, // Very dark red
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.9,
       });
 
       const building = new THREE.Mesh(geometry, material);
@@ -168,171 +301,244 @@ export class SceneManager {
 
       this.scene.add(building);
 
-      // Add broken windows
-      for (let j = 0; j < 6; j++) {
-        const windowGeometry = new THREE.BoxGeometry(0.5, 0.8, 0.1);
-        const windowMaterial = new THREE.MeshBasicMaterial({
-          color: 0x000000,
-          transparent: true,
-          opacity: 0.7,
-        });
-        const window = new THREE.Mesh(windowGeometry, windowMaterial);
-        window.position.set(
-          (Math.random() - 0.5) * width * 0.8,
-          (Math.random() - 0.5) * height * 0.6,
-          width / 2 + 0.05
-        );
-        building.add(window);
-      }
+      // Add hellish architectural details
+      this.addBuildingDetails(building, width, height, depth);
     }
   }
 
-  private createAbandonedVehicles(): void {
-    for (let i = 0; i < 6; i++) {
-      const carBody = new THREE.BoxGeometry(4, 1.5, 2);
-      const material = new THREE.MeshLambertMaterial({
-        color: [0x8b0000, 0x2f4f4f, 0x556b2f, 0x800000][
-          Math.floor(Math.random() * 4)
-        ],
+  private addBuildingDetails(
+    building: THREE.Mesh,
+    width: number,
+    height: number,
+    depth: number
+  ): void {
+    // Add glowing windows/portals
+    for (let j = 0; j < 8; j++) {
+      const windowGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.1);
+      const windowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff3300,
+        transparent: true,
+        opacity: 0.8,
       });
+      const window = new THREE.Mesh(windowGeometry, windowMaterial);
+      window.position.set(
+        (Math.random() - 0.5) * width * 0.8,
+        (Math.random() - 0.5) * height * 0.6,
+        width / 2 + 0.05
+      );
+      building.add(window);
 
-      const car = new THREE.Mesh(carBody, material);
-      car.position.set(
+      // Add glowing effect around windows
+      const glowGeometry = new THREE.BoxGeometry(1.0, 1.4, 0.05);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff6600,
+        transparent: true,
+        opacity: 0.3,
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      glow.position.copy(window.position);
+      glow.position.z -= 0.02;
+      building.add(glow);
+    }
+
+    // Add spikes and hellish decorations
+    for (let k = 0; k < 4; k++) {
+      const spikeGeometry = new THREE.ConeGeometry(0.3, 2, 6);
+      const spikeMaterial = new THREE.MeshLambertMaterial({ color: 0x1a0a0a });
+      const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+      spike.position.set(
+        (Math.random() - 0.5) * width,
+        height / 2 + 1,
+        (Math.random() - 0.5) * depth
+      );
+      spike.rotation.x = (Math.random() - 0.5) * 0.5;
+      spike.rotation.z = (Math.random() - 0.5) * 0.5;
+      building.add(spike);
+    }
+  }
+
+  private createHellishStructures(): void {
+    // Create demonic altars and structures
+    for (let i = 0; i < 5; i++) {
+      const altarBase = new THREE.CylinderGeometry(2, 3, 1, 8);
+      const altarMaterial = new THREE.MeshLambertMaterial({ color: 0x330000 });
+      const altar = new THREE.Mesh(altarBase, altarMaterial);
+
+      altar.position.set(
         (Math.random() - 0.5) * 160,
-        0.75,
+        0.5,
         (Math.random() - 0.5) * 160
       );
-      car.rotation.y = Math.random() * Math.PI * 2;
-      car.castShadow = true;
-      car.receiveShadow = true;
+      altar.castShadow = true;
+      altar.receiveShadow = true;
 
-      this.scene.add(car);
+      this.scene.add(altar);
 
-      // Add wheels
-      const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 8);
-      const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-
-      const positions: [number, number, number][] = [
-        [-1.5, -0.3, 0.8],
-        [1.5, -0.3, 0.8],
-        [-1.5, -0.3, -0.8],
-        [1.5, -0.3, -0.8],
-      ];
-
-      positions.forEach(([x, y, z]) => {
-        const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        wheel.position.set(x, y, z);
-        wheel.rotation.z = Math.PI / 2;
-        car.add(wheel);
+      // Add glowing orb on top
+      const orbGeometry = new THREE.SphereGeometry(0.5, 16, 12);
+      const orbMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff3300,
+        transparent: true,
+        opacity: 0.8,
       });
+      const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+      orb.position.set(0, 1.5, 0);
+      altar.add(orb);
+
+      // Add point light for orb
+      const orbLight = new THREE.PointLight(0xff3300, 1.0, 15);
+      orbLight.position.set(0, 1.5, 0);
+      altar.add(orbLight);
     }
   }
 
-  private createDeadTrees(): void {
-    for (let i = 0; i < 15; i++) {
-      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 4, 8);
-      const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x3d2914 });
+  private createDeadVegetation(): void {
+    // Create twisted, dead trees
+    for (let i = 0; i < 12; i++) {
+      const trunkGeometry = new THREE.CylinderGeometry(0.15, 0.3, 5, 6);
+      const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x2a1a0a });
       const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
 
       trunk.position.set(
         (Math.random() - 0.5) * 180,
-        2,
+        2.5,
         (Math.random() - 0.5) * 180
       );
+      trunk.rotation.z = (Math.random() - 0.5) * 0.3;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
 
       this.scene.add(trunk);
 
-      // Add dead branches
-      for (let j = 0; j < 5; j++) {
-        const branchGeometry = new THREE.CylinderGeometry(0.05, 0.1, 1, 6);
+      // Add twisted branches
+      for (let j = 0; j < 6; j++) {
+        const branchGeometry = new THREE.CylinderGeometry(0.03, 0.08, 1.5, 4);
         const branch = new THREE.Mesh(branchGeometry, trunkMaterial);
         branch.position.set(
-          (Math.random() - 0.5) * 0.5,
-          1.5 + Math.random() * 1.5,
-          (Math.random() - 0.5) * 0.5
+          (Math.random() - 0.5) * 0.6,
+          2 + Math.random() * 2,
+          (Math.random() - 0.5) * 0.6
         );
-        branch.rotation.z = (Math.random() - 0.5) * Math.PI;
+        branch.rotation.set(
+          (Math.random() - 0.5) * Math.PI,
+          Math.random() * Math.PI * 2,
+          (Math.random() - 0.5) * Math.PI
+        );
         trunk.add(branch);
       }
     }
   }
 
-  private createDebrisAndWreckage(): void {
-    for (let i = 0; i < 20; i++) {
-      const size = 0.5 + Math.random() * 2;
-      const geometry = new THREE.BoxGeometry(size, size * 0.3, size * 0.8);
-      const material = new THREE.MeshLambertMaterial({
-        color: [0x666666, 0x8b4513, 0x2f4f4f, 0x708090][
-          Math.floor(Math.random() * 4)
-        ],
-      });
-
-      const debris = new THREE.Mesh(geometry, material);
-      debris.position.set(
-        (Math.random() - 0.5) * 190,
-        size * 0.15,
-        (Math.random() - 0.5) * 190
-      );
-      debris.rotation.set(
-        (Math.random() - 0.5) * 0.5,
-        Math.random() * Math.PI * 2,
-        (Math.random() - 0.5) * 0.5
-      );
-      debris.castShadow = true;
-      debris.receiveShadow = true;
-
-      this.scene.add(debris);
-    }
-  }
-
-  private createStreetLights(): void {
-    for (let i = 0; i < 8; i++) {
-      const poleGeometry = new THREE.CylinderGeometry(0.1, 0.15, 6, 8);
-      const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
-      const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-
-      pole.position.set(
-        (Math.random() - 0.5) * 180,
-        3,
-        (Math.random() - 0.5) * 180
-      );
-      pole.castShadow = true;
-
-      this.scene.add(pole);
-
-      // Add broken light fixture
-      const lightGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.8);
-      const lightMaterial = new THREE.MeshBasicMaterial({
-        color: 0x2a2a2a,
+  private createHellPortals(): void {
+    // Create glowing hellish portals
+    for (let i = 0; i < 3; i++) {
+      const portalGeometry = new THREE.RingGeometry(2, 3, 16);
+      const portalMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
       });
-      const light = new THREE.Mesh(lightGeometry, lightMaterial);
-      light.position.y = 5.5;
-      pole.add(light);
+
+      const portal = new THREE.Mesh(portalGeometry, portalMaterial);
+      portal.position.set(
+        (Math.random() - 0.5) * 120,
+        4,
+        (Math.random() - 0.5) * 120
+      );
+      portal.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+
+      this.scene.add(portal);
+
+      // Add inner glow
+      const innerGlow = new THREE.Mesh(
+        new THREE.CircleGeometry(2.5, 16),
+        new THREE.MeshBasicMaterial({
+          color: 0xff6600,
+          transparent: true,
+          opacity: 0.4,
+          side: THREE.DoubleSide,
+        })
+      );
+      innerGlow.position.copy(portal.position);
+      innerGlow.rotation.copy(portal.rotation);
+      this.scene.add(innerGlow);
+
+      // Add portal light
+      const portalLight = new THREE.PointLight(0xff3300, 2.0, 30);
+      portalLight.position.copy(portal.position);
+      this.scene.add(portalLight);
     }
   }
 
-  private createBarricades(): void {
-    for (let i = 0; i < 10; i++) {
-      const barrierGeometry = new THREE.BoxGeometry(4, 1, 0.3);
+  private createTechDebris(): void {
+    // Create destroyed tech/military equipment
+    for (let i = 0; i < 8; i++) {
+      const crateGeometry = new THREE.BoxGeometry(2, 1.5, 2);
+      const crateMaterial = new THREE.MeshLambertMaterial({
+        color: [0x2f2f2f, 0x1a1a1a, 0x4a2c2c][Math.floor(Math.random() * 3)],
+      });
+
+      const crate = new THREE.Mesh(crateGeometry, crateMaterial);
+      crate.position.set(
+        (Math.random() - 0.5) * 160,
+        0.75,
+        (Math.random() - 0.5) * 160
+      );
+      crate.rotation.y = Math.random() * Math.PI * 2;
+      crate.rotation.z = (Math.random() - 0.5) * 0.3;
+      crate.castShadow = true;
+      crate.receiveShadow = true;
+
+      this.scene.add(crate);
+
+      // Add damage effects
+      if (Math.random() > 0.5) {
+        const damageGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+        const damageMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const damage = new THREE.Mesh(damageGeometry, damageMaterial);
+        damage.position.set(
+          (Math.random() - 0.5) * 1.5,
+          (Math.random() - 0.5) * 1,
+          (Math.random() - 0.5) * 1.5
+        );
+        crate.add(damage);
+      }
+    }
+  }
+
+  private createHellishBarricades(): void {
+    // Create twisted metal barricades
+    for (let i = 0; i < 8; i++) {
+      const barrierGeometry = new THREE.BoxGeometry(5, 1.5, 0.4);
       const barrierMaterial = new THREE.MeshLambertMaterial({
-        color: 0x8b4513,
+        color: 0x331111,
       });
       const barrier = new THREE.Mesh(barrierGeometry, barrierMaterial);
 
       barrier.position.set(
         (Math.random() - 0.5) * 150,
-        0.5,
+        0.75,
         (Math.random() - 0.5) * 150
       );
       barrier.rotation.y = Math.random() * Math.PI * 2;
+      barrier.rotation.z = (Math.random() - 0.5) * 0.4;
       barrier.castShadow = true;
       barrier.receiveShadow = true;
 
       this.scene.add(barrier);
+
+      // Add spikes on top
+      for (let j = 0; j < 3; j++) {
+        const spikeGeometry = new THREE.ConeGeometry(0.1, 0.8, 4);
+        const spikeMaterial = new THREE.MeshLambertMaterial({
+          color: 0x1a0808,
+        });
+        const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+        spike.position.set((j - 1) * 1.5, 1.2, 0);
+        spike.rotation.x = (Math.random() - 0.5) * 0.3;
+        barrier.add(spike);
+      }
     }
   }
 

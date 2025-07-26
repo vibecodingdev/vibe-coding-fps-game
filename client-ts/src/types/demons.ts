@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export type DemonType = "IMP" | "DEMON" | "CACODEMON" | "BARON";
+export type DemonType = "IMP" | "DEMON" | "CACODEMON" | "BARON" | "ARCHVILE";
 
 export interface DemonConfig {
   readonly name: string;
@@ -16,6 +16,20 @@ export interface DemonConfig {
   readonly chaseRange: number;
   readonly attackDamage: number;
   readonly spawnWeight: number;
+  readonly isRanged?: boolean; // New property for ranged demons
+  readonly fireballSpeed?: number; // Speed of fireball projectiles
+  readonly fireballRange?: number; // Maximum range of fireballs
+}
+
+// New interface for fireball projectiles
+export interface Fireball {
+  readonly id: string;
+  readonly mesh: THREE.Group;
+  readonly velocity: THREE.Vector3;
+  readonly damage: number;
+  readonly createdAt: number;
+  readonly demonId: string;
+  readonly targetPosition: THREE.Vector3;
 }
 
 export type DemonState =

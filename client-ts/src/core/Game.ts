@@ -553,6 +553,18 @@ export class Game {
       }
     });
 
+    // Check fireball-player collisions
+    const hitFireball = this.demonSystem.checkFireballCollision(playerPosition);
+    if (hitFireball && this.canTakeDamage()) {
+      // Take fireball damage
+      this.takeDamageFromFireball(hitFireball);
+
+      // Remove the fireball that hit us
+      this.demonSystem.removeFireball(hitFireball);
+
+      console.log(`🔥 Player hit by fireball! Damage: ${hitFireball.damage}`);
+    }
+
     // Check player-collectible collisions (reuse existing playerPosition)
     const collectibleCollision =
       this.collectibleSystem.checkPlayerCollision(playerPosition);
@@ -647,6 +659,27 @@ export class Game {
 
     console.log(
       `🩸 Player took ${damage} damage from ${demonType}. Health: ${this.playerState.health}`
+    );
+
+    if (this.playerState.health <= 0) {
+      this.playerState.isAlive = false;
+      this.endGame();
+    }
+  }
+
+  private takeDamageFromFireball(fireball: any): void {
+    const damage = fireball.damage;
+    this.playerState.health = Math.max(0, this.playerState.health - damage);
+    this.playerState.lastDamageTime = performance.now();
+
+    // Show enhanced damage effect for fireball
+    this.uiManager.showDamageEffect(true);
+
+    // Play fireball damage sound
+    this.audioSystem.playDemonAttackSound("ARCHVILE");
+
+    console.log(
+      `🔥 Player took ${damage} fireball damage! Health: ${this.playerState.health}`
     );
 
     if (this.playerState.health <= 0) {

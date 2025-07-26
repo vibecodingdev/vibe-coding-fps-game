@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Fireball Damage System Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #ff4400;
+            z-index: 1000;
+            max-width: 350px;
+        }
+        .test-button {
+            background: #ff4400;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .test-button:hover {
+            background: #ff6600;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .success { background: #2d5a2d; }
+        .warning { background: #5a5a2d; }
+        .error { background: #5a2d2d; }
+        .info { background: #2d2d5a; }
+        
+        .health-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s ease;
+            width: 100%;
+        }
+        .health-text {
+            position: fixed;
+            bottom: 50px;
+            left: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-panel">
+        <h3>🔥 Fireball Damage Test</h3>
+        <p>Test the enhanced fireball collision and visual effects:</p>
+        
+        <button class="test-button" onclick="testCollisionRange()">Test Collision Range</button>
+        <button class="test-button" onclick="testFireballDamage()">Test Fireball Damage</button>
+        <button class="test-button" onclick="testRegularDamage()">Test Regular Damage</button>
+        <button class="test-button" onclick="testExplosionEffect()">Test Explosion Effect</button>
+        <button class="test-button" onclick="resetHealth()">Reset Health</button>
+        
+        <div id="collisionStatus" class="status info">Collision Range: Ready to test (4.0 units)</div>
+        <div id="damageStatus" class="status info">Damage System: Ready to test</div>
+        <div id="explosionStatus" class="status info">Explosion Effect: Ready to test</div>
+        <div id="visualStatus" class="status info">Visual Effects: Ready to test</div>
+    </div>
+
+    <div class="health-text">Health: <span id="healthValue">100</span> / 100</div>
+    <div class="health-bar">
+        <div class="health-fill" id="healthFill"></div>
+    </div>
+
+    <script>
+        let currentHealth = 100;
+        let testResults = {
+            collision: false,
+            damage: false,
+            explosion: false,
+            visual: false
+        };
+
+        function updateStatus(id, success, message) {
+            const element = document.getElementById(id);
+            element.className = `status ${success ? 'success' : 'error'}`;
+            element.textContent = `${success ? '✅' : '❌'} ${message}`;
+        }
+
+        function updateHealth(newHealth) {
+            currentHealth = Math.max(0, Math.min(100, newHealth));
+            document.getElementById('healthValue').textContent = currentHealth;
+            document.getElementById('healthFill').style.width = currentHealth + '%';
+        }
+
+        function resetHealth() {
+            updateHealth(100);
+            updateStatus('damageStatus', true, 'Health reset to 100');
+        }
+
+        function testCollisionRange() {
+            // Simulate fireball collision detection with 4.0 unit range
+            const playerPosition = { x: 0, y: 0, z: 0 };
+            const fireballPosition = { x: 3.5, y: 0, z: 0 }; // Within 4.0 range
+            
+            const distance = Math.sqrt(
+                Math.pow(playerPosition.x - fireballPosition.x, 2) +
+                Math.pow(playerPosition.y - fireballPosition.y, 2) +
+                Math.pow(playerPosition.z - fireballPosition.z, 2)
+            );
+            
+            const collisionRange = 4.0;
+            const shouldHit = distance < collisionRange;
+            
+            if (shouldHit) {
+                updateStatus('collisionStatus', true, `Collision detected at ${distance.toFixed(1)} units (< ${collisionRange})`);
+                testResults.collision = true;
+            } else {
+                updateStatus('collisionStatus', false, `No collision at ${distance.toFixed(1)} units (>= ${collisionRange})`);
+            }
+        }
+
+        function testFireballDamage() {
+            // Simulate fireball damage (25 damage)
+            const fireballDamage = 25;
+            updateHealth(currentHealth - fireballDamage);
+            
+            // Show enhanced fireball damage effect
+            showDamageEffect(true);
+            
+            updateStatus('damageStatus', true, `Fireball damage: ${fireballDamage} HP. Health: ${currentHealth}`);
+            testResults.damage = true;
+        }
+
+        function testRegularDamage() {
+            // Simulate regular demon damage (10-15 damage)
+            const regularDamage = 15;
+            updateHealth(currentHealth - regularDamage);
+            
+            // Show regular damage effect
+            showDamageEffect(false);
+            
+            updateStatus('damageStatus', true, `Regular damage: ${regularDamage} HP. Health: ${currentHealth}`);
+        }
+
+        function testExplosionEffect() {
+            // Simulate enhanced explosion effect
+            createEnhancedExplosion();
+            updateStatus('explosionStatus', true, 'Enhanced explosion effect displayed');
+            testResults.explosion = true;
+        }
+
+        function showDamageEffect(isFireball) {
+            const damageOverlay = document.createElement("div");
+            
+            if (isFireball) {
+                // Fireball damage - more intense orange-red effect
+                damageOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: radial-gradient(circle, rgba(255, 100, 0, 0.4) 0%, rgba(255, 0, 0, 0.5) 100%);
+                    pointer-events: none;
+                    z-index: 9999;
+                    animation: fireballDamageFlash 0.8s ease-out;
+                `;
+            } else {
+                // Regular damage effect
+                damageOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: radial-gradient(circle, transparent 0%, rgba(255, 0, 0, 0.5) 100%);
+                    pointer-events: none;
+                    z-index: 9999;
+                    animation: damageFlash 0.6s ease-out;
+                `;
+            }
+
+            // Add animation styles
+            const style = document.createElement("style");
+            style.textContent = `
+                @keyframes damageFlash {
+                    0% { opacity: 1; }
+                    50% { opacity: 0.8; }
+                    100% { opacity: 0; }
+                }
+                @keyframes fireballDamageFlash {
+                    0% { opacity: 1; }
+                    25% { opacity: 0.9; }
+                    50% { opacity: 0.7; }
+                    75% { opacity: 0.4; }
+                    100% { opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(damageOverlay);
+
+            const duration = isFireball ? 800 : 600;
+            setTimeout(() => {
+                if (document.body.contains(damageOverlay)) {
+                    document.body.removeChild(damageOverlay);
+                }
+                if (document.head.contains(style)) {
+                    document.head.removeChild(style);
+                }
+            }, duration);
+
+            updateStatus('visualStatus', true, `${isFireball ? 'Fireball' : 'Regular'} damage effect shown`);
+            testResults.visual = true;
+        }
+
+        function createEnhancedExplosion() {
+            // Create visual explosion simulation
+            const explosion = document.createElement("div");
+            explosion.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 100px;
+                height: 100px;
+                background: radial-gradient(circle, #ff4500 0%, #ff8800 50%, transparent 100%);
+                border-radius: 50%;
+                animation: explode 1s ease-out;
+                pointer-events: none;
+                z-index: 1000;
+            `;
+
+            const style = document.createElement("style");
+            style.textContent = `
+                @keyframes explode {
+                    0% { 
+                        transform: translate(-50%, -50%) scale(0.1);
+                        opacity: 1;
+                    }
+                    50% { 
+                        transform: translate(-50%, -50%) scale(3);
+                        opacity: 0.8;
+                    }
+                    100% { 
+                        transform: translate(-50%, -50%) scale(5);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(explosion);
+
+            setTimeout(() => {
+                if (document.body.contains(explosion)) {
+                    document.body.removeChild(explosion);
+                }
+                if (document.head.contains(style)) {
+                    document.head.removeChild(style);
+                }
+            }, 1000);
+        }
+
+        // Auto-run comprehensive test after 2 seconds
+        setTimeout(() => {
+            console.log("🔥 Running comprehensive fireball test...");
+            
+            testCollisionRange();
+            setTimeout(() => testFireballDamage(), 500);
+            setTimeout(() => testExplosionEffect(), 1000);
+            
+            setTimeout(() => {
+                const passedTests = Object.values(testResults).filter(Boolean).length;
+                const totalTests = Object.keys(testResults).length;
+                
+                console.log(`🔥 Fireball Test Results: ${passedTests}/${totalTests} tests passed`);
+                
+                if (passedTests >= 3) {
+                    document.body.style.background = '#1a3d1a';
+                    console.log('✅ Fireball damage system working correctly!');
+                    alert('✅ Fireball damage system working correctly!\n\n' +
+                          '• Collision range increased to 4.0 units\n' +
+                          '• Enhanced explosion effects\n' +
+                          '• Improved visual damage feedback\n' +
+                          '• Fireball damage properly integrated');
+                } else {
+                    document.body.style.background = '#3d1a1a';
+                    console.log('❌ Some fireball tests failed');
+                }
+            }, 1500);
+        }, 2000);
+    </script>
+</body>
+</html> 

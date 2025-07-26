@@ -3,6 +3,7 @@ import {
   DemonType,
   DemonInstance,
   DemonSystem as IDemonSystem,
+  Fireball,
 } from "@/types/demons";
 import { Bullet } from "@/types/weapons";
 import { DEMON_CONFIGS, getDemonTypesForWave } from "@/config/demons";
@@ -20,6 +21,7 @@ interface DemonAnimation {
 
 export class DemonSystem implements IDemonSystem {
   public demons: DemonInstance[] = [];
+  public fireballs: Fireball[] = []; // Track active fireballs
   public currentWave = 1;
   public demonsThisWave = 0;
   public demonsSpawnedThisWave = 0;
@@ -29,6 +31,7 @@ export class DemonSystem implements IDemonSystem {
     DEMON: 0,
     CACODEMON: 0,
     BARON: 0,
+    ARCHVILE: 0,
   } as Record<DemonType, number>;
 
   private scene!: THREE.Scene;
@@ -54,6 +57,9 @@ export class DemonSystem implements IDemonSystem {
     this.demons.forEach((demon: any) => {
       this.updateDemonAI(demon, deltaTime);
     });
+
+    // Update fireballs
+    this.updateFireballs(deltaTime);
 
     // Remove demons marked for removal
     this.removeDeadDemons();
@@ -193,7 +199,12 @@ export class DemonSystem implements IDemonSystem {
       if (distanceToPlayer <= config.attackRange) {
         this.executeDemonAttack(demon, playerPosition);
       } else if (distanceToPlayer <= config.chaseRange) {
-        this.prepareDemonAttack(demon, playerPosition, deltaTime);
+        // Ranged demons prefer to maintain distance
+        if (config.isRanged && demonType === "ARCHVILE") {
+          this.executeRangedPositioning(demon, playerPosition, deltaTime);
+        } else {
+          this.prepareDemonAttack(demon, playerPosition, deltaTime);
+        }
       } else {
         this.executeDemonChase(demon, playerPosition, deltaTime);
       }
@@ -221,6 +232,259 @@ export class DemonSystem implements IDemonSystem {
 
     // Update animations based on current state
     this.updateDemonAnimation(demon, deltaTime);
+  }
+
+  private updateFireballs(deltaTime: number): void {
+    const fireballsToRemove: Fireball[] = [];
+
+    this.fireballs.forEach((fireball) => {
+      // Move fireball
+      fireball.mesh.position.add(fireball.velocity);
+
+      // Check if fireball has reached its target or exceeded range
+      const distanceToTarget = fireball.mesh.position.distanceTo(
+        fireball.targetPosition
+      );
+      const distanceFromOrigin = fireball.mesh.position.length();
+      const maxRange = 50; // Maximum fireball range
+      const timeAlive = performance.now() - fireball.createdAt;
+
+      // Remove fireball if it's close to target, out of range, or too old
+      if (
+        distanceToTarget < 1.0 ||
+        distanceFromOrigin > maxRange ||
+        timeAlive > 5000
+      ) {
+        // Create explosion effect at fireball position
+        this.createFireballExplosion(fireball.mesh.position);
+
+        // Remove from scene
+        this.scene.remove(fireball.mesh);
+        fireballsToRemove.push(fireball);
+      }
+    });
+
+    // Remove expired fireballs
+    fireballsToRemove.forEach((fireball) => {
+      const index = this.fireballs.indexOf(fireball);
+      if (index > -1) {
+        this.fireballs.splice(index, 1);
+      }
+    });
+  }
+
+  private createFireballExplosion(position: THREE.Vector3): void {
+    // Create multiple explosion effects for more dramatic impact
+
+    // Main explosion sphere
+    const explosionGeometry = new THREE.SphereGeometry(3, 16, 8);
+    const explosionMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff4500,
+      transparent: true,
+      opacity: 0.9,
+    });
+
+    const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
+    explosion.position.copy(position);
+    this.scene.add(explosion);
+
+    // Outer shockwave
+    const shockwaveGeometry = new THREE.SphereGeometry(1, 16, 8);
+    const shockwaveMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff8800,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.BackSide,
+    });
+
+    const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
+    shockwave.position.copy(position);
+    this.scene.add(shockwave);
+
+    // Add multiple fire particles
+    const particles: THREE.Mesh[] = [];
+    for (let i = 0; i < 12; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.2, 8, 6);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: Math.random() > 0.5 ? 0xff4400 : 0xff8800,
+        transparent: true,
+        opacity: 0.8,
+      });
+
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.copy(position);
+
+      // Random particle direction
+      const angle = (i / 12) * Math.PI * 2;
+      const elevation = (Math.random() - 0.5) * Math.PI * 0.5;
+      particle.userData.velocity = new THREE.Vector3(
+        Math.cos(angle) * Math.cos(elevation) * 3,
+        Math.sin(elevation) * 3 + 2,
+        Math.sin(angle) * Math.cos(elevation) * 3
+      );
+
+      this.scene.add(particle);
+      particles.push(particle);
+    }
+
+    // Enhanced animation
+    let time = 0;
+    const animate = () => {
+      time += 0.02;
+
+      // Main explosion
+      const explosionScale = 0.1 + time * 4;
+      const explosionOpacity = Math.max(0, 0.9 - time * 1.5);
+      explosion.scale.setScalar(explosionScale);
+      explosionMaterial.opacity = explosionOpacity;
+
+      // Shockwave
+      const shockwaveScale = 1 + time * 8;
+      const shockwaveOpacity = Math.max(0, 0.6 - time * 2);
+      shockwave.scale.setScalar(shockwaveScale);
+      shockwaveMaterial.opacity = shockwaveOpacity;
+
+      // Particles
+      particles.forEach((particle, index) => {
+        if (particle.userData.velocity) {
+          particle.position.add(
+            particle.userData.velocity.clone().multiplyScalar(0.02)
+          );
+          particle.userData.velocity.y -= 0.1; // Gravity
+          (particle.material as THREE.MeshBasicMaterial).opacity = Math.max(
+            0,
+            0.8 - time * 1.5
+          );
+
+          const particleScale = 1 - time * 0.8;
+          particle.scale.setScalar(Math.max(0.1, particleScale));
+        }
+      });
+
+      // Cleanup when animation complete
+      if (time >= 1.0) {
+        this.scene.remove(explosion);
+        this.scene.remove(shockwave);
+        particles.forEach((p) => this.scene.remove(p));
+
+        explosionGeometry.dispose();
+        explosionMaterial.dispose();
+        shockwaveGeometry.dispose();
+        shockwaveMaterial.dispose();
+        particles.forEach((p) => {
+          p.geometry.dispose();
+          (p.material as THREE.MeshBasicMaterial).dispose();
+        });
+      } else {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    animate();
+
+    // Play explosion sound
+    if (this.audioSystem) {
+      this.audioSystem.playExplosionSound?.();
+    }
+
+    console.log("🔥💥 Enhanced fireball explosion created!");
+  }
+
+  private launchFireball(
+    startPosition: THREE.Vector3,
+    targetPosition: THREE.Vector3,
+    config: any,
+    demonId: string
+  ): void {
+    // Create fireball visual
+    const fireballGroup = new THREE.Group();
+
+    // Main fireball body
+    const fireballGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+    const fireballMaterial = new THREE.MeshLambertMaterial({
+      color: 0xff4500,
+      emissive: new THREE.Color(0xff2200),
+      emissiveIntensity: 0.8,
+    });
+
+    const fireballCore = new THREE.Mesh(fireballGeometry, fireballMaterial);
+    fireballGroup.add(fireballCore);
+
+    // Outer glow effect
+    const glowGeometry = new THREE.SphereGeometry(0.5, 8, 6);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff6600,
+      transparent: true,
+      opacity: 0.3,
+    });
+
+    const fireballGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+    fireballGroup.add(fireballGlow);
+
+    // Position fireball slightly above demon
+    fireballGroup.position.copy(startPosition);
+    fireballGroup.position.y += 1.5;
+
+    // Calculate velocity toward target
+    const direction = new THREE.Vector3()
+      .subVectors(targetPosition, fireballGroup.position)
+      .normalize();
+
+    const speed = config.fireballSpeed || 15.0;
+    const velocity = direction.multiplyScalar(speed * 0.016); // Frame-based speed
+
+    // Create fireball instance
+    const fireball: Fireball = {
+      id: `fireball_${Date.now()}_${Math.random()}`,
+      mesh: fireballGroup,
+      velocity: velocity,
+      damage: config.attackDamage,
+      createdAt: performance.now(),
+      demonId: demonId,
+      targetPosition: targetPosition.clone(),
+    };
+
+    // Add to scene and tracking
+    this.scene.add(fireballGroup);
+    this.fireballs.push(fireball);
+
+    // Add particle effects to fireball
+    this.addFireballParticles(fireballGroup);
+
+    console.log(`🔥 Fireball launched from ${demonId} toward player`);
+  }
+
+  private addFireballParticles(fireballGroup: THREE.Group): void {
+    // Add trailing fire particles
+    for (let i = 0; i < 6; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.05, 4, 4);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff8800,
+        transparent: true,
+        opacity: 0.6,
+      });
+
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.set(
+        (Math.random() - 0.5) * 0.4,
+        (Math.random() - 0.5) * 0.4,
+        (Math.random() - 0.5) * 0.4
+      );
+
+      fireballGroup.add(particle);
+
+      // Animate particles
+      const animateParticle = () => {
+        particle.scale.multiplyScalar(0.98);
+        particle.material.opacity *= 0.95;
+
+        if (particle.scale.x > 0.1) {
+          requestAnimationFrame(animateParticle);
+        }
+      };
+
+      setTimeout(() => animateParticle(), i * 100);
+    }
   }
 
   private updateDeathAnimation(
@@ -574,16 +838,31 @@ export class DemonSystem implements IDemonSystem {
       const dz = playerPosition.z - meshObject.position.z;
       const direction = Math.atan2(dx, dz);
 
-      // Attack animation - lunge forward - matches original
-      const lungeDistance = 0.8;
-      meshObject.position.x += Math.sin(direction) * lungeDistance;
-      meshObject.position.z += Math.cos(direction) * lungeDistance;
-
       // Get demon config for damage calculation
       const demonType = userData.demonType || "IMP";
       const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
 
-      console.log(`Demon executing attack! Damage: ${config.attackDamage}`);
+      // Check if this is a ranged demon (ARCHVILE)
+      if (config.isRanged && demonType === "ARCHVILE") {
+        // Ranged attack - launch fireball
+        this.launchFireball(
+          meshObject.position,
+          playerPosition,
+          config,
+          demon.id || "unknown"
+        );
+        console.log(
+          `${demonType} launching fireball! Damage: ${config.attackDamage}`
+        );
+      } else {
+        // Melee attack - lunge forward - matches original
+        const lungeDistance = 0.8;
+        meshObject.position.x += Math.sin(direction) * lungeDistance;
+        meshObject.position.z += Math.cos(direction) * lungeDistance;
+        console.log(
+          `${demonType} executing melee attack! Damage: ${config.attackDamage}`
+        );
+      }
 
       // Play attack sound based on demon type
       if (this.audioSystem) {
@@ -791,6 +1070,93 @@ export class DemonSystem implements IDemonSystem {
     }
   }
 
+  private executeRangedPositioning(
+    demon: DemonInstance | any,
+    playerPosition: THREE.Vector3,
+    deltaTime: number
+  ): void {
+    // Handle both DemonInstance and direct THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
+
+    if (demon.mesh) {
+      // DemonInstance structure
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
+    } else {
+      // Direct THREE.Group object (multiplayer)
+      meshObject = demon;
+      userData = demon.userData;
+    }
+
+    if (!userData) return;
+
+    userData.isAttacking = false;
+    userData.isMoving = true;
+
+    // Get demon config for optimal positioning
+    const demonType = userData.demonType || "IMP";
+    const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
+
+    // Calculate optimal distance (slightly less than attack range)
+    const optimalDistance = config.attackRange * 0.8;
+    const currentDistance = meshObject.position.distanceTo(playerPosition);
+
+    // Calculate direction to/from player
+    const dx = playerPosition.x - meshObject.position.x;
+    const dz = playerPosition.z - meshObject.position.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+
+    if (distance === 0) return;
+
+    const normalizedX = dx / distance;
+    const normalizedZ = dz / distance;
+
+    // Position demon to maintain optimal distance
+    let moveDirection = 1; // Move toward player by default
+
+    if (currentDistance < optimalDistance * 0.7) {
+      // Too close - back away
+      moveDirection = -1;
+    } else if (currentDistance > optimalDistance * 1.3) {
+      // Too far - move closer
+      moveDirection = 1;
+    } else {
+      // Good distance - strafe around player
+      const strafeDirection = Math.sin(performance.now() * 0.001) > 0 ? 1 : -1;
+      meshObject.position.x +=
+        normalizedZ * strafeDirection * config.speed * 0.008;
+      meshObject.position.z -=
+        normalizedX * strafeDirection * config.speed * 0.008;
+
+      // Face the player while strafing
+      const direction = Math.atan2(dx, dz);
+      meshObject.rotation.y = direction;
+
+      // Set demon state for AI tracking
+      if (demon.mesh) {
+        demon.state = "positioning";
+      }
+      return;
+    }
+
+    // Move toward or away from player
+    const moveSpeed = config.speed * 0.6; // Moderate positioning speed
+    const moveDistance = moveSpeed * 0.016; // Frame-based movement
+
+    meshObject.position.x += normalizedX * moveDirection * moveDistance;
+    meshObject.position.z += normalizedZ * moveDirection * moveDistance;
+
+    // Always face the player
+    const direction = Math.atan2(dx, dz);
+    meshObject.rotation.y = direction;
+
+    // Set demon state for AI tracking
+    if (demon.mesh) {
+      demon.state = "positioning";
+    }
+  }
+
   public startWaveSystem(): void {
     this.waveInProgress = true;
     this.spawnWave();
@@ -804,7 +1170,13 @@ export class DemonSystem implements IDemonSystem {
     this.demonsSpawnedThisWave = 0;
 
     // Reset type counts
-    this.demonTypeCounts = { IMP: 0, DEMON: 0, CACODEMON: 0, BARON: 0 };
+    this.demonTypeCounts = {
+      IMP: 0,
+      DEMON: 0,
+      CACODEMON: 0,
+      BARON: 0,
+      ARCHVILE: 0,
+    };
 
     // Spawn demons with delay
     this.spawnDemonsWithDelay(demonTypes);
@@ -961,6 +1333,9 @@ export class DemonSystem implements IDemonSystem {
     if (demonType === "CACODEMON") {
       leftEye.position.set(-0.15, 1.55, 0.25);
       rightEye.position.set(0.15, 1.55, 0.25);
+    } else if (demonType === "ARCHVILE") {
+      leftEye.position.set(-0.12, 1.6, 0.3);
+      rightEye.position.set(0.12, 1.6, 0.3);
     } else {
       leftEye.position.set(-0.1, 1.45, 0.3);
       rightEye.position.set(0.1, 1.45, 0.3);
@@ -974,6 +1349,8 @@ export class DemonSystem implements IDemonSystem {
     // Demon-specific features
     if (demonType === "CACODEMON") {
       this.addCacodemonFeatures(demonGroup, typeData);
+    } else if (demonType === "ARCHVILE") {
+      this.addArchvileFeatures(demonGroup, typeData);
     } else {
       this.addHumanoidFeatures(demonGroup, typeData, demonType);
     }
@@ -1104,6 +1481,132 @@ export class DemonSystem implements IDemonSystem {
     demonGroup.add(rightHoof);
   }
 
+  private addArchvileFeatures(demonGroup: THREE.Group, typeData: any): void {
+    // Archvile is a tall, imposing humanoid with fire-based features
+    const armMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.headColor,
+      shininess: 15,
+      emissive: new THREE.Color(0x440000),
+      emissiveIntensity: 0.2,
+    });
+
+    // Long, thin arms for spellcasting
+    const armGeometry = new THREE.CylinderGeometry(0.07, 0.09, 1.0, 8);
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.5, 1.0, 0);
+    leftArm.rotation.z = 0.4;
+    leftArm.name = "leftArm";
+    demonGroup.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.5, 1.0, 0);
+    rightArm.rotation.z = -0.4;
+    rightArm.name = "rightArm";
+    demonGroup.add(rightArm);
+
+    // Add staff/wand for magical attacks
+    const staffGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.2, 8);
+    const staffMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8b4513,
+      emissive: new THREE.Color(0x441100),
+      emissiveIntensity: 0.3,
+    });
+
+    const staff = new THREE.Mesh(staffGeometry, staffMaterial);
+    staff.position.set(0.5, 0.8, 0);
+    staff.rotation.z = -0.4;
+    demonGroup.add(staff);
+
+    // Add crystal orb at top of staff
+    const orbGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+    const orbMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffd700,
+      emissive: new THREE.Color(0xff4400),
+      emissiveIntensity: 0.6,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+    orb.position.set(0.5, 1.4, 0);
+    demonGroup.add(orb);
+
+    // Tall, thin legs
+    const legGeometry = new THREE.CylinderGeometry(0.09, 0.11, 1.2, 8);
+    const legMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.color,
+      shininess: 10,
+      emissive: new THREE.Color(0x220000),
+      emissiveIntensity: 0.1,
+    });
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.25, -0.6, 0);
+    leftLeg.name = "leftLeg";
+    demonGroup.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.25, -0.6, 0);
+    rightLeg.name = "rightLeg";
+    demonGroup.add(rightLeg);
+
+    // Clawed feet
+    const footGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.3);
+    const footMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
+
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(-0.25, -1.25, 0.05);
+    demonGroup.add(leftFoot);
+
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+    rightFoot.position.set(0.25, -1.25, 0.05);
+    demonGroup.add(rightFoot);
+
+    // Add fire particles around the demon
+    this.addFireAura(demonGroup);
+  }
+
+  private addFireAura(demonGroup: THREE.Group): void {
+    // Add floating fire particles around the Archvile
+    for (let i = 0; i < 8; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.03, 6, 4);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff4400,
+        transparent: true,
+        opacity: 0.7,
+      });
+
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 0.8 + Math.random() * 0.4;
+
+      particle.position.set(
+        Math.cos(angle) * radius,
+        Math.random() * 2.0 + 0.5,
+        Math.sin(angle) * radius
+      );
+
+      demonGroup.add(particle);
+
+      // Animate fire particles
+      const animateFireParticle = () => {
+        particle.position.y += 0.01;
+        particle.rotation.y += 0.05;
+        particle.material.opacity =
+          0.3 + Math.sin(performance.now() * 0.005) * 0.4;
+
+        if (particle.position.y > 3.0) {
+          particle.position.y = 0.5;
+        }
+
+        requestAnimationFrame(animateFireParticle);
+      };
+
+      setTimeout(() => animateFireParticle(), i * 200);
+    }
+  }
+
   private addDemonDetails(
     demonGroup: THREE.Group,
     demonType: DemonType,
@@ -1167,6 +1670,46 @@ export class DemonSystem implements IDemonSystem {
       rightHorn.position.set(0.08, 1.65, 0);
       rightHorn.rotation.z = 0.3;
       demonGroup.add(rightHorn);
+    } else if (demonType === "ARCHVILE") {
+      // Archvile: Magical robe and fire crown
+      const robeGeometry = new THREE.CylinderGeometry(0.6, 0.8, 1.5, 12);
+      const robeMaterial = new THREE.MeshPhongMaterial({
+        color: 0x4a0000,
+        emissive: new THREE.Color(0x220000),
+        emissiveIntensity: 0.3,
+        shininess: 20,
+      });
+      const robe = new THREE.Mesh(robeGeometry, robeMaterial);
+      robe.position.y = 0.3;
+      demonGroup.add(robe);
+
+      // Fire crown on head
+      const crownGeometry = new THREE.ConeGeometry(0.3, 0.4, 8);
+      const crownMaterial = new THREE.MeshLambertMaterial({
+        color: 0xff4500,
+        emissive: new THREE.Color(0xff2200),
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.8,
+      });
+      const crown = new THREE.Mesh(crownGeometry, crownMaterial);
+      crown.position.y = 1.9;
+      demonGroup.add(crown);
+
+      // Add fire spikes around crown
+      for (let i = 0; i < 6; i++) {
+        const flameGeometry = new THREE.ConeGeometry(0.04, 0.2, 6);
+        const flameMaterial = new THREE.MeshBasicMaterial({
+          color: 0xff6600,
+          transparent: true,
+          opacity: 0.7,
+        });
+
+        const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+        const angle = (i / 6) * Math.PI * 2;
+        flame.position.set(Math.cos(angle) * 0.25, 2.0, Math.sin(angle) * 0.25);
+        demonGroup.add(flame);
+      }
     }
 
     // Add ambient glow effect for all demons
@@ -1221,6 +1764,34 @@ export class DemonSystem implements IDemonSystem {
     return null;
   }
 
+  public checkFireballCollision(
+    playerPosition: THREE.Vector3
+  ): Fireball | null {
+    for (const fireball of this.fireballs) {
+      const distance = fireball.mesh.position.distanceTo(playerPosition);
+      // Increased collision range for better hit detection
+      if (distance < 4.0) {
+        // Fireball hit player
+        return fireball;
+      }
+    }
+    return null;
+  }
+
+  public removeFireball(fireball: Fireball): void {
+    // Remove from scene
+    this.scene.remove(fireball.mesh);
+
+    // Create explosion at impact
+    this.createFireballExplosion(fireball.mesh.position);
+
+    // Remove from tracking array
+    const index = this.fireballs.indexOf(fireball);
+    if (index > -1) {
+      this.fireballs.splice(index, 1);
+    }
+  }
+
   public damageDemon(demonId: string, damage: number): boolean {
     const demon = this.demons.find((d) => d.id === demonId);
     if (demon) {
@@ -1266,8 +1837,14 @@ export class DemonSystem implements IDemonSystem {
       this.scene.remove(demon.mesh);
     });
 
+    // Remove all fireballs from scene
+    this.fireballs.forEach((fireball) => {
+      this.scene.remove(fireball.mesh);
+    });
+
     // Reset state
     this.demons = [];
+    this.fireballs = [];
     this.currentWave = 1;
     this.demonsThisWave = 0;
     this.demonsSpawnedThisWave = 0;
@@ -1277,6 +1854,7 @@ export class DemonSystem implements IDemonSystem {
       DEMON: 0,
       CACODEMON: 0,
       BARON: 0,
+      ARCHVILE: 0,
     };
   }
 }

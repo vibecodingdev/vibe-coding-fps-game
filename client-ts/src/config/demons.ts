@@ -61,6 +61,24 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     attackDamage: 35,
     spawnWeight: 5,
   },
+  ARCHVILE: {
+    name: "Archvile",
+    emoji: "🔥",
+    health: 6,
+    speed: 0.5, // Slow but dangerous ranged attacker
+    scale: 1.8,
+    color: 0x8b0000, // Dark red
+    headColor: 0xff4500, // Orange red
+    eyeColor: 0xffd700, // Gold
+    detectRange: 120, // Long range detection
+    attackRange: 25.0, // Long range attack
+    chaseRange: 20, // Prefers to keep distance
+    attackDamage: 25,
+    spawnWeight: 15,
+    isRanged: true,
+    fireballSpeed: 15.0, // Fast fireball
+    fireballRange: 30.0, // Maximum fireball range
+  },
 };
 
 export const DEMON_COUNT = 10;
@@ -87,6 +105,8 @@ export function getDemonTypesForWave(waveNumber: number): DemonType[] {
           return 70;
         case "BARON":
           return 40;
+        case "ARCHVILE":
+          return 35; // Dangerous ranged attackers
       }
     } else if (wave >= 5) {
       switch (type) {
@@ -98,6 +118,8 @@ export function getDemonTypesForWave(waveNumber: number): DemonType[] {
           return 50;
         case "BARON":
           return 20;
+        case "ARCHVILE":
+          return 25; // Start appearing at wave 5
       }
     } else if (wave >= 3) {
       switch (type) {
@@ -109,6 +131,8 @@ export function getDemonTypesForWave(waveNumber: number): DemonType[] {
           return 50;
         case "BARON":
           return baseWeight;
+        case "ARCHVILE":
+          return 10; // Rare early appearance
       }
     }
 
@@ -120,6 +144,7 @@ export function getDemonTypesForWave(waveNumber: number): DemonType[] {
     DEMON: getSpawnWeight("DEMON", waveNumber),
     CACODEMON: getSpawnWeight("CACODEMON", waveNumber),
     BARON: getSpawnWeight("BARON", waveNumber),
+    ARCHVILE: getSpawnWeight("ARCHVILE", waveNumber),
   };
 
   // Calculate total adjusted weights
@@ -147,7 +172,8 @@ export function getDemonTypesForWave(waveNumber: number): DemonType[] {
   // Ensure at least one stronger demon per wave after wave 2
   if (waveNumber >= 3) {
     const strongTypes = types.filter(
-      (t) => t === "DEMON" || t === "CACODEMON" || t === "BARON"
+      (t) =>
+        t === "DEMON" || t === "CACODEMON" || t === "BARON" || t === "ARCHVILE"
     );
     if (strongTypes.length === 0) {
       // Replace a random imp with a demon

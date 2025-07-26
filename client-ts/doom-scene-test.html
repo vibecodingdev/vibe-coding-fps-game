@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOOM Scene Style Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: monospace;
+            overflow: hidden;
+        }
+        
+        #info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: #ff6600;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        #controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            color: #ff6600;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🔥 DOOM Scene Style Test</h3>
+        <p>Testing hellish atmosphere and visual optimizations</p>
+        <div id="fps">FPS: --</div>
+    </div>
+    
+    <div id="controls">
+        <p><strong>Controls:</strong></p>
+        <p>WASD: Move camera</p>
+        <p>Mouse: Look around</p>
+        <p>R: Reset camera position</p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        import { SceneManager } from './src/core/SceneManager.js';
+
+        class DOOMSceneTest {
+            constructor() {
+                this.sceneManager = new SceneManager();
+                this.clock = new THREE.Clock();
+                this.camera = null;
+                this.controls = {
+                    forward: false,
+                    backward: false,
+                    left: false,
+                    right: false
+                };
+                this.mouseMovement = { x: 0, y: 0 };
+                this.velocity = new THREE.Vector3();
+                this.isPointerLocked = false;
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    await this.sceneManager.initialize();
+                    this.camera = this.sceneManager.getCamera();
+                    
+                    this.setupControls();
+                    this.setupFPSCounter();
+                    this.animate();
+                    
+                    console.log('🔥 DOOM Scene Test initialized successfully!');
+                    document.getElementById('info').innerHTML += '<p style="color: #00ff00;">✅ Scene loaded successfully!</p>';
+                } catch (error) {
+                    console.error('❌ Failed to initialize DOOM scene:', error);
+                    document.getElementById('info').innerHTML += '<p style="color: #ff0000;">❌ Failed to load scene: ' + error.message + '</p>';
+                }
+            }
+
+            setupControls() {
+                // Keyboard controls
+                document.addEventListener('keydown', (event) => {
+                    switch (event.code) {
+                        case 'KeyW': this.controls.forward = true; break;
+                        case 'KeyS': this.controls.backward = true; break;
+                        case 'KeyA': this.controls.left = true; break;
+                        case 'KeyD': this.controls.right = true; break;
+                        case 'KeyR':
+                            // Reset camera position
+                            this.camera.position.set(0, 1.8, 20);
+                            this.camera.lookAt(0, 1.8, 0);
+                            break;
+                    }
+                });
+
+                document.addEventListener('keyup', (event) => {
+                    switch (event.code) {
+                        case 'KeyW': this.controls.forward = false; break;
+                        case 'KeyS': this.controls.backward = false; break;
+                        case 'KeyA': this.controls.left = false; break;
+                        case 'KeyD': this.controls.right = false; break;
+                    }
+                });
+
+                // Mouse controls
+                document.addEventListener('click', () => {
+                    if (!this.isPointerLocked) {
+                        document.body.requestPointerLock();
+                    }
+                });
+
+                document.addEventListener('pointerlockchange', () => {
+                    this.isPointerLocked = document.pointerLockElement === document.body;
+                });
+
+                document.addEventListener('mousemove', (event) => {
+                    if (this.isPointerLocked) {
+                        this.mouseMovement.x = event.movementX * 0.002;
+                        this.mouseMovement.y = event.movementY * 0.002;
+                    }
+                });
+
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.sceneManager.onResize();
+                });
+            }
+
+            setupFPSCounter() {
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                setInterval(() => {
+                    const now = performance.now();
+                    const fps = Math.round(this.frameCount * 1000 / (now - this.lastTime));
+                    document.getElementById('fps').textContent = `FPS: ${fps}`;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                }, 1000);
+            }
+
+            updateCamera() {
+                const delta = this.clock.getDelta();
+                const moveSpeed = 10;
+
+                // Handle mouse look
+                if (this.isPointerLocked) {
+                    this.camera.rotation.y -= this.mouseMovement.x;
+                    this.camera.rotation.x -= this.mouseMovement.y;
+                    this.camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.camera.rotation.x));
+                    this.mouseMovement.x = 0;
+                    this.mouseMovement.y = 0;
+                }
+
+                // Handle movement
+                const direction = new THREE.Vector3();
+                
+                if (this.controls.forward) direction.z -= 1;
+                if (this.controls.backward) direction.z += 1;
+                if (this.controls.left) direction.x -= 1;
+                if (this.controls.right) direction.x += 1;
+
+                direction.normalize();
+                direction.multiplyScalar(moveSpeed * delta);
+
+                // Apply camera rotation to movement direction
+                direction.applyQuaternion(this.camera.quaternion);
+
+                this.camera.position.add(direction);
+
+                // Keep camera above ground
+                this.camera.position.y = Math.max(0.5, this.camera.position.y);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateCamera();
+                this.sceneManager.render();
+                this.frameCount++;
+            }
+        }
+
+        // Start the test
+        new DOOMSceneTest();
+    </script>
+</body>
+</html> 

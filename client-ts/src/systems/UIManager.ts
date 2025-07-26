@@ -495,26 +495,51 @@ export class UIManager {
     }
   }
 
-  public showDamageEffect(): void {
-    // 创建受伤效果
+  public showDamageEffect(isFireball: boolean = false): void {
+    // 创建受伤效果 - 火球攻击使用更强烈的效果
     const damageOverlay = document.createElement("div");
-    damageOverlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle, transparent 0%, rgba(255, 0, 0, 0.3) 100%);
-      pointer-events: none;
-      z-index: 9999;
-      animation: damageFlash 0.5s ease-out;
-    `;
+
+    if (isFireball) {
+      // 火球伤害 - 橙红色渐变效果更强烈
+      damageOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(255, 100, 0, 0.4) 0%, rgba(255, 0, 0, 0.5) 100%);
+        pointer-events: none;
+        z-index: 9999;
+        animation: fireballDamageFlash 0.8s ease-out;
+      `;
+    } else {
+      // 普通伤害效果
+      damageOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, transparent 0%, rgba(255, 0, 0, 0.5) 100%);
+        pointer-events: none;
+        z-index: 9999;
+        animation: damageFlash 0.6s ease-out;
+      `;
+    }
 
     // 添加动画样式
     const style = document.createElement("style");
     style.textContent = `
       @keyframes damageFlash {
         0% { opacity: 1; }
+        50% { opacity: 0.8; }
+        100% { opacity: 0; }
+      }
+      @keyframes fireballDamageFlash {
+        0% { opacity: 1; }
+        25% { opacity: 0.9; }
+        50% { opacity: 0.7; }
+        75% { opacity: 0.4; }
         100% { opacity: 0; }
       }
     `;
@@ -522,7 +547,8 @@ export class UIManager {
 
     document.body.appendChild(damageOverlay);
 
-    // 500ms后移除效果
+    // 根据攻击类型调整移除时间
+    const duration = isFireball ? 800 : 600;
     setTimeout(() => {
       if (document.body.contains(damageOverlay)) {
         document.body.removeChild(damageOverlay);
@@ -530,7 +556,7 @@ export class UIManager {
       if (document.head.contains(style)) {
         document.head.removeChild(style);
       }
-    }, 500);
+    }, duration);
   }
 
   public showMessage(message: string, duration: number = 3000): void {
