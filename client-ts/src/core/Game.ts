@@ -24,6 +24,7 @@ export class Game {
   private playerController!: PlayerController;
   private weaponSystem!: WeaponSystem;
   private demonSystem!: DemonSystem;
+  private networkDemons: THREE.Group[] = []; // Separate array for network demons
   private audioSystem!: AudioSystem;
   private networkManager!: NetworkManager;
   private uiManager!: UIManager;
@@ -252,21 +253,7 @@ export class Game {
 
     if (mainMenuBtn) {
       mainMenuBtn.onclick = () => {
-        this.gameState = "mainMenu";
-
-        // Set body to menu mode to allow scrolling
-        document.body.className = "menu-mode";
-
-        const pauseMenu = document.getElementById("pauseMenu");
-        const mainMenu = document.getElementById("mainMenu");
-        const gameUI = document.getElementById("gameUI");
-
-        if (pauseMenu) pauseMenu.style.display = "none";
-        if (mainMenu) mainMenu.style.display = "flex";
-        if (gameUI) gameUI.style.display = "none";
-
-        // Reset game state
-        this.initializeState();
+        this.returnToMainMenu();
       };
     }
 
@@ -346,6 +333,7 @@ export class Game {
 
     if (this.isMultiplayer) {
       this.networkManager.leaveGame();
+      this.setMultiplayerMode(false);
     }
   }
 
@@ -355,6 +343,50 @@ export class Game {
     this.weaponSystem.reset();
     this.demonSystem.reset();
     this.playerController.reset();
+  }
+
+  public returnToMainMenu(): void {
+    console.log("🏠 Returning to main menu...");
+
+    // Stop the game loop first to prevent issues
+    this.stopGameLoop();
+
+    // Change game state
+    this.gameState = "mainMenu";
+
+    // Stop background music
+    this.audioSystem.stopBackgroundMusic();
+
+    // Exit pointer lock
+    if (document.exitPointerLock) {
+      document.exitPointerLock();
+    }
+
+    // If in multiplayer, leave the game
+    if (this.isMultiplayer) {
+      this.networkManager.leaveGame();
+      this.setMultiplayerMode(false);
+    }
+
+    // Set body to menu mode to allow scrolling
+    document.body.className = "menu-mode";
+
+    // Hide all game UI elements
+    const pauseMenu = document.getElementById("pauseMenu");
+    const gameUI = document.getElementById("gameUI");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+
+    if (pauseMenu) pauseMenu.style.display = "none";
+    if (gameUI) gameUI.style.display = "none";
+    if (gameOverScreen) gameOverScreen.style.display = "none";
+
+    // Reset game state
+    this.resetGameState();
+
+    // Show main menu
+    this.uiManager.showMainMenu();
+
+    console.log("✅ Successfully returned to main menu");
   }
 
   public restartGame(): void {
@@ -418,6 +450,10 @@ export class Game {
     }
   }
 
+  public isGameLoopRunning(): boolean {
+    return this.animationId !== null;
+  }
+
   private animate(): void {
     this.animationId = requestAnimationFrame(() => this.animate());
 
@@ -434,6 +470,43 @@ export class Game {
       this.playerController.update(deltaTime);
       this.weaponSystem.update(deltaTime);
       this.demonSystem.update(deltaTime);
+
+      // Also update network demons through the DemonSystem
+      if (this.isMultiplayer && this.networkDemons.length > 0) {
+        // Pass network demons to DemonSystem for AI processing
+        this.networkDemons.forEach((networkDemon) => {
+          if (
+            networkDemon &&
+            networkDemon.userData &&
+            !networkDemon.userData.isDead &&
+            !networkDemon.userData.markedForRemoval
+          ) {
+            // Use DemonSystem's updateDemonAI for network demons
+            this.demonSystem.updateDemonAI(networkDemon, deltaTime);
+          }
+        });
+
+        // Clean up dead network demons immediately
+        const scene = this.sceneManager.getScene();
+        this.networkDemons = this.networkDemons.filter((demon) => {
+          if (demon && demon.userData) {
+            // Remove demons that are dead or marked for removal
+            if (
+              demon.userData.isDead ||
+              demon.userData.markedForRemoval ||
+              demon.userData.serverHealth <= 0
+            ) {
+              scene.remove(demon);
+              console.log(
+                `🧹 Cleaned up dead network demon: ${demon.userData.serverId}`
+              );
+              return false;
+            }
+          }
+          return true;
+        });
+      }
+
       this.collectibleSystem.update(deltaTime);
       this.checkCollisions();
       this.updateGameStats();
@@ -474,11 +547,10 @@ export class Game {
     // 更新游戏统计
     this.uiManager.updateGameStats(this.gameStats);
 
-    // 更新雷达 - 只显示活着的怪物
+    // 更新雷达 - 显示所有活着的怪物（本地和网络）
     const aliveDemoms = (this.demonSystem.demons || []).filter((demon) => {
-      // Handle both DemonInstance (single-player) and THREE.Group (multiplayer server demons)
+      // Handle DemonInstance type - single player demons
       if ((demon as any).mesh) {
-        // DemonInstance type - single player demons
         const demonInstance = demon as any;
         return (
           demonInstance.state !== "dead" &&
@@ -486,19 +558,26 @@ export class Game {
           !demonInstance.mesh.userData.markedForRemoval &&
           !demonInstance.mesh.userData.isDead
         );
-      } else if ((demon as any).userData) {
-        // THREE.Group type - multiplayer server demons (direct mesh objects)
-        const demonMesh = demon as any;
-        return (
-          !demonMesh.userData.markedForRemoval &&
-          !demonMesh.userData.isDead &&
-          (!demonMesh.userData.serverHealth ||
-            demonMesh.userData.serverHealth > 0)
-        );
       }
-      // Skip invalid objects
       return false;
     });
+
+    // Add network demons to radar
+    const aliveNetworkDemons = (this.networkDemons || []).filter((demon) => {
+      // THREE.Group type - multiplayer server demons (direct mesh objects)
+      if (demon && demon.userData) {
+        return (
+          !demon.userData.markedForRemoval &&
+          !demon.userData.isDead &&
+          demon.userData.serverHealth > 0
+        );
+      }
+      return false;
+    });
+
+    // Combine both local and network demons for radar
+    const allAliveDemons = [...aliveDemoms, ...aliveNetworkDemons];
+
     const camera = this.sceneManager.getCamera();
     if (camera) {
       // 获取远程玩家信息（如果是多人游戏）
@@ -506,10 +585,23 @@ export class Game {
         ? this.networkManager.remotePlayers
         : undefined;
 
+      // Only log radar update info occasionally to avoid spam
+      if (Date.now() % 5000 < 16) {
+        // Approximately every 5 seconds
+        console.log(`🗺️ Updating radar:`, {
+          isMultiplayer: this.isMultiplayer,
+          remotePlayersCount: remotePlayers?.size || 0,
+          remotePlayerIds: remotePlayers
+            ? Array.from(remotePlayers.keys())
+            : [],
+          demonsCount: allAliveDemons.length,
+        });
+      }
+
       // 使用相机的实时位置而不是playerState.position
       this.uiManager.updateRadar(
         camera.position,
-        aliveDemoms,
+        allAliveDemons,
         camera,
         remotePlayers
       );
@@ -524,9 +616,10 @@ export class Game {
   }
 
   private checkCollisions(): void {
-    // Check bullet-demon collisions
+    // Check bullet-demon collisions for both single player and network demons
     this.weaponSystem.getBullets().forEach((bullet) => {
-      const hitDemon = this.demonSystem.checkBulletCollision(bullet);
+      const allDemons = this.getAllDemons();
+      const hitDemon = this.demonSystem.checkBulletCollision(bullet, allDemons);
       if (hitDemon) {
         this.weaponSystem.removeBullet(bullet.id);
         this.onDemonHit(hitDemon, bullet.damage);
@@ -536,7 +629,30 @@ export class Game {
     // Check player-demon collisions and attacks
     // Use real-time camera position instead of stale playerState.position
     const playerPosition = this.playerController.getPosition();
-    const nearbyDemons = this.demonSystem.getNearbyDemons(playerPosition, 2);
+
+    // Get all nearby demons (both local and network)
+    const allDemons = this.getAllDemons();
+    const nearbyDemons = allDemons.filter((demon) => {
+      let demonPosition: THREE.Vector3;
+      let isDead = false;
+
+      // Handle both DemonInstance and THREE.Group objects
+      if (demon.mesh) {
+        // DemonInstance (local demon)
+        demonPosition = demon.position;
+        isDead = demon.state === "dead";
+      } else if (demon.userData) {
+        // THREE.Group (network demon)
+        demonPosition = demon.position;
+        isDead = demon.userData.isDead;
+      } else {
+        return false;
+      }
+
+      if (isDead) return false;
+      return playerPosition.distanceTo(demonPosition) <= 2;
+    });
+
     nearbyDemons.forEach((demon) => {
       // Handle both DemonInstance and direct THREE.Group objects
       let isAttacking = false;
@@ -667,13 +783,49 @@ export class Game {
   }
 
   private onDemonHit(demonId: string, damage: number): void {
-    const killed = this.demonSystem.damageDemon(demonId, damage);
-    if (killed) {
-      this.gameStats.demonKills++;
-      this.gameStats.score += 100;
-      this.audioSystem.playDemonDeathSound();
+    // Check if this is a network demon first
+    const networkDemon = this.networkDemons.find(
+      (d) => d.userData?.serverId === demonId
+    );
+
+    if (networkDemon) {
+      // Network demon - apply damage locally for immediate visual feedback
+      if (networkDemon.userData) {
+        networkDemon.userData.serverHealth -= damage;
+        if (networkDemon.userData.serverHealth <= 0) {
+          // Demon killed - emit proper death event to server (matching old client)
+          if (this.networkManager.isMultiplayer) {
+            this.networkManager.sendDemonDeath(demonId);
+          }
+
+          // Mark as dead immediately for local client feedback
+          networkDemon.userData.isDead = true;
+          networkDemon.userData.markedForRemoval = true;
+          networkDemon.userData.serverHealth = 0;
+
+          // Add visual death effects locally
+          this.createHitEffect(networkDemon.position);
+          this.createWoundedEffect(networkDemon.position);
+
+          // Update local stats immediately (server will sync with all players)
+          this.gameStats.demonKills++;
+          this.gameStats.score += 100;
+          this.audioSystem.playDemonDeathSound();
+        } else {
+          // Demon hit but not killed - just play hit sound
+          this.audioSystem.playDemonHitSound();
+        }
+      }
     } else {
-      this.audioSystem.playDemonHitSound();
+      // Single player demon - handle locally
+      const killed = this.demonSystem.damageDemon(demonId, damage);
+      if (killed) {
+        this.gameStats.demonKills++;
+        this.gameStats.score += 100;
+        this.audioSystem.playDemonDeathSound();
+      } else {
+        this.audioSystem.playDemonHitSound();
+      }
     }
   }
 
@@ -888,7 +1040,20 @@ export class Game {
   }
 
   public setMultiplayerMode(isMultiplayer: boolean): void {
-    this.isMultiplayer = isMultiplayer;
+    this.demonSystem.setMultiplayerMode(isMultiplayer);
+    if (isMultiplayer) {
+      // Clear any existing local demons when entering multiplayer
+      this.demonSystem.reset();
+      console.log(
+        "🌐 Switched to multiplayer mode - local demon spawning disabled"
+      );
+    } else {
+      // Clear network demons when leaving multiplayer
+      this.clearNetworkDemons();
+      console.log(
+        "🎮 Switched to single player mode - local demon spawning enabled"
+      );
+    }
   }
 
   public getMultiplayerMode(): boolean {
@@ -1040,6 +1205,61 @@ export class Game {
       const meshToAdd = demon.mesh || demon;
       this.demonSystem.demons.push(meshToAdd);
     }
+  }
+
+  public addNetworkDemon(demon: THREE.Group): void {
+    // Add network demon to separate array to avoid conflicts with single player demons
+    this.networkDemons.push(demon);
+    console.log(
+      `👹 Added network demon: ${demon.userData?.serverId}, type: ${demon.userData?.demonType}`
+    );
+  }
+
+  public getNetworkDemons(): THREE.Group[] {
+    return this.networkDemons;
+  }
+
+  public getAllDemons(): any[] {
+    // Return combined array for collision detection - single player DemonInstances and network THREE.Groups
+    return [...this.demonSystem.demons, ...this.networkDemons];
+  }
+
+  public removeNetworkDemon(demon: THREE.Group): void {
+    const index = this.networkDemons.findIndex((d) => d === demon);
+    if (index > -1) {
+      this.networkDemons.splice(index, 1);
+      console.log(`👹 Removed network demon: ${demon.userData?.serverId}`);
+    }
+  }
+
+  public removeNetworkDemonById(serverId: string): boolean {
+    const index = this.networkDemons.findIndex(
+      (d) => d.userData?.serverId === serverId
+    );
+    if (index > -1) {
+      const demon = this.networkDemons[index];
+      const scene = this.sceneManager.getScene();
+      if (scene && demon) {
+        scene.remove(demon);
+      }
+      this.networkDemons.splice(index, 1);
+      console.log(`👹 Removed network demon by ID: ${serverId}`);
+      return true;
+    }
+    console.warn(`❗️ Could not find network demon with ID: ${serverId}`);
+    return false;
+  }
+
+  public clearNetworkDemons(): void {
+    // Remove all network demons from scene
+    const scene = this.getScene();
+    this.networkDemons.forEach((demon) => {
+      if (scene) {
+        scene.remove(demon);
+      }
+    });
+    this.networkDemons = [];
+    console.log("🧹 Cleared all network demons");
   }
 
   public removeDemon(demon: any): void {

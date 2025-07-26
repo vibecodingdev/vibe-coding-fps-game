@@ -495,7 +495,7 @@ io.on("connection", (socket) => {
       id: roomId,
       name: payload.name || `${player.name}'s Chamber`,
       maxPlayers: payload.maxPlayers || 4,
-      mapType: payload.mapType || "hellscape",
+      mapType: payload.mapType || "industrial", // Default to industrial theme
       players: [player],
       isActive: true,
       leaderId: socket.id,

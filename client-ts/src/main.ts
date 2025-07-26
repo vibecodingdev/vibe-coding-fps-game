@@ -1,9 +1,164 @@
+import * as THREE from "three";
 import "./styles/main.css";
 import { Game } from "./core/Game";
 import { NetworkManager } from "./systems/NetworkManager";
 import { setupVoiceChatDebugFunctions } from "./debug-voice-chat";
+import { SceneThemeName } from "./themes";
 
 console.log("🔥 DOOM PROTOCOL - TypeScript Client Starting 🔥");
+
+// Ensure loading screen is removed when main CSS and JS are ready
+function hideLoadingScreen() {
+  const loader = document.getElementById("initialLoader");
+  const mainContent = document.querySelector(".main-content");
+
+  if (loader && mainContent) {
+    loader.classList.add("hidden");
+    mainContent.classList.add("loaded");
+
+    setTimeout(() => {
+      if (loader.parentNode) {
+        loader.parentNode.removeChild(loader);
+      }
+    }, 500);
+  }
+}
+
+// Call after a short delay to ensure everything is rendered
+setTimeout(hideLoadingScreen, 150);
+
+// Helper function to get display name for scene themes
+function getThemeDisplayName(themeName: SceneThemeName): string {
+  const themeNames = {
+    hell: "🔥 Hell",
+    ice: "❄️ Ice",
+    toxic: "☢️ Toxic",
+    industrial: "🏭 Industrial",
+  };
+  return themeNames[themeName] || themeName;
+}
+
+// Helper function to generate random player names
+function generateRandomPlayerName(): string {
+  const adjectives = [
+    "Crimson",
+    "Shadow",
+    "Steel",
+    "Thunder",
+    "Venom",
+    "Frost",
+    "Flame",
+    "Storm",
+    "Blood",
+    "Dark",
+    "Iron",
+    "Savage",
+    "Brutal",
+    "Deadly",
+    "Fierce",
+    "Wild",
+    "Blazing",
+    "Frozen",
+    "Toxic",
+    "Demonic",
+    "Hellish",
+    "Infernal",
+    "Wrathful",
+  ];
+
+  const nouns = [
+    "Warrior",
+    "Slayer",
+    "Hunter",
+    "Reaper",
+    "Destroyer",
+    "Killer",
+    "Demon",
+    "Beast",
+    "Soldier",
+    "Fighter",
+    "Berserker",
+    "Gunner",
+    "Marine",
+    "Phantom",
+    "Ghost",
+    "Terror",
+    "Executioner",
+    "Annihilator",
+    "Predator",
+    "Marauder",
+    "Ravager",
+    "Butcher",
+  ];
+
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const number = Math.floor(Math.random() * 999) + 1;
+
+  return `${adjective}${noun}${number}`;
+}
+
+// Helper function to generate random room names
+function generateRandomRoomName(): string {
+  const prefixes = [
+    "Hell",
+    "Doom",
+    "Death",
+    "Blood",
+    "Fire",
+    "Shadow",
+    "Dark",
+    "Infernal",
+    "Demonic",
+    "Savage",
+    "Brutal",
+    "Toxic",
+    "Frozen",
+    "Steel",
+    "Iron",
+    "Thunder",
+  ];
+
+  const suffixes = [
+    "Chamber",
+    "Arena",
+    "Pit",
+    "Fortress",
+    "Sanctum",
+    "Vault",
+    "Bunker",
+    "Outpost",
+    "Battleground",
+    "Warzone",
+    "Sector",
+    "Base",
+    "Station",
+    "Facility",
+    "Complex",
+  ];
+
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+  const number = Math.floor(Math.random() * 99) + 1;
+
+  return `${prefix} ${suffix} ${number}`;
+}
+
+// Helper function to populate random names on multiplayer lobby entry
+function populateRandomNames(): void {
+  const playerNameInput = document.getElementById(
+    "playerName"
+  ) as HTMLInputElement;
+  const roomNameInput = document.getElementById("roomName") as HTMLInputElement;
+
+  if (playerNameInput && !playerNameInput.value.trim()) {
+    playerNameInput.value = generateRandomPlayerName();
+  }
+
+  if (roomNameInput && !roomNameInput.value.trim()) {
+    roomNameInput.value = generateRandomRoomName();
+  }
+}
 
 // Global network manager instance for UI access
 declare global {
@@ -57,6 +212,12 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
       if (status.includes("🟢")) {
         connectionStatus.style.borderColor = "#00ff00";
         connectionStatus.style.color = "#00ff00";
+
+        // Auto-refresh room list when successfully connected
+        setTimeout(() => {
+          console.log("🔄 Auto-refreshing room list after connection...");
+          networkManager.refreshRooms();
+        }, 500); // Small delay to ensure connection is stable
       } else if (status.includes("🔴")) {
         connectionStatus.style.borderColor = "#ff0000";
         connectionStatus.style.color = "#ff0000";
@@ -75,6 +236,43 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
   // Party members updates
   networkManager.setOnPartyMembersUpdate((members: any[]) => {
     updatePartyMembers(members, networkManager);
+
+    // Check if we're in a multiplayer game and need to create remote players
+    if (
+      window.game &&
+      window.game.getGameState() === "playing" &&
+      networkManager.isMultiplayer
+    ) {
+      const scene = window.game.getScene();
+      if (scene) {
+        // Find new players that need remote player models
+        members.forEach((member: any) => {
+          if (member.id !== networkManager.socket?.id) {
+            // Check if this remote player already exists
+            if (!networkManager.remotePlayers.has(member.id)) {
+              console.log(
+                `👤 Creating remote player for new member: ${member.name}`
+              );
+              const playerData = {
+                id: member.id,
+                name: member.name,
+                position: { x: 0, y: 1, z: 0 }, // Default spawn position
+                rotation: { x: 0, y: 0, z: 0 },
+              };
+              const remotePlayer = networkManager.createRemotePlayer(
+                playerData,
+                scene
+              );
+              if (remotePlayer) {
+                console.log(
+                  `✅ Remote player ${member.name} added to scene during game`
+                );
+              }
+            }
+          }
+        });
+      }
+    }
   });
 
   // Chat messages
@@ -103,12 +301,14 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
       const demon = networkManager.handleServerDemonSpawn(
         data,
         (demonData: any) => {
-          return game.createDemonModel(demonData.type);
+          // Use DemonSystem's createDemonModel for diverse, detailed demons
+          const demonSystem = game.getDemonSystem();
+          return demonSystem.createDemonModel(demonData.type);
         }
       );
       if (demon) {
         scene.add(demon);
-        game.addDemon(demon);
+        game.addNetworkDemon(demon);
         console.log(`👹 Added server demon to scene: ${data.demon.id}`);
       }
     }
@@ -117,29 +317,56 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
   networkManager.setOnDemonDeath((data: any) => {
     const game = window.game;
     const scene = game.getScene();
+
+    console.log(`🎯 [ALL PLAYERS] Demon death event received:`, {
+      demonId: data.demonId,
+      killerId: data.killerId,
+      killerName: data.killerName,
+      currentPlayerId: networkManager.socket?.id,
+      isCurrentPlayerKiller: data.killerId === networkManager.socket?.id,
+      position: data.position,
+    });
+
     if (scene) {
-      const demons = game.getDemons();
-      networkManager.handleServerDemonDeath(
-        data,
-        demons,
-        scene,
-        (position: any) => {
-          // Create death effects
-          game.createHitEffect(position);
-          game.createWoundedEffect(position);
-        },
-        () => {
-          // Update kill count
-          game.incrementKillCount();
-        }
+      console.log(
+        `🎯 Processing demon death: ${data.demonId} killed by ${data.killerName}`
       );
+
+      // Use the new method to properly remove the demon
+      const removed = game.removeNetworkDemonById(data.demonId);
+
+      if (removed) {
+        // Create death effects at the demon's last known position
+        if (data.position) {
+          game.createHitEffect(
+            new THREE.Vector3(data.position.x, data.position.y, data.position.z)
+          );
+          game.createWoundedEffect(
+            new THREE.Vector3(data.position.x, data.position.y, data.position.z)
+          );
+        }
+
+        // Update kill count only if this player killed it
+        if (data.killerId === networkManager.socket?.id) {
+          game.incrementKillCount();
+          console.log(`🎯 Kill count updated for player kill`);
+        } else {
+          console.log(
+            `👁️ Other player ${data.killerName} killed demon, no kill count update`
+          );
+        }
+      } else {
+        console.warn(
+          `❗️ Failed to remove demon ${data.demonId} - may have already been removed`
+        );
+      }
     }
   });
 
   networkManager.setOnDemonUpdate((data: any) => {
     const game = window.game;
-    const demons = game.getDemons();
-    networkManager.handleServerDemonUpdate(data, demons);
+    const networkDemons = game.getNetworkDemons();
+    networkManager.handleServerDemonUpdate(data, networkDemons);
   });
 
   networkManager.setOnWaveStart((data: any) => {
@@ -185,7 +412,9 @@ function updateRoomsList(rooms: any[]): void {
       <div class="room-info">
         <div class="room-name">🏰 ${room.name}</div>
         <div class="room-details">
-          👹 ${room.players}/${room.maxPlayers} | 🗺️ ${room.mapType}
+          👹 ${room.players}/${room.maxPlayers} | 🗺️ ${getThemeDisplayName(
+        room.mapType
+      )}
         </div>
       </div>
       <div class="room-status">
@@ -361,7 +590,12 @@ function startMultiplayerGame(
   // Enter fullscreen and start game
   requestFullscreen();
   window.game.setMultiplayerMode(true);
-  window.game.startGame(true); // true for multiplayer
+
+  // Extract scene theme from game data
+  const sceneTheme = gameData.mapType || "industrial";
+  console.log(`🎨 Starting multiplayer game with ${sceneTheme} theme`);
+
+  window.game.startGame(true, sceneTheme); // true for multiplayer, with scene theme
 
   // Initialize remote players with full 3D models
   const scene = window.game.getScene();
@@ -489,6 +723,19 @@ function setupUIEventListeners(
   const multiPlayerBtn = document.getElementById("multiPlayerBtn");
   multiPlayerBtn?.addEventListener("click", () => {
     showMultiplayerLobby();
+    populateRandomNames(); // Populate random names on multiplayer lobby entry
+
+    // Auto-connect to localhost if it's selected (which is the default)
+    setTimeout(() => {
+      const localServerRadio = document.getElementById(
+        "localServer"
+      ) as HTMLInputElement;
+      if (localServerRadio && localServerRadio.checked) {
+        console.log("🔥 Auto-connecting to localhost:3000...");
+        networkManager.setServerURL("http://localhost:3000");
+        networkManager.connectToServer();
+      }
+    }, 100); // Small delay to ensure UI is rendered
   });
 }
 
@@ -530,7 +777,7 @@ function setupMultiplayerEventListeners(networkManager: NetworkManager): void {
       (document.getElementById("roomName") as HTMLInputElement)?.value ||
       "Hell Chamber";
     const maxPlayers = parseInt(
-      (document.getElementById("maxPlayers") as HTMLSelectElement)?.value || "4"
+      (document.getElementById("maxPlayers") as HTMLSelectElement)?.value || "2"
     );
     const mapType =
       (document.getElementById("mapType") as HTMLSelectElement)?.value ||
@@ -589,7 +836,13 @@ function setupMultiplayerEventListeners(networkManager: NetworkManager): void {
   );
   backBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
-      showMainMenu();
+      // Use the game's proper cleanup method for back to main menu from game
+      const game = window.game;
+      if (game && game.getGameState() !== "mainMenu") {
+        game.returnToMainMenu();
+      } else {
+        showMainMenu();
+      }
     });
   });
 }
@@ -604,7 +857,12 @@ function setupGameOverEventListeners(game: Game): void {
   // Back to main menu button
   const backToMainMenuBtn = document.getElementById("backToMainMenuBtn");
   backToMainMenuBtn?.addEventListener("click", () => {
-    showMainMenu();
+    // Use the game's proper cleanup method instead of just showing the menu
+    if (game.getGameState() !== "mainMenu") {
+      game.returnToMainMenu();
+    } else {
+      showMainMenu();
+    }
   });
 }
 
@@ -793,7 +1051,8 @@ async function startSinglePlayer(game: Game): Promise<void> {
   // Enter fullscreen mode
   requestFullscreen();
 
-  // Start single player game with random theme
+  // Set single player mode and start game with random theme
+  game.setMultiplayerMode(false);
   await game.startGame(false);
 
   // Setup pointer lock

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SceneThemeName } from "../themes";
 
 export interface NetworkState {
   socket: any;
@@ -32,7 +33,7 @@ export interface RoomData {
   name: string;
   maxPlayers: number;
   players: number;
-  mapType: string;
+  mapType: SceneThemeName;
   status: "waiting" | "playing" | "full";
   createdAt: number;
 }
@@ -56,7 +57,7 @@ export interface VoiceData {
 export interface GameData {
   players: PlayerData[];
   roomId: string;
-  mapType: string;
+  mapType: SceneThemeName;
   gameSettings: {
     maxWaves: number;
     difficulty: number;

@@ -181,6 +181,7 @@ export class NetworkManager implements NetworkState {
     });
 
     this.socket.on("room:list", (rooms) => {
+      console.log(`📋 Received room list: ${rooms.length} chambers available`);
       if (this.onRoomListUpdate) {
         this.onRoomListUpdate(rooms);
       }
@@ -366,8 +367,18 @@ export class NetworkManager implements NetworkState {
 
     this.socket.on("world:demon:death", (data) => {
       console.log("💀 Demon killed:", data);
+      console.log("🔧 Death event data:", {
+        demonId: data.demonId,
+        killerId: data.killerId,
+        killerName: data.killerName,
+        position: data.position,
+        currentSocketId: this.socket?.id,
+      });
+
       if (this.onDemonDeath) {
         this.onDemonDeath(data);
+      } else {
+        console.warn("❗️ No demon death handler registered");
       }
     });
 
@@ -898,6 +909,22 @@ export class NetworkManager implements NetworkState {
         data.rotation.y,
         data.rotation.z
       );
+
+      // Only log position updates occasionally to avoid spam
+      if (Math.random() < 0.01) {
+        // Log ~1% of position updates
+        console.log(`👤 Updated player ${data.playerId} position:`, {
+          x: data.position.x.toFixed(2),
+          y: data.position.y.toFixed(2),
+          z: data.position.z.toFixed(2),
+        });
+      }
+    } else {
+      console.warn(`❗️ Cannot find remote player with ID: ${data.playerId}`);
+      console.log(
+        `Available remote players:`,
+        Array.from(this.remotePlayers.keys())
+      );
     }
   }
 
@@ -1187,7 +1214,7 @@ export class NetworkManager implements NetworkState {
   ): void {
     // Find the demon by server ID
     const demonIndex = demons.findIndex(
-      (demon) => demon.userData.serverId === data.demonId
+      (demon) => demon.userData && demon.userData.serverId === data.demonId
     );
 
     if (demonIndex !== -1) {
@@ -1196,8 +1223,17 @@ export class NetworkManager implements NetworkState {
       // Create death effects
       createEffectsCallback(demon.position);
 
-      // Remove from scene and array
+      // Mark demon as dead immediately to remove from radar
+      if (demon.userData) {
+        demon.userData.isDead = true;
+        demon.userData.markedForRemoval = true;
+        demon.userData.serverHealth = 0;
+      }
+
+      // Remove from scene immediately
       scene.remove(demon);
+
+      // Remove from demons array immediately
       demons.splice(demonIndex, 1);
 
       // Update kill count if this player killed it
@@ -1206,7 +1242,13 @@ export class NetworkManager implements NetworkState {
       }
 
       console.log(
-        `💀 Removed server demon ${data.demonId}, killed by ${data.killerName}`
+        `💀 Removed server demon ${data.demonId}, killed by ${
+          data.killerName || "unknown"
+        }`
+      );
+    } else {
+      console.warn(
+        `Cannot find demon with serverId: ${data.demonId} for removal`
       );
     }
   }
@@ -1256,32 +1298,14 @@ export class NetworkManager implements NetworkState {
   }
 
   // Send demon interaction events to server
-  public sendDemonHit(
-    demonId: string,
-    damage: number,
-    weaponType: string
-  ): void {
+  public sendDemonDeath(demonId: string): void {
     if (!this.socket || !this.isConnected || !this.isMultiplayer) {
       return;
     }
 
-    this.socket.emit("demon:hit", {
+    // Use the correct event name that matches the server expectation
+    this.socket.emit("world:demon:death", {
       demonId: demonId,
-      damage: damage,
-      weaponType: weaponType,
-      timestamp: Date.now(),
-    });
-  }
-
-  public sendDemonKill(demonId: string, weaponType: string): void {
-    if (!this.socket || !this.isConnected || !this.isMultiplayer) {
-      return;
-    }
-
-    this.socket.emit("demon:kill", {
-      demonId: demonId,
-      weaponType: weaponType,
-      timestamp: Date.now(),
     });
   }
 

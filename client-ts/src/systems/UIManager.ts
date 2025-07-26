@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { PlayerState, GameStats } from "@/types/game";
 import { VoiceChatSystem } from "@/systems/VoiceChatSystem";
+import { SceneThemeName } from "@/themes";
 
 export class UIManager {
   private healthBar: HTMLElement | null = null;
@@ -8,6 +9,17 @@ export class UIManager {
   private weaponName: HTMLElement | null = null;
   private currentAmmo: HTMLElement | null = null;
   private maxAmmo: HTMLElement | null = null;
+
+  // Helper function to get display name for scene themes
+  private getThemeDisplayName(themeName: SceneThemeName): string {
+    const themeNames = {
+      hell: "🔥 Hell",
+      ice: "❄️ Ice",
+      toxic: "☢️ Toxic",
+      industrial: "🏭 Industrial",
+    };
+    return themeNames[themeName] || themeName;
+  }
   private waveNumber: HTMLElement | null = null;
   private killCount: HTMLElement | null = null;
   private scoreValue: HTMLElement | null = null;
@@ -334,6 +346,18 @@ export class UIManager {
     if (!this.radarContext) return;
 
     demons.forEach((demon, index) => {
+      // Additional safety check - skip dead or removed demons
+      if ((demon as any).userData) {
+        const userData = (demon as any).userData;
+        if (
+          userData.isDead ||
+          userData.markedForRemoval ||
+          userData.serverHealth <= 0
+        ) {
+          return; // Skip dead demons
+        }
+      }
+
       const distance = playerPos.distanceTo(demon.position);
 
       if (distance <= this.RADAR_RANGE) {
@@ -438,8 +462,15 @@ export class UIManager {
   ): void {
     if (!this.radarContext) return;
 
+    if (remotePlayers.size > 0) {
+      console.log(`🗺️ Drawing ${remotePlayers.size} remote players on radar`);
+    }
+
     remotePlayers.forEach((player, playerId) => {
-      if (!player.mesh || !player.mesh.position) return;
+      if (!player.mesh || !player.mesh.position) {
+        console.warn(`❗️ Remote player ${playerId} missing mesh or position`);
+        return;
+      }
 
       // 计算相对位置
       const relativeX = player.mesh.position.x - playerPos.x;
@@ -460,6 +491,8 @@ export class UIManager {
         (radarX - centerX) ** 2 + (radarY - centerY) ** 2
       );
       if (radarDistance > this.RADAR_SIZE / 2) return;
+
+      console.log(`🎯 Drawing player ${playerId} on radar`);
 
       // 获取玩家颜色方案（如果有的话）
       const colorScheme = player.colorScheme || {
@@ -753,7 +786,9 @@ export class UIManager {
         <div class="room-info">
           <div class="room-name">🏰 ${room.name}</div>
           <div class="room-details">
-            👹 ${room.players}/${room.maxPlayers} | 🗺️ ${room.mapType}
+            👹 ${room.players}/${
+          room.maxPlayers
+        } | 🗺️ ${this.getThemeDisplayName(room.mapType)}
           </div>
         </div>
         <div class="room-status">
@@ -1151,7 +1186,13 @@ export class UIManager {
     );
     backBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        this.showMainMenu();
+        // Use the game's proper cleanup method for back to main menu from game
+        const game = (window as any).game;
+        if (game && game.getGameState() !== "mainMenu") {
+          game.returnToMainMenu();
+        } else {
+          this.showMainMenu();
+        }
       });
     });
   }

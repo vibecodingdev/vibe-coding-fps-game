@@ -41,9 +41,24 @@ export class DemonSystem implements IDemonSystem {
   private demonSpawnTimer: NodeJS.Timeout | null = null;
   private nextWaveTimer: NodeJS.Timeout | null = null;
   private readonly timeBetweenWaves = 5000; // 5 seconds between waves
+  private isMultiplayerMode = false; // Track if we're in multiplayer mode
 
   public async initialize(): Promise<void> {
     console.log("🔥 DemonSystem initialized with enhanced DOOM-style models");
+  }
+
+  public setMultiplayerMode(isMultiplayer: boolean): void {
+    this.isMultiplayerMode = isMultiplayer;
+    console.log(
+      `👹 DemonSystem multiplayer mode: ${
+        isMultiplayer ? "ENABLED" : "DISABLED"
+      }`
+    );
+
+    // If switching to multiplayer, stop any active wave spawning
+    if (isMultiplayer) {
+      this.stopWaveSystem();
+    }
   }
 
   public setScene(scene: THREE.Scene): void {
@@ -74,72 +89,25 @@ export class DemonSystem implements IDemonSystem {
     this.checkWaveComplete();
   }
 
-  private removeDeadDemons(): void {
-    const demonsToRemove: any[] = [];
-
-    this.demons.forEach((demon: any) => {
-      let isDead = false;
-      let isMarkedForRemoval = false;
-      let meshObject: THREE.Object3D;
-
-      // Handle both DemonInstance and direct THREE.Group objects
-      if (demon.mesh) {
-        // DemonInstance structure
-        isDead = demon.state === "dead";
-        isMarkedForRemoval = demon.mesh.userData?.markedForRemoval;
-        meshObject = demon.mesh;
-      } else if (demon.userData) {
-        // Direct THREE.Group object (multiplayer)
-        isDead = demon.userData.isDead;
-        isMarkedForRemoval = demon.userData.markedForRemoval;
-        meshObject = demon;
-      } else {
-        // Invalid demon object
-        demonsToRemove.push(demon);
-        return;
-      }
-
-      if (isDead || isMarkedForRemoval) {
-        demonsToRemove.push(demon);
-      }
-    });
-
-    // Remove dead demons
-    demonsToRemove.forEach((demon: any) => {
-      // Remove from scene
-      let meshObject: THREE.Object3D;
-      if (demon.mesh) {
-        meshObject = demon.mesh;
-      } else {
-        meshObject = demon;
-      }
-
-      this.scene.remove(meshObject);
-
-      // Remove from demons array
-      const index = this.demons.indexOf(demon);
-      if (index > -1) {
-        this.demons.splice(index, 1);
-      }
-    });
-  }
-
-  private updateDemonAI(demon: DemonInstance, deltaTime: number): void {
+  public updateDemonAI(
+    demon: DemonInstance | THREE.Group,
+    deltaTime: number
+  ): void {
     // Handle both single-player DemonInstance and multiplayer THREE.Group objects
     let meshObject: THREE.Object3D;
     let userData: any;
     let demonState: string;
 
     // Check if this is a DemonInstance (single-player) or THREE.Group (multiplayer)
-    if (demon.mesh) {
+    if ("mesh" in demon && demon.mesh) {
       // Single-player DemonInstance
       meshObject = demon.mesh;
       userData = demon.mesh.userData;
       demonState = demon.state;
-    } else if ((demon as any).userData) {
+    } else if ("userData" in demon && demon.userData) {
       // Multiplayer THREE.Group
-      meshObject = demon as any;
-      userData = (demon as any).userData;
+      meshObject = demon as THREE.Group;
+      userData = demon.userData;
       demonState = userData.isDead ? "dead" : "idle";
     } else {
       // Invalid demon object, skip
@@ -238,7 +206,7 @@ export class DemonSystem implements IDemonSystem {
     }
 
     // Update DemonInstance position from mesh position (single-player)
-    if (demon.mesh) {
+    if ("mesh" in demon && demon.mesh) {
       // Single-player: copy position from mesh to DemonInstance
       demon.position.copy(meshObject.position);
     }
@@ -246,6 +214,56 @@ export class DemonSystem implements IDemonSystem {
 
     // Update animations based on current state
     this.updateDemonAnimation(demon, deltaTime);
+  }
+
+  private removeDeadDemons(): void {
+    const demonsToRemove: any[] = [];
+
+    this.demons.forEach((demon: any) => {
+      let isDead = false;
+      let isMarkedForRemoval = false;
+      let meshObject: THREE.Object3D;
+
+      // Handle both DemonInstance and direct THREE.Group objects
+      if (demon.mesh) {
+        // DemonInstance structure
+        isDead = demon.state === "dead";
+        isMarkedForRemoval = demon.mesh.userData?.markedForRemoval;
+        meshObject = demon.mesh;
+      } else if (demon.userData) {
+        // Direct THREE.Group object (multiplayer)
+        isDead = demon.userData.isDead;
+        isMarkedForRemoval = demon.userData.markedForRemoval;
+        meshObject = demon;
+      } else {
+        // Invalid demon object
+        demonsToRemove.push(demon);
+        return;
+      }
+
+      if (isDead || isMarkedForRemoval) {
+        demonsToRemove.push(demon);
+      }
+    });
+
+    // Remove dead demons
+    demonsToRemove.forEach((demon: any) => {
+      // Remove from scene
+      let meshObject: THREE.Object3D;
+      if (demon.mesh) {
+        meshObject = demon.mesh;
+      } else {
+        meshObject = demon;
+      }
+
+      this.scene.remove(meshObject);
+
+      // Remove from demons array
+      const index = this.demons.indexOf(demon);
+      if (index > -1) {
+        this.demons.splice(index, 1);
+      }
+    });
   }
 
   private updateFireballs(deltaTime: number): void {
@@ -1188,8 +1206,30 @@ export class DemonSystem implements IDemonSystem {
   }
 
   public startWaveSystem(): void {
+    // Don't start wave system in multiplayer mode - server controls spawning
+    if (this.isMultiplayerMode) {
+      console.log("🚫 Skipping local wave system - multiplayer mode active");
+      return;
+    }
+
     this.waveInProgress = true;
     this.spawnWave();
+  }
+
+  public stopWaveSystem(): void {
+    console.log("🛑 Stopping wave system for multiplayer mode");
+    this.waveInProgress = false;
+
+    // Clear any active timers
+    if (this.demonSpawnTimer) {
+      clearTimeout(this.demonSpawnTimer);
+      this.demonSpawnTimer = null;
+    }
+
+    if (this.nextWaveTimer) {
+      clearTimeout(this.nextWaveTimer);
+      this.nextWaveTimer = null;
+    }
   }
 
   private spawnWave(): void {
@@ -1309,7 +1349,7 @@ export class DemonSystem implements IDemonSystem {
     );
   }
 
-  private createDemonModel(demonType: DemonType): THREE.Group {
+  public createDemonModel(demonType: DemonType): THREE.Group {
     const typeData = DEMON_CONFIGS[demonType];
     const demonGroup = new THREE.Group();
 
@@ -1814,16 +1854,41 @@ export class DemonSystem implements IDemonSystem {
     }
   }
 
-  public checkBulletCollision(bullet: Bullet): string | null {
+  public checkBulletCollision(
+    bullet: Bullet,
+    allDemons?: any[]
+  ): string | null {
     const bulletPosition = bullet.mesh.position;
+    const demonsToCheck = allDemons || this.demons;
 
-    for (const demon of this.demons) {
-      if (demon.state === "dead") continue;
+    for (const demon of demonsToCheck) {
+      // Handle both DemonInstance (single player) and THREE.Group (network) objects
+      let demonPosition: THREE.Vector3;
+      let demonId: string;
+      let isDead = false;
 
-      const distance = bulletPosition.distanceTo(demon.position);
+      if (demon.mesh) {
+        // DemonInstance structure (single player)
+        if (demon.state === "dead") continue;
+        demonPosition = demon.position;
+        demonId = demon.id;
+        isDead = demon.state === "dead";
+      } else if (demon.userData) {
+        // THREE.Group structure (network demon)
+        if (demon.userData.isDead || demon.userData.markedForRemoval) continue;
+        demonPosition = demon.position;
+        demonId = demon.userData.serverId || demon.id || "unknown";
+        isDead = demon.userData.isDead;
+      } else {
+        continue; // Invalid demon object
+      }
+
+      if (isDead) continue;
+
+      const distance = bulletPosition.distanceTo(demonPosition);
       if (distance < 1.0) {
         // Hit threshold
-        return demon.id;
+        return demonId;
       }
     }
 
