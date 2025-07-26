@@ -177,21 +177,21 @@ export class SceneManager {
     const wallMaterial = new THREE.MeshLambertMaterial({
       color: wallColor,
       transparent: true,
-      opacity: 0.15,
+      opacity: 0.25,
     });
 
     // Create accent material
     const accentMaterial = new THREE.MeshLambertMaterial({
       color: accentColor,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.35,
     });
 
     // Create glowing edge material
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: config?.glowColor || 0xff3300,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.45,
     });
 
     // North wall - positioned beyond movement boundary
@@ -240,7 +240,7 @@ export class SceneManager {
       wallMaterial,
       accentMaterial,
       glowMaterial,
-      Math.PI / 2
+      0
     );
 
     // West wall
@@ -255,7 +255,7 @@ export class SceneManager {
       wallMaterial,
       accentMaterial,
       glowMaterial,
-      Math.PI / 2
+      0
     );
 
     // Add corner towers
