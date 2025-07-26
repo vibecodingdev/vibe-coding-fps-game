@@ -2,13 +2,66 @@ import { Socket } from "socket.io-client";
 import * as THREE from "three";
 
 export interface NetworkState {
-  socket: Socket | null;
+  socket: any;
   isConnected: boolean;
-  currentRoom: string | null;
-  localPlayer: RemotePlayer | null;
-  remotePlayers: Map<string, RemotePlayer>;
+  currentRoom: RoomData | null;
+  localPlayer: PlayerData | null;
+  remotePlayers: Map<string, any>;
   isRoomLeader: boolean;
   isMultiplayer: boolean;
+}
+
+export interface PlayerData {
+  id: string;
+  name: string;
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  rotation: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  ready?: boolean;
+  isLeader?: boolean;
+}
+
+export interface RoomData {
+  id: string;
+  name: string;
+  maxPlayers: number;
+  players: number;
+  mapType: string;
+  status: "waiting" | "playing" | "full";
+  createdAt: number;
+}
+
+export interface ChatMessage {
+  type: "system" | "player" | "voice";
+  message: string;
+  playerName?: string;
+  timestamp: number;
+}
+
+export interface VoiceData {
+  type: "voice-transmission" | "voice-message";
+  audioData?: ArrayBuffer;
+  message?: string;
+  playerId: string;
+  playerName: string;
+  timestamp: number;
+}
+
+export interface GameData {
+  players: PlayerData[];
+  roomId: string;
+  mapType: string;
+  gameSettings: {
+    maxWaves: number;
+    difficulty: number;
+  };
 }
 
 export interface RemotePlayer {

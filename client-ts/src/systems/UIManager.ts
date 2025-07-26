@@ -400,4 +400,414 @@ export class UIManager {
   private updateAnimations(): void {
     // 可以在这里添加UI动画逻辑，比如准星动画、血量条动画等
   }
+
+  // Multiplayer UI Management Methods
+
+  // Connection status management
+  public updateConnectionStatus(status: string): void {
+    const connectionStatus = document.getElementById("connectionStatus");
+    if (connectionStatus) {
+      connectionStatus.textContent = status;
+
+      // Update styling based on status
+      if (status.includes("🟢")) {
+        connectionStatus.style.borderColor = "#00ff00";
+        connectionStatus.style.color = "#00ff00";
+      } else if (status.includes("🔴")) {
+        connectionStatus.style.borderColor = "#ff0000";
+        connectionStatus.style.color = "#ff0000";
+      } else if (status.includes("🔄")) {
+        connectionStatus.style.borderColor = "#ffaa00";
+        connectionStatus.style.color = "#ffaa00";
+      }
+    }
+  }
+
+  // Room list management
+  public updateRoomsList(rooms: any[]): void {
+    const roomList = document.getElementById("roomList");
+    if (!roomList) return;
+
+    if (rooms.length === 0) {
+      roomList.innerHTML =
+        '<div class="room-item empty">🏜️ No chambers found in Hell</div>';
+      return;
+    }
+
+    roomList.innerHTML = rooms
+      .map(
+        (room) => `
+      <div class="room-item" onclick="window.networkManager?.joinRoom('${
+        room.id
+      }')">
+        <div class="room-info">
+          <div class="room-name">🏰 ${room.name}</div>
+          <div class="room-details">
+            👹 ${room.players}/${room.maxPlayers} | 🗺️ ${room.mapType}
+          </div>
+        </div>
+        <div class="room-status">
+          ${room.players < room.maxPlayers ? "🟢 OPEN" : "🔴 FULL"}
+        </div>
+      </div>
+    `
+      )
+      .join("");
+  }
+
+  // Party members management
+  public updatePartyMembers(members: any[]): void {
+    const partyMembers = document.getElementById("partyMembers");
+    if (!partyMembers) return;
+
+    partyMembers.innerHTML = members
+      .map(
+        (member) => `
+      <div class="party-member ${member.isLeader ? "leader" : ""} ${
+          member.ready ? "ready" : ""
+        }">
+        <div class="member-info">
+          <div class="member-name">
+            ${member.isLeader ? "👑" : "👹"} ${member.name}
+          </div>
+          <div class="member-status">
+            ${member.isLeader ? "Chamber Leader" : "Demon"}
+            ${member.ready ? " • Ready" : " • Not Ready"}
+          </div>
+        </div>
+        <div class="member-ready-status">
+          ${member.ready ? "✅" : "⏳"}
+        </div>
+      </div>
+    `
+      )
+      .join("");
+  }
+
+  // Chat system management
+  public addChatMessage(
+    type: "system" | "player" | "voice",
+    message: string,
+    sender?: string
+  ): void {
+    const chatMessages = document.getElementById("chatMessages");
+    if (!chatMessages) return;
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `chat-message ${type}`;
+
+    const timestamp = new Date().toLocaleTimeString();
+
+    if (type === "system") {
+      messageDiv.innerHTML = `<span style="color: #ffaa66; font-style: italic;">[${timestamp}] ${message}</span>`;
+    } else if (type === "voice") {
+      messageDiv.innerHTML = `<span style="color: #00ff00;">[${timestamp}] <span class="sender">${sender}:</span> ${message}</span>`;
+    } else {
+      messageDiv.innerHTML = `<span style="color: #ffffff;">[${timestamp}] <span class="sender">${sender}:</span> ${message}</span>`;
+    }
+
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Limit chat history to prevent memory issues
+    while (chatMessages.children.length > 100) {
+      chatMessages.removeChild(chatMessages.firstChild!);
+    }
+  }
+
+  public addGameChatMessage(
+    type: "system" | "player" | "voice",
+    message: string,
+    sender?: string
+  ): void {
+    // For in-game chat, we could show it in a different location or overlay
+    // For now, use the same chat system but with different styling
+    this.addChatMessage(type, message, sender);
+
+    // Also show as temporary overlay in game
+    if (type === "voice" || type === "player") {
+      this.showMessage(`${sender}: ${message}`, 3000);
+    }
+  }
+
+  // Menu navigation
+  public showMainMenu(): void {
+    this.hideAllMenus();
+    const mainMenu = document.getElementById("mainMenu");
+    if (mainMenu) {
+      mainMenu.style.display = "block";
+    }
+  }
+
+  public showMultiplayerLobby(): void {
+    this.hideAllMenus();
+    const multiplayerLobby = document.getElementById("multiplayerLobby");
+    if (multiplayerLobby) {
+      multiplayerLobby.style.display = "block";
+    }
+  }
+
+  public showPartyRoom(): void {
+    this.hideAllMenus();
+    const partyRoom = document.getElementById("partyRoom");
+    if (partyRoom) {
+      partyRoom.style.display = "block";
+    }
+  }
+
+  public showInstructions(): void {
+    this.hideAllMenus();
+    const instructions = document.getElementById("instructionsScreen");
+    if (instructions) {
+      instructions.style.display = "block";
+    }
+  }
+
+  public showGameOver(): void {
+    this.hideAllMenus();
+    const gameOver = document.getElementById("gameOverScreen");
+    if (gameOver) {
+      gameOver.style.display = "block";
+    }
+  }
+
+  private hideAllMenus(): void {
+    const menus = [
+      "mainMenu",
+      "multiplayerLobby",
+      "partyRoom",
+      "instructionsScreen",
+      "gameOverScreen",
+    ];
+
+    menus.forEach((menuId) => {
+      const menu = document.getElementById(menuId);
+      if (menu) {
+        menu.style.display = "none";
+      }
+    });
+  }
+
+  // Room management UI helpers
+  public updateRoomTitle(roomName: string): void {
+    const roomTitle = document.getElementById("roomTitle");
+    if (roomTitle) {
+      roomTitle.textContent = `🔥 ${roomName} 🔥`;
+    }
+  }
+
+  public updateReadyButton(isReady: boolean): void {
+    const readyButton = document.getElementById("readyButton");
+    if (readyButton) {
+      if (isReady) {
+        readyButton.textContent = "✅ READY";
+        readyButton.classList.add("ready");
+      } else {
+        readyButton.textContent = "⏳ NOT READY";
+        readyButton.classList.remove("ready");
+      }
+    }
+  }
+
+  public updateStartGameButton(canStart: boolean, isLeader: boolean): void {
+    const startButton = document.getElementById(
+      "startGameButton"
+    ) as HTMLButtonElement;
+    if (startButton) {
+      startButton.disabled = !canStart || !isLeader;
+      if (!isLeader) {
+        startButton.textContent = "🎮 WAITING FOR LEADER";
+      } else if (!canStart) {
+        startButton.textContent = "🎮 WAITING FOR PLAYERS";
+      } else {
+        startButton.textContent = "🎮 BEGIN HELLISH COMBAT";
+      }
+    }
+  }
+
+  // Voice chat UI
+  public showVoiceIndicator(playerId: string): void {
+    // Create or update voice activity indicator
+    let indicator = document.getElementById(`voice-${playerId}`);
+    if (!indicator) {
+      indicator = document.createElement("div");
+      indicator.id = `voice-${playerId}`;
+      indicator.className = "voice-indicator";
+      indicator.textContent = "🎤";
+      document.body.appendChild(indicator);
+    }
+
+    // Show indicator briefly
+    indicator.style.display = "block";
+    setTimeout(() => {
+      if (indicator) {
+        indicator.style.display = "none";
+      }
+    }, 1000);
+  }
+
+  // Room info display during game
+  public showRoomInfo(roomName: string): void {
+    let roomInfo = document.getElementById("roomInfo");
+    if (!roomInfo) {
+      roomInfo = document.createElement("div");
+      roomInfo.id = "roomInfo";
+      roomInfo.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #ff6600;
+        padding: 0.5rem 1rem;
+        border: 2px solid #ff6600;
+        border-radius: 5px;
+        font-weight: 600;
+        text-shadow: 0 0 10px #ff6600;
+        z-index: 1000;
+        font-family: 'Orbitron', monospace;
+      `;
+      document.body.appendChild(roomInfo);
+    }
+    roomInfo.textContent = `🏰 Chamber: ${roomName}`;
+  }
+
+  public hideRoomInfo(): void {
+    const roomInfo = document.getElementById("roomInfo");
+    if (roomInfo) {
+      roomInfo.remove();
+    }
+  }
+
+  // Server configuration UI helpers
+  public getSelectedServerConfig(): { type: string; url: string } {
+    const localServer = document.getElementById(
+      "localServer"
+    ) as HTMLInputElement;
+    const lanServer = document.getElementById("lanServer") as HTMLInputElement;
+    const customServer = document.getElementById(
+      "customServer"
+    ) as HTMLInputElement;
+    const lanServerIP = document.getElementById(
+      "lanServerIP"
+    ) as HTMLInputElement;
+    const customServerIP = document.getElementById(
+      "customServerIP"
+    ) as HTMLInputElement;
+
+    if (localServer?.checked) {
+      return { type: "local", url: "http://localhost:3000" };
+    } else if (lanServer?.checked) {
+      const ip = lanServerIP?.value || "192.168.1.100:3000";
+      return { type: "lan", url: `http://${ip}` };
+    } else if (customServer?.checked) {
+      const ip = customServerIP?.value || "localhost:3000";
+      return { type: "custom", url: `http://${ip}` };
+    }
+
+    return { type: "local", url: "http://localhost:3000" };
+  }
+
+  // Utility method to setup multiplayer event listeners
+  public setupMultiplayerEventListeners(networkManager: any): void {
+    // Server configuration radio buttons
+    const serverRadios = document.querySelectorAll('input[name="serverType"]');
+    serverRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        const lanInput = document.getElementById(
+          "lanServerIP"
+        ) as HTMLInputElement;
+        const customInput = document.getElementById(
+          "customServerIP"
+        ) as HTMLInputElement;
+
+        if (lanInput)
+          lanInput.disabled = !(
+            document.getElementById("lanServer") as HTMLInputElement
+          )?.checked;
+        if (customInput)
+          customInput.disabled = !(
+            document.getElementById("customServer") as HTMLInputElement
+          )?.checked;
+      });
+    });
+
+    // Connect to server button
+    const connectBtn = document.getElementById("connectServerBtn");
+    connectBtn?.addEventListener("click", () => {
+      const config = this.getSelectedServerConfig();
+      networkManager.setServerURL(config.url);
+      networkManager.connectToServer();
+    });
+
+    // Create room button
+    const createRoomBtn = document.getElementById("createRoomBtn");
+    createRoomBtn?.addEventListener("click", () => {
+      const roomName =
+        (document.getElementById("roomName") as HTMLInputElement)?.value ||
+        "Hell Chamber";
+      const maxPlayers = parseInt(
+        (document.getElementById("maxPlayers") as HTMLSelectElement)?.value ||
+          "4"
+      );
+      const mapType =
+        (document.getElementById("mapType") as HTMLSelectElement)?.value ||
+        "industrial";
+
+      networkManager.createRoom(roomName, maxPlayers, mapType);
+    });
+
+    // Refresh rooms button
+    const refreshBtn = document.getElementById("refreshRoomsBtn");
+    refreshBtn?.addEventListener("click", () => {
+      networkManager.refreshRooms();
+    });
+
+    // Chat input
+    const chatInput = document.getElementById("chatInput") as HTMLInputElement;
+    const sendChatBtn = document.getElementById("sendChatBtn");
+
+    const sendMessage = () => {
+      const message = chatInput?.value.trim();
+      if (message) {
+        networkManager.sendChatMessage(message);
+        chatInput.value = "";
+      }
+    };
+
+    sendChatBtn?.addEventListener("click", sendMessage);
+    chatInput?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    // Ready button
+    const readyBtn = document.getElementById("readyButton");
+    readyBtn?.addEventListener("click", () => {
+      networkManager.toggleReady();
+    });
+
+    // Start game button
+    const startBtn = document.getElementById("startGameButton");
+    startBtn?.addEventListener("click", () => {
+      networkManager.startGame();
+    });
+
+    // Leave room button
+    const leaveBtn = document.getElementById("leaveRoomBtn");
+    leaveBtn?.addEventListener("click", () => {
+      networkManager.leaveRoom();
+      this.showMultiplayerLobby();
+    });
+
+    // Back to menu buttons
+    const backBtns = document.querySelectorAll(
+      "#backToMenuBtn, #backToMainMenuBtn"
+    );
+    backBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.showMainMenu();
+      });
+    });
+  }
 }

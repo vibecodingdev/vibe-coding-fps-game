@@ -618,4 +618,302 @@ export class Game {
   public getAudioSystem(): AudioSystem {
     return this.audioSystem;
   }
+
+  // Additional public interface methods for multiplayer support
+  public getUIManager(): UIManager {
+    return this.uiManager;
+  }
+
+  public getNetworkManager(): NetworkManager {
+    return this.networkManager;
+  }
+
+  public getPlayerController(): PlayerController {
+    return this.playerController;
+  }
+
+  public getCollectibleSystem(): CollectibleSystem {
+    return this.collectibleSystem;
+  }
+
+  public getScene(): THREE.Scene | null {
+    return this.sceneManager.getScene();
+  }
+
+  public getCamera(): THREE.Camera | null {
+    return this.sceneManager.getCamera();
+  }
+
+  public getRenderer(): THREE.WebGLRenderer | null {
+    return this.sceneManager.getRenderer();
+  }
+
+  public getControls(): any {
+    return this.playerController.getControls();
+  }
+
+  // Game state management for multiplayer
+  public setGameState(state: GameState): void {
+    this.gameState = state;
+  }
+
+  public getGameState(): GameState {
+    return this.gameState;
+  }
+
+  public setMultiplayerMode(isMultiplayer: boolean): void {
+    this.isMultiplayer = isMultiplayer;
+  }
+
+  public getMultiplayerMode(): boolean {
+    return this.isMultiplayer;
+  }
+
+  // Effect creation methods for multiplayer events
+  public createHitEffect(position: THREE.Vector3): void {
+    // Create hit effect particles
+    const particleCount = 20;
+    const particles = new THREE.Group();
+
+    for (let i = 0; i < particleCount; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.05, 4, 4);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: Math.random() > 0.5 ? 0xff0000 : 0xff4400,
+      });
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+
+      particle.position.copy(position);
+      particle.position.add(
+        new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+        )
+      );
+
+      particles.add(particle);
+    }
+
+    const scene = this.getScene();
+    if (scene) {
+      scene.add(particles);
+
+      // Remove particles after animation
+      setTimeout(() => {
+        scene.remove(particles);
+      }, 1000);
+    }
+  }
+
+  public createWoundedEffect(position: THREE.Vector3): void {
+    // Create wounded effect
+    const woundedGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+    const woundedMaterial = new THREE.MeshBasicMaterial({
+      color: 0x8b0000,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const woundedEffect = new THREE.Mesh(woundedGeometry, woundedMaterial);
+    woundedEffect.position.copy(position);
+
+    const scene = this.getScene();
+    if (scene) {
+      scene.add(woundedEffect);
+
+      // Animate and remove
+      let opacity = 0.7;
+      const fadeInterval = setInterval(() => {
+        opacity -= 0.05;
+        woundedMaterial.opacity = opacity;
+        woundedEffect.scale.multiplyScalar(1.05);
+
+        if (opacity <= 0) {
+          scene.remove(woundedEffect);
+          clearInterval(fadeInterval);
+        }
+      }, 50);
+    }
+  }
+
+  // Kill count management
+  public incrementKillCount(): void {
+    this.gameStats.demonKills++;
+    this.uiManager.updateGameStats(this.gameStats);
+  }
+
+  public updatePlayerHealth(health: number): void {
+    this.playerState.health = Math.max(0, Math.min(100, health));
+    this.uiManager.updateHealth(this.playerState);
+  }
+
+  public getPlayerHealth(): number {
+    return this.playerState.health;
+  }
+
+  public getPlayerPosition(): THREE.Vector3 {
+    const controls = this.getControls();
+    if (controls && controls.getObject) {
+      return controls.getObject().position.clone();
+    }
+    return new THREE.Vector3(0, 0, 0);
+  }
+
+  public getPlayerRotation(): THREE.Euler {
+    const controls = this.getControls();
+    if (controls && controls.getObject) {
+      return controls.getObject().rotation.clone();
+    }
+    return new THREE.Euler(0, 0, 0);
+  }
+
+  // Weapon management for multiplayer
+  public getCurrentWeapon(): any {
+    return this.weaponSystem.getCurrentWeapon();
+  }
+
+  public switchWeapon(weaponType: any): void {
+    this.weaponSystem.switchWeapon(weaponType);
+  }
+
+  // Remote player management
+  public addRemotePlayer(playerData: any): THREE.Group | null {
+    const scene = this.getScene();
+    if (scene && this.networkManager) {
+      return this.networkManager.createRemotePlayer(playerData, scene);
+    }
+    return null;
+  }
+
+  public removeRemotePlayer(playerId: string): void {
+    const scene = this.getScene();
+    if (scene && this.networkManager) {
+      this.networkManager.removeRemotePlayer(playerId, scene);
+    }
+  }
+
+  public clearRemotePlayers(): void {
+    const scene = this.getScene();
+    if (scene && this.networkManager) {
+      this.networkManager.clearRemotePlayers(scene);
+    }
+  }
+
+  // Demon management for multiplayer
+  public getDemons(): any[] {
+    return this.demonSystem.demons;
+  }
+
+  public addDemon(demon: any): void {
+    // For compatibility with multiplayer system
+    this.demonSystem.demons.push(demon);
+  }
+
+  public removeDemon(demon: any): void {
+    const index = this.demonSystem.demons.findIndex((d) => d === demon);
+    if (index > -1) {
+      this.demonSystem.demons.splice(index, 1);
+    }
+    const scene = this.getScene();
+    if (scene && demon) {
+      if (demon.mesh) {
+        scene.remove(demon.mesh);
+      } else {
+        scene.remove(demon);
+      }
+    }
+  }
+
+  public clearDemons(): void {
+    const scene = this.getScene();
+    if (scene) {
+      this.demonSystem.demons.forEach((demon) => {
+        if (demon.mesh) {
+          scene.remove(demon.mesh);
+        } else {
+          scene.remove(demon);
+        }
+      });
+    }
+    this.demonSystem.demons = [];
+  }
+
+  public createDemonModel(demonType: string): THREE.Group | null {
+    // Create a basic demon model for multiplayer compatibility
+    try {
+      const demonGeometry = new THREE.BoxGeometry(1, 2, 1);
+      const demonMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+      const demon = new THREE.Mesh(demonGeometry, demonMaterial);
+
+      const demonGroup = new THREE.Group();
+      demonGroup.add(demon);
+
+      // Add basic userData structure for compatibility
+      demonGroup.userData = {
+        demonType: demonType,
+        health: 1,
+        maxHealth: 1,
+        isServerControlled: true,
+      };
+
+      return demonGroup;
+    } catch (error) {
+      console.error("Failed to create demon model:", error);
+      return null;
+    }
+  }
+
+  // Wave management
+  public startWave(waveNumber: number, demonCount?: number): void {
+    this.gameStats.currentWave = waveNumber;
+    this.uiManager.updateGameStats(this.gameStats);
+    // Additional wave start logic can be added here
+  }
+
+  public completeWave(waveNumber: number): void {
+    console.log(`Wave ${waveNumber} completed!`);
+    // Additional wave completion logic can be added here
+  }
+
+  // Pause and resume functionality
+  public pauseGame(): void {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+    this.gameState = "paused";
+  }
+
+  public resumeGame(): void {
+    if (this.gameState === "paused") {
+      this.gameState = "playing";
+      this.prevTime = performance.now();
+      this.animate();
+    }
+  }
+
+  // Utility methods
+  public showMessage(message: string, duration?: number): void {
+    this.uiManager.showMessage(message, duration);
+  }
+
+  public showDamageEffect(): void {
+    this.uiManager.showDamageEffect();
+  }
+
+  // Menu navigation helpers
+  public showMainMenu(): void {
+    this.uiManager.showMainMenu();
+    this.gameState = "mainMenu";
+  }
+
+  public showGameOver(): void {
+    this.uiManager.showGameOver();
+    this.gameState = "gameOver";
+  }
+
+  // Sound management
+  public playSound(soundName: string): void {
+    // AudioSystem playSound method access will be implemented when available
+    console.log("Playing sound:", soundName);
+  }
 }

@@ -15,6 +15,9 @@
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Exo+2:wght@300;400;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
+    
+    <!-- Socket.IO for multiplayer networking -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body>
     <script type="module" src="/main.ts"></script>
@@ -124,6 +127,153 @@
       <div class="menu-buttons">
         <button class="menu-button" onclick="hideInstructions()">
           ← BACK TO HELL
+        </button>
+      </div>
+    </div>
+
+    <!-- Multiplayer Lobby Screen -->
+    <div id="multiplayerLobby" class="menu-screen" style="display: none;">
+      <h1>🔥 HELLISH COMBAT LOBBY 🔥</h1>
+      
+      <!-- Top Configuration Section -->
+      <div class="top-config-section">
+        <!-- Player Info -->
+        <div class="player-info">
+          <input 
+            type="text" 
+            id="playerName" 
+            placeholder="Enter your demon name..." 
+            maxlength="20" 
+            minlength="2"
+            pattern="[A-Za-z0-9_-]+"
+            title="Use only letters, numbers, underscores, and hyphens"
+            required
+            autocomplete="username"
+          />
+          <div id="usernameHelper" class="username-helper">👹 Choose your demonic identity (2-20 characters)</div>
+          <div id="connectionStatus">🔴 Disconnected from Hell</div>
+        </div>
+
+        <!-- Server Configuration -->
+        <div class="server-config">
+          <h3>🌐 SERVER CONNECTION</h3>
+          <div class="server-options">
+            <div class="server-option">
+              <input type="radio" id="localServer" name="serverType" value="local" checked />
+              <label for="localServer">🏠 Local Server (localhost:3000)</label>
+            </div>
+            <div class="server-option">
+              <input type="radio" id="lanServer" name="serverType" value="lan" />
+              <label for="lanServer">🌐 LAN Server</label>
+              <input type="text" id="lanServerIP" placeholder="192.168.1.100:3000" disabled />
+            </div>
+            <div class="server-option">
+              <input type="radio" id="customServer" name="serverType" value="custom" />
+              <label for="customServer">⚙️ Custom Server</label>
+              <input type="text" id="customServerIP" placeholder="server-ip:port" disabled />
+            </div>
+          </div>
+          <button class="menu-button" id="connectServerBtn">
+            🔗 CONNECT TO HELL
+          </button>
+        </div>
+      </div>
+
+      <!-- Room Management -->
+      <div class="lobby-content">
+        <div class="lobby-section">
+          <h3>🏰 CREATE HELLISH CHAMBER</h3>
+          <div class="room-creation">
+            <input type="text" id="roomName" placeholder="Chamber name..." maxlength="30" />
+            <select id="maxPlayers">
+              <option value="2">2 Demons</option>
+              <option value="3">3 Demons</option>
+              <option value="4" selected>4 Demons</option>
+            </select>
+            <select id="mapType">
+              <option value="industrial">Industrial Hell</option>
+              <option value="hellscape">Classic Hellscape</option>
+              <option value="techbase">Tech Base</option>
+            </select>
+            <button class="menu-button success" id="createRoomBtn">
+              🔥 CREATE CHAMBER
+            </button>
+          </div>
+        </div>
+
+        <div class="lobby-section">
+          <h3>👹 AVAILABLE CHAMBERS</h3>
+          <div id="roomList" class="room-list">
+            <div class="room-item loading">
+              <span>🔄 Scanning Hell for chambers...</span>
+            </div>
+          </div>
+          <button class="menu-button" id="refreshRoomsBtn">
+            🔄 REFRESH CHAMBERS
+          </button>
+        </div>
+      </div>
+
+      <div class="lobby-buttons">
+        <button class="menu-button" id="backToMenuBtn">
+          ← BACK TO MENU
+        </button>
+      </div>
+    </div>
+
+    <!-- Party Room Screen -->
+    <div id="partyRoom" class="menu-screen" style="display: none;">
+      <h1 id="roomTitle">🔥 HELLISH CHAMBER 🔥</h1>
+      
+      <div class="party-content">
+        <div class="party-section">
+          <h3>👹 DEMONS IN CHAMBER</h3>
+          <div id="partyMembers" class="party-members">
+            <!-- Party members will be populated here -->
+          </div>
+        </div>
+
+        <div class="party-section">
+          <h3>💬 HELL CHAT</h3>
+          <div id="chatContainer" class="chat-container">
+            <div id="chatMessages" class="chat-messages">
+              <!-- Chat messages will appear here -->
+            </div>
+            <div class="chat-input">
+              <input type="text" id="chatInput" placeholder="Speak to your demon allies..." maxlength="200" />
+              <button id="sendChatBtn">📨</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="party-buttons">
+        <button class="menu-button" id="readyButton">
+          ⏳ NOT READY
+        </button>
+        <button class="menu-button success" id="startGameButton" disabled>
+          🎮 BEGIN HELLISH COMBAT
+        </button>
+        <button class="menu-button danger" id="leaveRoomBtn">
+          🚪 LEAVE CHAMBER
+        </button>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="menu-screen" style="display: none;">
+      <h1>💀 HELL HAS CLAIMED YOU 💀</h1>
+      <div id="finalStats">
+        <div>🔥 Demons Slain: <span id="finalKills">0</span></div>
+        <div>🌊 Waves Survived: <span id="finalWaves">0</span></div>
+        <div>⏱️ Time in Hell: <span id="finalTime">0</span></div>
+      </div>
+      <div class="menu-buttons">
+        <button class="menu-button success" id="restartGameBtn">
+          🔄 RETURN TO HELL
+        </button>
+        <button class="menu-button" id="backToMainMenuBtn">
+          🏠 BACK TO MENU
         </button>
       </div>
     </div>
