@@ -60,7 +60,7 @@ export class UIManager {
 
     this.healthBar = document.getElementById("healthBar");
     this.healthValue = document.getElementById("healthValue");
-    this.weaponName = document.getElementById("weaponName");
+    this.weaponName = document.getElementById("currentWeapon");
     this.currentAmmo = document.getElementById("currentAmmo");
     this.maxAmmo = document.getElementById("maxAmmo");
     this.waveNumber = document.getElementById("waveNumber");
