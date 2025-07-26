@@ -44,7 +44,7 @@ export class WeaponSystem implements IWeaponSystem {
   public async initialize(): Promise<void> {
     this.setupMuzzleFlashLight();
     this.createWeaponModels();
-    console.log("🔫 WeaponSystem initialized");
+    console.log("🔫 WeaponSystem initialized with enhanced projectile effects");
   }
 
   public setScene(scene: THREE.Scene): void {
@@ -68,7 +68,7 @@ export class WeaponSystem implements IWeaponSystem {
   }
 
   public update(deltaTime: number): void {
-    // Update bullets
+    // Update bullets with enhanced effects
     this.updateBullets(deltaTime);
 
     // Update gun recoil
@@ -86,7 +86,7 @@ export class WeaponSystem implements IWeaponSystem {
     this.bullets.forEach((bullet, index) => {
       // Remove bullets that are too old
       if (currentTime - bullet.createdAt > BULLET_LIFETIME) {
-        this.scene.remove(bullet.mesh);
+        this.removeBulletFromScene(bullet);
         this.bullets.splice(index, 1);
         return;
       }
@@ -97,12 +97,140 @@ export class WeaponSystem implements IWeaponSystem {
         bullet.velocity.clone().multiplyScalar(moveDistance)
       );
 
+      // Update weapon-specific effects
+      this.updateBulletEffects(bullet, deltaTime);
+
       // Remove bullets that are too far from origin
       if (bullet.mesh.position.length() > 100) {
-        this.scene.remove(bullet.mesh);
+        this.removeBulletFromScene(bullet);
         this.bullets.splice(index, 1);
       }
     });
+  }
+
+  private updateBulletEffects(bullet: Bullet, deltaTime: number): void {
+    const time = performance.now() * 0.001;
+
+    switch (bullet.weaponType) {
+      case "shotgun":
+        this.updateShotgunPelletEffects(bullet, time);
+        break;
+      case "chaingun":
+        this.updateChainguBulletEffects(bullet, time);
+        break;
+      case "rocket":
+        this.updateRocketEffects(bullet, time, deltaTime);
+        break;
+      case "plasma":
+        this.updatePlasmaEffects(bullet, time, deltaTime);
+        break;
+    }
+  }
+
+  private updateShotgunPelletEffects(bullet: Bullet, time: number): void {
+    // Shotgun pellets have trailing sparks
+    if (bullet.mesh.userData.trailParticles) {
+      bullet.mesh.userData.trailParticles.forEach(
+        (particle: THREE.Mesh, index: number) => {
+          particle.scale.multiplyScalar(0.98);
+          (particle.material as THREE.MeshBasicMaterial).opacity *= 0.95;
+
+          if (particle.scale.x < 0.1) {
+            bullet.mesh.remove(particle);
+            bullet.mesh.userData.trailParticles.splice(index, 1);
+          }
+        }
+      );
+    }
+
+    // Add new trail particles occasionally
+    if (Math.random() < 0.7) {
+      this.addShotgunTrailParticle(bullet);
+    }
+  }
+
+  private updateChainguBulletEffects(bullet: Bullet, time: number): void {
+    // Chaingun bullets have glowing trail and heat shimmer
+    if (bullet.mesh.userData.glowTrail) {
+      const glow = bullet.mesh.userData.glowTrail as THREE.Mesh;
+      const material = glow.material as THREE.MeshBasicMaterial;
+      material.opacity = 0.3 + Math.sin(time * 10) * 0.2;
+    }
+
+    // Update bullet rotation for tracer effect
+    bullet.mesh.rotation.z += 0.3;
+  }
+
+  private updateRocketEffects(
+    bullet: Bullet,
+    time: number,
+    deltaTime: number
+  ): void {
+    // Rocket has fire trail and exhaust
+    if (bullet.mesh.userData.fireTrail) {
+      const trail = bullet.mesh.userData.fireTrail as THREE.Group;
+
+      // Update trail particles
+      trail.children.forEach((particle, index) => {
+        const mesh = particle as THREE.Mesh;
+        mesh.scale.multiplyScalar(0.95);
+        (mesh.material as THREE.MeshBasicMaterial).opacity *= 0.9;
+
+        // Move particles backward relative to rocket
+        const backwardDirection = bullet.velocity
+          .clone()
+          .normalize()
+          .multiplyScalar(-0.1);
+        mesh.position.add(backwardDirection);
+
+        if (mesh.scale.x < 0.2) {
+          trail.remove(mesh);
+        }
+      });
+    }
+
+    // Add new exhaust particles
+    if (Math.random() < 0.8) {
+      this.addRocketExhaustParticle(bullet);
+    }
+
+    // Rocket slight wobble for realism
+    const wobble = Math.sin(time * 20) * 0.02;
+    bullet.mesh.rotation.x += wobble;
+    bullet.mesh.rotation.y += wobble * 0.5;
+  }
+
+  private updatePlasmaEffects(
+    bullet: Bullet,
+    time: number,
+    deltaTime: number
+  ): void {
+    // Plasma projectile energy effects
+    if (bullet.mesh.userData.energyField) {
+      const field = bullet.mesh.userData.energyField as THREE.Mesh;
+      field.rotation.x += 0.1;
+      field.rotation.y += 0.15;
+      field.rotation.z += 0.05;
+
+      // Pulsing energy effect
+      const pulse = 1 + Math.sin(time * 15) * 0.3;
+      field.scale.setScalar(pulse);
+
+      const material = field.material as THREE.MeshLambertMaterial;
+      material.emissiveIntensity = 0.5 + Math.sin(time * 20) * 0.3;
+    }
+
+    // Update plasma core glow
+    if (bullet.mesh.userData.core) {
+      const core = bullet.mesh.userData.core as THREE.Mesh;
+      const material = core.material as THREE.MeshLambertMaterial;
+      material.emissiveIntensity = 0.8 + Math.sin(time * 25) * 0.4;
+    }
+
+    // Electric arcs around plasma
+    if (bullet.mesh.userData.electricArcs && Math.random() < 0.3) {
+      this.updatePlasmaElectricArcs(bullet, time);
+    }
   }
 
   private updateGunRecoil(deltaTime: number): void {
@@ -149,8 +277,8 @@ export class WeaponSystem implements IWeaponSystem {
     weaponState.lastShotTime = currentTime;
     this.shotsFired++;
 
-    // Trigger effects
-    this.createMuzzleFlash();
+    // Trigger enhanced effects based on weapon type
+    this.createEnhancedMuzzleFlash();
     this.createMuzzleFlashLight();
     this.triggerGunRecoil();
 
@@ -169,26 +297,88 @@ export class WeaponSystem implements IWeaponSystem {
     const pelletCount = weapon.pellets || 8;
 
     for (let i = 0; i < pelletCount; i++) {
-      this.createBullet(weapon.spread);
+      this.createShotgunPellet(weapon.spread);
     }
   }
 
   private fireSingleBullet(): void {
     const weapon = this.weapons[this.currentWeapon];
-    this.createBullet(weapon.spread);
+    this.createEnhancedBullet(weapon.spread);
   }
 
-  private createBullet(spread: number = 0): void {
+  private createShotgunPellet(spread: number = 0): void {
     if (!this.camera || !this.scene) return;
 
-    const bulletGeometry = new THREE.SphereGeometry(0.02, 8, 8);
-    const bulletMaterial = new THREE.MeshLambertMaterial({
-      color: 0xffff00,
+    // Create shotgun pellet group
+    const pelletGroup = new THREE.Group();
+
+    // Main pellet
+    const pelletGeometry = new THREE.SphereGeometry(0.015, 6, 6);
+    const pelletMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffdd44,
       emissive: new THREE.Color(0xffaa00),
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.4,
     });
 
-    const bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    const pellet = new THREE.Mesh(pelletGeometry, pelletMaterial);
+    pelletGroup.add(pellet);
+
+    // Get camera position and direction
+    const cameraPosition = this.camera.position.clone();
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+
+    // Apply weapon spread
+    if (spread > 0) {
+      const spreadX = (Math.random() - 0.5) * spread;
+      const spreadY = (Math.random() - 0.5) * spread;
+
+      cameraDirection.x += spreadX;
+      cameraDirection.y += spreadY;
+      cameraDirection.normalize();
+    }
+
+    // Position pellet slightly in front of camera
+    pelletGroup.position.copy(cameraPosition);
+    pelletGroup.position.add(cameraDirection.clone().multiplyScalar(0.5));
+
+    // Initialize trail particles array
+    pelletGroup.userData.trailParticles = [];
+
+    const bullet: Bullet = {
+      id: `bullet_${Date.now()}_${Math.random()}`,
+      mesh: pelletGroup,
+      velocity: cameraDirection.clone(),
+      damage: this.weapons.shotgun.damage,
+      createdAt: Date.now(),
+      weaponType: "shotgun",
+    };
+
+    this.bullets.push(bullet);
+    this.scene.add(pelletGroup);
+  }
+
+  private createEnhancedBullet(spread: number = 0): void {
+    if (!this.camera || !this.scene) return;
+
+    const weapon = this.weapons[this.currentWeapon];
+    let bulletGroup: THREE.Group;
+
+    // Create weapon-specific projectile
+    switch (this.currentWeapon) {
+      case "chaingun":
+        bulletGroup = this.createChainguBullet();
+        break;
+      case "rocket":
+        bulletGroup = this.createRocketProjectile();
+        break;
+      case "plasma":
+        bulletGroup = this.createPlasmaProjectile();
+        break;
+      default:
+        bulletGroup = this.createBasicBullet();
+        break;
+    }
 
     // Get camera position and direction
     const cameraPosition = this.camera.position.clone();
@@ -206,51 +396,375 @@ export class WeaponSystem implements IWeaponSystem {
     }
 
     // Position bullet slightly in front of camera
-    bulletMesh.position.copy(cameraPosition);
-    bulletMesh.position.add(cameraDirection.clone().multiplyScalar(0.5));
+    bulletGroup.position.copy(cameraPosition);
+    bulletGroup.position.add(cameraDirection.clone().multiplyScalar(0.5));
 
     const bullet: Bullet = {
       id: `bullet_${Date.now()}_${Math.random()}`,
-      mesh: bulletMesh,
+      mesh: bulletGroup,
       velocity: cameraDirection.clone(),
-      damage: this.weapons[this.currentWeapon].damage,
+      damage: weapon.damage,
       createdAt: Date.now(),
       weaponType: this.currentWeapon,
     };
 
     this.bullets.push(bullet);
-    this.scene.add(bulletMesh);
+    this.scene.add(bulletGroup);
   }
 
-  private createMuzzleFlash(): void {
-    if (!this.camera || !this.scene) return;
+  private createBasicBullet(): THREE.Group {
+    const group = new THREE.Group();
 
-    const flashGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-    // Use MeshStandardMaterial instead of MeshBasicMaterial for proper emissive support
-    const flashMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffaa00,
+    const bulletGeometry = new THREE.SphereGeometry(0.02, 8, 8);
+    const bulletMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffff00,
       emissive: new THREE.Color(0xffaa00),
-      emissiveIntensity: 1,
+      emissiveIntensity: 0.5,
+    });
+
+    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    group.add(bullet);
+
+    return group;
+  }
+
+  private createChainguBullet(): THREE.Group {
+    const group = new THREE.Group();
+
+    // Main bullet with tracer effect
+    const bulletGeometry = new THREE.CapsuleGeometry(0.012, 0.06, 4, 8);
+    const bulletMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffaa00,
+      emissive: new THREE.Color(0xff6600),
+      emissiveIntensity: 0.6,
+    });
+
+    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    bullet.rotation.x = Math.PI / 2; // Orient along velocity
+    group.add(bullet);
+
+    // Glowing trail
+    const trailGeometry = new THREE.CapsuleGeometry(0.02, 0.08, 4, 6);
+    const trailMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffaa44,
+      transparent: true,
+      opacity: 0.4,
+    });
+
+    const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+    trail.rotation.x = Math.PI / 2;
+    trail.position.z = -0.02;
+    group.add(trail);
+
+    group.userData.glowTrail = trail;
+
+    return group;
+  }
+
+  private createRocketProjectile(): THREE.Group {
+    const group = new THREE.Group();
+
+    // Main rocket body
+    const rocketGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 8);
+    const rocketMaterial = new THREE.MeshLambertMaterial({
+      color: 0x444444,
+      emissive: new THREE.Color(0x222222),
+      emissiveIntensity: 0.2,
+    });
+
+    const rocket = new THREE.Mesh(rocketGeometry, rocketMaterial);
+    rocket.rotation.x = Math.PI / 2;
+    group.add(rocket);
+
+    // Rocket nose cone
+    const noseGeometry = new THREE.ConeGeometry(0.03, 0.06, 8);
+    const noseMaterial = new THREE.MeshLambertMaterial({
+      color: 0x666666,
+      emissive: new THREE.Color(0x333333),
+      emissiveIntensity: 0.3,
+    });
+
+    const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+    nose.rotation.x = Math.PI / 2;
+    nose.position.z = 0.105;
+    group.add(nose);
+
+    // Fire trail group
+    const fireTrail = new THREE.Group();
+    group.add(fireTrail);
+    group.userData.fireTrail = fireTrail;
+
+    // Add initial exhaust particles
+    for (let i = 0; i < 5; i++) {
+      const fakeBullet = {
+        id: `temp_${i}`,
+        mesh: group,
+        velocity: new THREE.Vector3(0, 0, 1),
+        damage: 0,
+        createdAt: Date.now(),
+        weaponType: "rocket" as const,
+      };
+      this.addRocketExhaustParticle(fakeBullet);
+    }
+
+    return group;
+  }
+
+  private createPlasmaProjectile(): THREE.Group {
+    const group = new THREE.Group();
+
+    // Plasma core
+    const coreGeometry = new THREE.SphereGeometry(0.04, 12, 8);
+    const coreMaterial = new THREE.MeshLambertMaterial({
+      color: 0x00ffff,
+      emissive: new THREE.Color(0x0088ff),
+      emissiveIntensity: 0.8,
+    });
+
+    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+    group.add(core);
+    group.userData.core = core;
+
+    // Energy field around core
+    const fieldGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+    const fieldMaterial = new THREE.MeshLambertMaterial({
+      color: 0x4488ff,
+      emissive: new THREE.Color(0x2244aa),
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.6,
+    });
+
+    const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
+    group.add(field);
+    group.userData.energyField = field;
+
+    // Electric arcs
+    const arcs: THREE.Line[] = [];
+    for (let i = 0; i < 4; i++) {
+      const arcGeometry = new THREE.BufferGeometry();
+      const arcMaterial = new THREE.LineBasicMaterial({
+        color: 0x88ddff,
+        transparent: true,
+        opacity: 0.7,
+      });
+
+      const arc = new THREE.Line(arcGeometry, arcMaterial);
+      group.add(arc);
+      arcs.push(arc);
+    }
+    group.userData.electricArcs = arcs;
+
+    this.generatePlasmaArcs(group);
+
+    return group;
+  }
+
+  private addShotgunTrailParticle(bullet: Bullet): void {
+    const sparkGeometry = new THREE.SphereGeometry(0.008, 4, 4);
+    const sparkMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffaa44,
       transparent: true,
       opacity: 0.8,
     });
 
+    const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+    spark.position.set(
+      (Math.random() - 0.5) * 0.02,
+      (Math.random() - 0.5) * 0.02,
+      -Math.random() * 0.05
+    );
+
+    bullet.mesh.add(spark);
+
+    if (!bullet.mesh.userData.trailParticles) {
+      bullet.mesh.userData.trailParticles = [];
+    }
+    bullet.mesh.userData.trailParticles.push(spark);
+  }
+
+  private addRocketExhaustParticle(bullet: Bullet): void {
+    if (!bullet.mesh.userData.fireTrail) return;
+
+    const trail = bullet.mesh.userData.fireTrail as THREE.Group;
+
+    const exhaustGeometry = new THREE.SphereGeometry(
+      0.02 + Math.random() * 0.01,
+      6,
+      4
+    );
+    const exhaustMaterial = new THREE.MeshBasicMaterial({
+      color: Math.random() > 0.5 ? 0xff4400 : 0xff8800,
+      transparent: true,
+      opacity: 0.9,
+    });
+
+    const exhaust = new THREE.Mesh(exhaustGeometry, exhaustMaterial);
+    exhaust.position.set(
+      (Math.random() - 0.5) * 0.02,
+      (Math.random() - 0.5) * 0.02,
+      -0.08 - Math.random() * 0.05
+    );
+
+    trail.add(exhaust);
+  }
+
+  private generatePlasmaArcs(group: THREE.Group): void {
+    const arcs = group.userData.electricArcs as THREE.Line[];
+
+    arcs.forEach((arc, index) => {
+      const points: THREE.Vector3[] = [];
+      const segments = 8;
+
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const angle = (index / arcs.length) * Math.PI * 2;
+        const radius = 0.06 + Math.random() * 0.02;
+
+        const x = Math.cos(angle + t * Math.PI) * radius * (1 - t);
+        const y = Math.sin(angle + t * Math.PI) * radius * (1 - t);
+        const z = (Math.random() - 0.5) * 0.02;
+
+        points.push(new THREE.Vector3(x, y, z));
+      }
+
+      arc.geometry.setFromPoints(points);
+    });
+  }
+
+  private updatePlasmaElectricArcs(bullet: Bullet, time: number): void {
+    if (Math.random() < 0.3) {
+      this.generatePlasmaArcs(bullet.mesh);
+    }
+  }
+
+  private createEnhancedMuzzleFlash(): void {
+    if (!this.camera || !this.scene) return;
+
+    const flashGroup = new THREE.Group();
+
+    // Main flash based on weapon type
+    let flashGeometry: THREE.BufferGeometry;
+    let flashMaterial: THREE.MeshStandardMaterial;
+
+    switch (this.currentWeapon) {
+      case "shotgun":
+        flashGeometry = new THREE.ConeGeometry(0.15, 0.3, 8);
+        flashMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffaa00,
+          emissive: new THREE.Color(0xffaa00),
+          emissiveIntensity: 1.2,
+          transparent: true,
+          opacity: 0.9,
+        });
+        break;
+      case "chaingun":
+        flashGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+        flashMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffcc44,
+          emissive: new THREE.Color(0xff8800),
+          emissiveIntensity: 1.0,
+          transparent: true,
+          opacity: 0.8,
+        });
+        break;
+      case "rocket":
+        flashGeometry = new THREE.SphereGeometry(0.2, 12, 8);
+        flashMaterial = new THREE.MeshStandardMaterial({
+          color: 0xff6600,
+          emissive: new THREE.Color(0xff4400),
+          emissiveIntensity: 1.5,
+          transparent: true,
+          opacity: 0.9,
+        });
+        break;
+      case "plasma":
+        flashGeometry = new THREE.SphereGeometry(0.12, 12, 8);
+        flashMaterial = new THREE.MeshStandardMaterial({
+          color: 0x44aaff,
+          emissive: new THREE.Color(0x0088ff),
+          emissiveIntensity: 1.3,
+          transparent: true,
+          opacity: 0.8,
+        });
+        break;
+      default:
+        flashGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        flashMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffaa00,
+          emissive: new THREE.Color(0xffaa00),
+          emissiveIntensity: 1,
+          transparent: true,
+          opacity: 0.8,
+        });
+        break;
+    }
+
     const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+    flashGroup.add(flash);
+
+    // Add sparks for more dramatic effect
+    for (let i = 0; i < (this.currentWeapon === "shotgun" ? 12 : 6); i++) {
+      const sparkGeometry = new THREE.SphereGeometry(0.01, 4, 4);
+      const sparkMaterial = new THREE.MeshBasicMaterial({
+        color: Math.random() > 0.5 ? 0xffaa00 : 0xff6600,
+        transparent: true,
+        opacity: 0.8,
+      });
+
+      const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+      spark.position.set(
+        (Math.random() - 0.5) * 0.4,
+        (Math.random() - 0.5) * 0.4,
+        Math.random() * 0.2
+      );
+
+      flashGroup.add(spark);
+    }
 
     // Position at gun barrel
     const cameraPosition = this.camera.position.clone();
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
 
-    flash.position.copy(cameraPosition);
-    flash.position.add(cameraDirection.clone().multiplyScalar(0.3));
+    flashGroup.position.copy(cameraPosition);
+    flashGroup.position.add(cameraDirection.clone().multiplyScalar(0.3));
 
-    this.scene.add(flash);
+    this.scene.add(flashGroup);
 
-    // Remove flash after short duration
-    setTimeout(() => {
-      this.scene.remove(flash);
-    }, 100);
+    // Enhanced removal with fade-out
+    let opacity = 0.9;
+    const fadeInterval = setInterval(() => {
+      opacity -= 0.15;
+      if (opacity <= 0) {
+        this.scene.remove(flashGroup);
+        clearInterval(fadeInterval);
+
+        // Dispose geometries and materials
+        flashGroup.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.geometry.dispose();
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach((mat) => mat.dispose());
+              } else {
+                mesh.material.dispose();
+              }
+            }
+          }
+        });
+      } else {
+        flashGroup.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const material = (child as THREE.Mesh).material as THREE.Material;
+            if ("opacity" in material) {
+              (material as any).opacity = opacity;
+            }
+          }
+        });
+      }
+    }, 16); // ~60fps
   }
 
   private createMuzzleFlashLight(): void {
@@ -259,22 +773,48 @@ export class WeaponSystem implements IWeaponSystem {
     // Position light at camera
     this.muzzleFlashLight.position.copy(this.camera.position);
 
-    // Turn on the light with full intensity
-    this.muzzleFlashLight.intensity = 3.0;
-    this.muzzleFlashLight.color.setHex(0xffaa00);
+    // Set light properties based on weapon type
+    let intensity = 3.0;
+    let color = 0xffaa00;
+
+    switch (this.currentWeapon) {
+      case "shotgun":
+        intensity = 4.0;
+        color = 0xffaa00;
+        break;
+      case "chaingun":
+        intensity = 2.5;
+        color = 0xffcc44;
+        break;
+      case "rocket":
+        intensity = 5.0;
+        color = 0xff6600;
+        break;
+      case "plasma":
+        intensity = 3.5;
+        color = 0x44aaff;
+        break;
+    }
+
+    // Turn on the light with weapon-specific intensity
+    this.muzzleFlashLight.intensity = intensity;
+    this.muzzleFlashLight.color.setHex(color);
 
     // Animate the light fading out
-    let intensity = 3.0;
+    let currentIntensity = intensity;
     const fadeInterval = setInterval(() => {
-      intensity -= 0.3;
-      if (intensity <= 0) {
+      currentIntensity -= intensity * 0.2;
+      if (currentIntensity <= 0) {
         this.muzzleFlashLight!.intensity = 0;
         clearInterval(fadeInterval);
       } else {
-        this.muzzleFlashLight!.intensity = intensity;
+        this.muzzleFlashLight!.intensity = currentIntensity;
         // Slightly randomize color for flicker effect
         const flicker = 0.9 + Math.random() * 0.1;
-        this.muzzleFlashLight!.color.setRGB(1.0 * flicker, 0.67 * flicker, 0.0);
+        const r = (((color >> 16) & 255) / 255) * flicker;
+        const g = (((color >> 8) & 255) / 255) * flicker;
+        const b = ((color & 255) / 255) * flicker;
+        this.muzzleFlashLight!.color.setRGB(r, g, b);
       }
     }, 16); // ~60fps
   }
@@ -335,39 +875,89 @@ export class WeaponSystem implements IWeaponSystem {
     let totalRefilled = 0;
     const details: string[] = [];
 
-    // Calculate ammo distribution like original client
-    const shotgunRefillAmount = Math.floor(ammoAmount * 0.4); // 40% for shotgun
-    const chainguRefillAmount = Math.floor(ammoAmount * 0.6); // 60% for chaingun
+    // Prioritize current weapon for ammo refill
+    const currentWeaponState = this.weaponStates[this.currentWeapon];
+    const currentWeaponConfig = this.weapons[this.currentWeapon];
 
-    // Refill shotgun if needed
-    const shotgunState = this.weaponStates.shotgun;
-    const shotgunConfig = this.weapons.shotgun;
-    if (shotgunState.currentAmmo < shotgunConfig.maxAmmo) {
-      const oldShotgunAmmo = shotgunState.currentAmmo;
-      shotgunState.currentAmmo = Math.min(
-        shotgunConfig.maxAmmo,
-        shotgunState.currentAmmo + shotgunRefillAmount
+    if (currentWeaponState.currentAmmo < currentWeaponConfig.maxAmmo) {
+      // Give 80% of ammo to current weapon
+      const currentWeaponRefillAmount = Math.floor(ammoAmount * 0.8);
+      const oldAmmo = currentWeaponState.currentAmmo;
+      currentWeaponState.currentAmmo = Math.min(
+        currentWeaponConfig.maxAmmo,
+        currentWeaponState.currentAmmo + currentWeaponRefillAmount
       );
-      const actualShotgunRefill = shotgunState.currentAmmo - oldShotgunAmmo;
-      if (actualShotgunRefill > 0) {
-        totalRefilled += actualShotgunRefill;
-        details.push(`${actualShotgunRefill} shells`);
+      const actualRefill = currentWeaponState.currentAmmo - oldAmmo;
+
+      if (actualRefill > 0) {
+        totalRefilled += actualRefill;
+        const ammoType = this.getAmmoTypeName(this.currentWeapon);
+        details.push(`${actualRefill} ${ammoType}`);
       }
-    }
 
-    // Refill chaingun if needed
-    const chainguState = this.weaponStates.chaingun;
-    const chainguConfig = this.weapons.chaingun;
-    if (chainguState.currentAmmo < chainguConfig.maxAmmo) {
-      const oldChainguAmmo = chainguState.currentAmmo;
-      chainguState.currentAmmo = Math.min(
-        chainguConfig.maxAmmo,
-        chainguState.currentAmmo + chainguRefillAmount
-      );
-      const actualChainguRefill = chainguState.currentAmmo - oldChainguAmmo;
-      if (actualChainguRefill > 0) {
-        totalRefilled += actualChainguRefill;
-        details.push(`${actualChainguRefill} rounds`);
+      // Distribute remaining 20% among other weapons
+      const remainingAmmo = Math.floor(ammoAmount * 0.2);
+      if (remainingAmmo > 0) {
+        const otherWeapons = (
+          Object.keys(this.weaponStates) as WeaponType[]
+        ).filter((weapon) => weapon !== this.currentWeapon);
+
+        const ammoPerWeapon = Math.floor(remainingAmmo / otherWeapons.length);
+
+        otherWeapons.forEach((weaponType) => {
+          const weaponState = this.weaponStates[weaponType];
+          const weaponConfig = this.weapons[weaponType];
+
+          if (
+            weaponState.currentAmmo < weaponConfig.maxAmmo &&
+            ammoPerWeapon > 0
+          ) {
+            const oldAmmo = weaponState.currentAmmo;
+            weaponState.currentAmmo = Math.min(
+              weaponConfig.maxAmmo,
+              weaponState.currentAmmo + ammoPerWeapon
+            );
+            const actualRefill = weaponState.currentAmmo - oldAmmo;
+
+            if (actualRefill > 0) {
+              totalRefilled += actualRefill;
+              const ammoType = this.getAmmoTypeName(weaponType);
+              details.push(`${actualRefill} ${ammoType}`);
+            }
+          }
+        });
+      }
+    } else {
+      // Current weapon is full, distribute among all other weapons
+      const otherWeapons = (Object.keys(this.weaponStates) as WeaponType[])
+        .filter((weapon) => weapon !== this.currentWeapon)
+        .filter(
+          (weapon) =>
+            this.weaponStates[weapon].currentAmmo < this.weapons[weapon].maxAmmo
+        );
+
+      if (otherWeapons.length > 0) {
+        const ammoPerWeapon = Math.floor(ammoAmount / otherWeapons.length);
+
+        otherWeapons.forEach((weaponType) => {
+          const weaponState = this.weaponStates[weaponType];
+          const weaponConfig = this.weapons[weaponType];
+
+          if (ammoPerWeapon > 0) {
+            const oldAmmo = weaponState.currentAmmo;
+            weaponState.currentAmmo = Math.min(
+              weaponConfig.maxAmmo,
+              weaponState.currentAmmo + ammoPerWeapon
+            );
+            const actualRefill = weaponState.currentAmmo - oldAmmo;
+
+            if (actualRefill > 0) {
+              totalRefilled += actualRefill;
+              const ammoType = this.getAmmoTypeName(weaponType);
+              details.push(`${actualRefill} ${ammoType}`);
+            }
+          }
+        });
       }
     }
 
@@ -377,11 +967,27 @@ export class WeaponSystem implements IWeaponSystem {
     return { totalRefilled, details };
   }
 
+  private getAmmoTypeName(weaponType: WeaponType): string {
+    switch (weaponType) {
+      case "shotgun":
+        return "shells";
+      case "chaingun":
+        return "rounds";
+      case "rocket":
+        return "rockets";
+      case "plasma":
+        return "cells";
+      default:
+        return "ammo";
+    }
+  }
+
   public canBenefitFromAmmo(): boolean {
     // Check if any weapon can benefit from ammo
-    return (
-      this.weaponStates.shotgun.currentAmmo < this.weapons.shotgun.maxAmmo ||
-      this.weaponStates.chaingun.currentAmmo < this.weapons.chaingun.maxAmmo
+    return (Object.keys(this.weaponStates) as WeaponType[]).some(
+      (weaponType) =>
+        this.weaponStates[weaponType].currentAmmo <
+        this.weapons[weaponType].maxAmmo
     );
   }
 
@@ -394,7 +1000,7 @@ export class WeaponSystem implements IWeaponSystem {
     if (index !== -1) {
       const bullet = this.bullets[index];
       if (bullet) {
-        this.scene.remove(bullet.mesh);
+        this.removeBulletFromScene(bullet);
         this.bullets.splice(index, 1);
         this.shotsHit++;
       }
@@ -420,7 +1026,7 @@ export class WeaponSystem implements IWeaponSystem {
   public reset(): void {
     // Clear all bullets
     this.bullets.forEach((bullet) => {
-      this.scene.remove(bullet.mesh);
+      this.removeBulletFromScene(bullet);
     });
     this.bullets = [];
 
@@ -440,7 +1046,7 @@ export class WeaponSystem implements IWeaponSystem {
     this.gunRecoilOffset = 0;
     this.gunRecoilVelocity = 0;
 
-    console.log("WeaponSystem reset");
+    console.log("WeaponSystem reset with enhanced effects");
   }
 
   private createWeaponModels(): void {
@@ -681,5 +1287,24 @@ export class WeaponSystem implements IWeaponSystem {
       default:
         return null;
     }
+  }
+
+  private removeBulletFromScene(bullet: Bullet): void {
+    this.scene.remove(bullet.mesh);
+
+    // Dispose of geometries and materials
+    bullet.mesh.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.geometry.dispose();
+        if (mesh.material) {
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach((mat) => mat.dispose());
+          } else {
+            mesh.material.dispose();
+          }
+        }
+      }
+    });
   }
 }

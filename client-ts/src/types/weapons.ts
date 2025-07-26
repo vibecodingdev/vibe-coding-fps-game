@@ -22,7 +22,7 @@ export interface WeaponState {
 
 export interface Bullet {
   readonly id: string;
-  readonly mesh: THREE.Mesh;
+  readonly mesh: THREE.Group;
   readonly velocity: THREE.Vector3;
   readonly damage: number;
   readonly createdAt: number;

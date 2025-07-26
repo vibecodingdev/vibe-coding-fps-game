@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ammo Refill Test - Current Weapon Priority</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .weapon-info {
+            background: #2a2a2a;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .current-weapon {
+            background: #003300;
+            border-color: #00ff00;
+            box-shadow: 0 0 10px #00ff0033;
+        }
+        .test-button {
+            background: #004400;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .test-button:hover {
+            background: #006600;
+        }
+        .log {
+            background: #111;
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        h1 {
+            color: #00ff00;
+            text-align: center;
+            text-shadow: 0 0 10px #00ff0066;
+        }
+        h2 {
+            color: #ffff00;
+            border-bottom: 1px solid #ffff0066;
+            padding-bottom: 5px;
+        }
+        .status {
+            color: #ff6600;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔋 Ammo Refill Test - Current Weapon Priority</h1>
+        
+        <h2>Test Description</h2>
+        <p>This test demonstrates the fixed ammo refill system that now prioritizes the currently selected weapon:</p>
+        <ul>
+            <li><strong>80%</strong> of ammo goes to the current weapon</li>
+            <li><strong>20%</strong> is distributed among other weapons</li>
+            <li>If current weapon is full, all ammo goes to other weapons</li>
+            <li>All weapon types (shotgun, chaingun, rocket, plasma) are supported</li>
+        </ul>
+
+        <h2>Controls</h2>
+        <button class="test-button" onclick="switchWeapon('shotgun')">Switch to Shotgun 🔫</button>
+        <button class="test-button" onclick="switchWeapon('chaingun')">Switch to Chaingun ⚡</button>
+        <button class="test-button" onclick="switchWeapon('rocket')">Switch to Rocket 🚀</button>
+        <button class="test-button" onclick="switchWeapon('plasma')">Switch to Plasma 🔥</button>
+        <br>
+        <button class="test-button" onclick="simulateAmmoPickup()">Collect Ammo Pack (+60)</button>
+        <button class="test-button" onclick="useCurrentWeapon()">Fire Current Weapon (-10)</button>
+        <button class="test-button" onclick="resetAmmo()">Reset All Ammo</button>
+
+        <h2>Weapon Status</h2>
+        <div id="weaponStatus"></div>
+
+        <h2>Test Log</h2>
+        <div id="testLog" class="log"></div>
+    </div>
+
+    <script>
+        // Simulate weapon system state
+        const weaponConfigs = {
+            shotgun: { name: "Shotgun", maxAmmo: 50, emoji: "🔫" },
+            chaingun: { name: "Chaingun", maxAmmo: 200, emoji: "⚡" },
+            rocket: { name: "Rocket Launcher", maxAmmo: 20, emoji: "🚀" },
+            plasma: { name: "Plasma Rifle", maxAmmo: 100, emoji: "🔥" }
+        };
+
+        let currentWeapon = "shotgun";
+        let weaponStates = {
+            shotgun: { currentAmmo: 25 },
+            chaingun: { currentAmmo: 100 },
+            rocket: { currentAmmo: 10 },
+            plasma: { currentAmmo: 50 }
+        };
+
+        function log(message) {
+            const logDiv = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateDisplay() {
+            const statusDiv = document.getElementById('weaponStatus');
+            let html = '';
+            
+            Object.keys(weaponConfigs).forEach(weaponType => {
+                const config = weaponConfigs[weaponType];
+                const state = weaponStates[weaponType];
+                const isCurrent = weaponType === currentWeapon;
+                const percentage = Math.round((state.currentAmmo / config.maxAmmo) * 100);
+                
+                html += `
+                    <div class="weapon-info ${isCurrent ? 'current-weapon' : ''}">
+                        <strong>${config.emoji} ${config.name}</strong>
+                        ${isCurrent ? '<span class="status">(CURRENT)</span>' : ''}
+                        <br>
+                        Ammo: ${state.currentAmmo}/${config.maxAmmo} (${percentage}%)
+                        <div style="background: #333; height: 10px; border-radius: 5px; margin-top: 5px;">
+                            <div style="background: ${isCurrent ? '#00ff00' : '#666'}; height: 100%; width: ${percentage}%; border-radius: 5px;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            statusDiv.innerHTML = html;
+        }
+
+        function switchWeapon(weaponType) {
+            currentWeapon = weaponType;
+            const config = weaponConfigs[weaponType];
+            log(`🔄 Switched to ${config.emoji} ${config.name}`);
+            updateDisplay();
+        }
+
+        function getAmmoTypeName(weaponType) {
+            switch (weaponType) {
+                case "shotgun": return "shells";
+                case "chaingun": return "rounds";
+                case "rocket": return "rockets";
+                case "plasma": return "cells";
+                default: return "ammo";
+            }
+        }
+
+        function simulateAmmoPickup() {
+            const ammoAmount = 60;
+            let totalRefilled = 0;
+            const details = [];
+
+            // Simulate the new refill logic
+            const currentWeaponState = weaponStates[currentWeapon];
+            const currentWeaponConfig = weaponConfigs[currentWeapon];
+
+            if (currentWeaponState.currentAmmo < currentWeaponConfig.maxAmmo) {
+                // Give 80% of ammo to current weapon
+                const currentWeaponRefillAmount = Math.floor(ammoAmount * 0.8);
+                const oldAmmo = currentWeaponState.currentAmmo;
+                currentWeaponState.currentAmmo = Math.min(
+                    currentWeaponConfig.maxAmmo,
+                    currentWeaponState.currentAmmo + currentWeaponRefillAmount
+                );
+                const actualRefill = currentWeaponState.currentAmmo - oldAmmo;
+                
+                if (actualRefill > 0) {
+                    totalRefilled += actualRefill;
+                    const ammoType = getAmmoTypeName(currentWeapon);
+                    details.push(`${actualRefill} ${ammoType}`);
+                }
+
+                // Distribute remaining 20% among other weapons
+                const remainingAmmo = Math.floor(ammoAmount * 0.2);
+                if (remainingAmmo > 0) {
+                    const otherWeapons = Object.keys(weaponStates).filter(weapon => weapon !== currentWeapon);
+                    const ammoPerWeapon = Math.floor(remainingAmmo / otherWeapons.length);
+                    
+                    otherWeapons.forEach(weaponType => {
+                        const weaponState = weaponStates[weaponType];
+                        const weaponConfig = weaponConfigs[weaponType];
+                        
+                        if (weaponState.currentAmmo < weaponConfig.maxAmmo && ammoPerWeapon > 0) {
+                            const oldAmmo = weaponState.currentAmmo;
+                            weaponState.currentAmmo = Math.min(
+                                weaponConfig.maxAmmo,
+                                weaponState.currentAmmo + ammoPerWeapon
+                            );
+                            const actualRefill = weaponState.currentAmmo - oldAmmo;
+                            
+                            if (actualRefill > 0) {
+                                totalRefilled += actualRefill;
+                                const ammoType = getAmmoTypeName(weaponType);
+                                details.push(`${actualRefill} ${ammoType}`);
+                            }
+                        }
+                    });
+                }
+            } else {
+                // Current weapon is full, distribute among all other weapons
+                const otherWeapons = Object.keys(weaponStates)
+                    .filter(weapon => weapon !== currentWeapon)
+                    .filter(weapon => weaponStates[weapon].currentAmmo < weaponConfigs[weapon].maxAmmo);
+                
+                if (otherWeapons.length > 0) {
+                    const ammoPerWeapon = Math.floor(ammoAmount / otherWeapons.length);
+                    
+                    otherWeapons.forEach(weaponType => {
+                        const weaponState = weaponStates[weaponType];
+                        const weaponConfig = weaponConfigs[weaponType];
+                        
+                        if (ammoPerWeapon > 0) {
+                            const oldAmmo = weaponState.currentAmmo;
+                            weaponState.currentAmmo = Math.min(
+                                weaponConfig.maxAmmo,
+                                weaponState.currentAmmo + ammoPerWeapon
+                            );
+                            const actualRefill = weaponState.currentAmmo - oldAmmo;
+                            
+                            if (actualRefill > 0) {
+                                totalRefilled += actualRefill;
+                                const ammoType = getAmmoTypeName(weaponType);
+                                details.push(`${actualRefill} ${ammoType}`);
+                            }
+                        }
+                    });
+                }
+            }
+
+            if (totalRefilled > 0) {
+                log(`🔋 Ammo pack collected! Refilled: ${details.join(" + ")} (Total: ${totalRefilled})`);
+            } else {
+                log(`🔋 Ammo pack collected but all weapons are full!`);
+            }
+            
+            updateDisplay();
+        }
+
+        function useCurrentWeapon() {
+            const state = weaponStates[currentWeapon];
+            const config = weaponConfigs[currentWeapon];
+            
+            if (state.currentAmmo >= 10) {
+                state.currentAmmo -= 10;
+                log(`${config.emoji} Fired ${config.name}! Ammo: ${state.currentAmmo}/${config.maxAmmo}`);
+            } else if (state.currentAmmo > 0) {
+                const fired = state.currentAmmo;
+                state.currentAmmo = 0;
+                log(`${config.emoji} Fired ${config.name}! Used last ${fired} ammo. Weapon empty!`);
+            } else {
+                log(`${config.emoji} ${config.name} is out of ammo!`);
+            }
+            
+            updateDisplay();
+        }
+
+        function resetAmmo() {
+            weaponStates = {
+                shotgun: { currentAmmo: 25 },
+                chaingun: { currentAmmo: 100 },
+                rocket: { currentAmmo: 10 },
+                plasma: { currentAmmo: 50 }
+            };
+            log("🔄 All weapon ammo reset to mid-levels");
+            updateDisplay();
+        }
+
+        // Initialize display
+        log("🎮 Ammo refill test initialized");
+        log("✅ New behavior: Current weapon gets priority (80% of ammo)");
+        log("✅ All weapon types supported (not just shotgun/chaingun)");
+        log("🎯 Try switching weapons and collecting ammo packs to see the difference!");
+        updateDisplay();
+    </script>
+</body>
+</html> 
