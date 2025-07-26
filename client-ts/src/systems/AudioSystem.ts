@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { AudioSystem as IAudioSystem } from "@/types/audio";
+import { AUDIO_CONFIGS } from "@/config/audio";
 
 export class AudioSystem implements IAudioSystem {
   public context: AudioContext | null = null;
@@ -26,7 +27,7 @@ export class AudioSystem implements IAudioSystem {
     try {
       this.listener = new THREE.AudioListener();
       this.context = this.listener.context;
-      await this.loadBasicSounds();
+      await this.loadAllSounds();
       this.isInitialized = true;
       console.log("🎵 AudioSystem initialized");
     } catch (error) {
@@ -40,33 +41,60 @@ export class AudioSystem implements IAudioSystem {
     }
   }
 
-  private async loadBasicSounds(): Promise<void> {
-    const sounds = [
-      {
-        key: "bg-music",
-        url: "assets/quantum-mystic-riff-1-323475.mp3",
-        volume: 0.3,
-        loop: true,
-      },
-      {
-        key: "weapon-shotgun",
-        url: "assets/doom-shotgun-2017-80549.mp3",
-        volume: 0.6,
-        loop: false,
-      },
-      {
-        key: "demon-growl",
-        url: "assets/monster-growl-6311.mp3",
-        volume: 0.5,
-        loop: false,
-      },
+  private async loadAllSounds(): Promise<void> {
+    // Load essential sounds first
+    const essentialSounds = [
+      "bg-mystic-1",
+      "weapon-shotgun",
+      "weapon-machinegun",
+      "weapon-single-shot",
+      "demon-growl-2",
+      "demon-roar-1",
     ];
 
-    for (const sound of sounds) {
-      try {
-        await this.loadSound(sound.key, sound.url, sound.volume, sound.loop);
-      } catch (error) {
-        console.warn(`Failed to load ${sound.key}:`, error);
+    // Load essential sounds
+    for (const soundKey of essentialSounds) {
+      const config = AUDIO_CONFIGS[soundKey];
+      if (config) {
+        try {
+          await this.loadSound(
+            soundKey,
+            config.url,
+            config.volume,
+            config.loop
+          );
+        } catch (error) {
+          console.warn(`Failed to load essential sound ${soundKey}:`, error);
+        }
+      }
+    }
+
+    // Load remaining sounds in background
+    this.loadRemainingsSounds();
+  }
+
+  private async loadRemainingsSounds(): Promise<void> {
+    const essentialSounds = new Set([
+      "bg-mystic-1",
+      "weapon-shotgun",
+      "weapon-machinegun",
+      "weapon-single-shot",
+      "demon-growl-2",
+      "demon-roar-1",
+    ]);
+
+    for (const [soundKey, config] of Object.entries(AUDIO_CONFIGS)) {
+      if (!essentialSounds.has(soundKey) && !this.sources.has(soundKey)) {
+        try {
+          await this.loadSound(
+            soundKey,
+            config.url,
+            config.volume,
+            config.loop
+          );
+        } catch (error) {
+          console.warn(`Failed to load ${soundKey}:`, error);
+        }
       }
     }
   }
@@ -117,7 +145,8 @@ export class AudioSystem implements IAudioSystem {
       return;
     }
 
-    const track = this.backgroundTracks[0];
+    // Use the first available background track (bg-mystic-1)
+    const track = this.sources.get("bg-mystic-1") || this.backgroundTracks[0];
     if (track) {
       this.currentBackgroundTrack = track;
       try {
@@ -158,17 +187,37 @@ export class AudioSystem implements IAudioSystem {
   public playWeaponSound(weaponType: string): void {
     if (!this.isInitialized || this.isMuted) return;
 
-    const soundKey =
-      weaponType === "shotgun" ? "weapon-shotgun" : "weapon-shotgun";
+    // Map weapon types to sound keys
+    const weaponSoundMap: Record<string, string> = {
+      shotgun: "weapon-shotgun",
+      machinegun: "weapon-machinegun",
+      rifle: "weapon-single-shot",
+      pistol: "weapon-single-shot",
+    };
+
+    const soundKey = weaponSoundMap[weaponType] || "weapon-shotgun";
     this.playSound(soundKey);
   }
 
   public playDemonDeathSound(): void {
-    this.playDemonGrowlSound();
+    if (!this.isInitialized || this.isMuted) return;
+
+    // Play more dramatic death sounds
+    const deathSounds = ["demon-roar-1", "demon-roar-2", "demon-shriek"];
+    const randomDeath =
+      deathSounds[Math.floor(Math.random() * deathSounds.length)] ||
+      "demon-roar-1";
+    this.playSound(randomDeath);
   }
 
   public playDemonHitSound(): void {
-    this.playDemonGrowlSound();
+    if (!this.isInitialized || this.isMuted) return;
+
+    // Play hit/damage sounds
+    const hitSounds = ["demon-bite", "demon-growl-1", "demon-growl-2"];
+    const randomHit =
+      hitSounds[Math.floor(Math.random() * hitSounds.length)] || "demon-bite";
+    this.playSound(randomHit);
   }
 
   public playDemonGrowlSound(): void {
@@ -179,8 +228,33 @@ export class AudioSystem implements IAudioSystem {
       return;
     }
 
-    this.playSound("demon-growl");
+    // Randomly choose between available demon growl sounds
+    const growlSounds = ["demon-growl-1", "demon-growl-2"];
+    const randomGrowl =
+      growlSounds[Math.floor(Math.random() * growlSounds.length)] ||
+      "demon-growl-2";
+    this.playSound(randomGrowl);
     this.lastGrowlTime = now;
+  }
+
+  public playExplosionSound(): void {
+    if (!this.isInitialized || this.isMuted) return;
+    this.playSound("explosion");
+  }
+
+  public playEnvironmentSound(soundType: string): void {
+    if (!this.isInitialized || this.isMuted) return;
+
+    const envSoundMap: Record<string, string> = {
+      doom: "doom-effect",
+      horn: "horn-doom",
+      explosion: "explosion",
+    };
+
+    const soundKey = envSoundMap[soundType];
+    if (soundKey) {
+      this.playSound(soundKey);
+    }
   }
 
   private playSound(key: string): void {

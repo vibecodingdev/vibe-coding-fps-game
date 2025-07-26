@@ -4,7 +4,7 @@ import { resolve } from "path";
 export default defineConfig({
   root: "./src",
   base: "/",
-  publicDir: resolve(__dirname, "../client/assets"),
+  publicDir: resolve(__dirname, "public"),
 
   resolve: {
     alias: {
@@ -18,7 +18,7 @@ export default defineConfig({
   },
 
   server: {
-    port: 8080,
+    port: 5173,
     open: true,
     cors: true,
     host: "localhost",
