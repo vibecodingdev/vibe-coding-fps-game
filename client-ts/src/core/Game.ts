@@ -8,6 +8,7 @@ import { AudioSystem } from "@/systems/AudioSystem";
 import { NetworkManager } from "@/systems/NetworkManager";
 import { UIManager } from "@/systems/UIManager";
 import { CollectibleSystem } from "@/systems/CollectibleSystem";
+import { StateManager } from "@/core/StateManager";
 import { GAME_CONFIG } from "@/config/game";
 
 export class Game {
@@ -30,7 +31,8 @@ export class Game {
   // Game state
   private playerState!: PlayerState;
   private gameStats!: GameStats;
-  private inputState!: InputState;
+  // 使用StateManager管理inputState，避免引用断开
+  private stateManager = StateManager.getInstance();
 
   // Animation
   private animationId: number | null = null;
@@ -65,20 +67,14 @@ export class Game {
       startTime: Date.now(),
     };
 
-    this.inputState = {
-      moveForward: false,
-      moveBackward: false,
-      moveLeft: false,
-      moveRight: false,
-      isMouseLocked: false,
-    };
+    // inputState现在由StateManager管理，确保引用一致性
   }
 
   private initializeSystems(): void {
     this.sceneManager = new SceneManager();
     this.playerController = new PlayerController(
       this.playerState,
-      this.inputState
+      this.stateManager.getInputState()
     );
     this.weaponSystem = new WeaponSystem();
     this.demonSystem = new DemonSystem();
@@ -94,20 +90,22 @@ export class Game {
     try {
       // Initialize all systems
       await this.sceneManager.initialize();
+
+      // Get scene and camera first
+      const scene = this.sceneManager.getScene();
+      const camera = this.sceneManager.getCamera();
+
+      // Set camera for player controller BEFORE initializing it
+      this.playerController.setCamera(camera as THREE.PerspectiveCamera);
       await this.playerController.initialize();
+
+      // Initialize other systems
       await this.weaponSystem.initialize();
       await this.demonSystem.initialize();
       await this.audioSystem.initialize();
       await this.networkManager.initialize();
       await this.uiManager.initialize();
       await this.collectibleSystem.initialize();
-
-      // Connect systems to scene and camera
-      const scene = this.sceneManager.getScene();
-      const camera = this.sceneManager.getCamera();
-
-      // Set camera for player controller
-      this.playerController.setCamera(camera as THREE.PerspectiveCamera);
 
       // Add controls to scene
       const controls = this.playerController.getControls();
@@ -164,6 +162,9 @@ export class Game {
 
     this.audioSystem.startBackgroundMusic();
     this.demonSystem.startWaveSystem();
+
+    // 自动锁定鼠标
+    this.autoLockPointer();
   }
 
   public pauseGame(): void {
@@ -254,6 +255,23 @@ export class Game {
     }, 5000);
   }
 
+  private autoLockPointer(): void {
+    // 延迟一小段时间后自动锁定鼠标，确保游戏UI已经显示
+    setTimeout(() => {
+      const controls = this.playerController.getControls();
+      if (controls && !controls.isLocked && this.gameState === "playing") {
+        console.log("🔒 Auto-locking pointer...");
+        try {
+          controls.lock();
+        } catch (error) {
+          console.warn("⚠️ Auto pointer lock failed:", error);
+          console.log("💡 User needs to click to enable pointer lock");
+          this.addPointerLockListener();
+        }
+      }
+    }, 100); // 100ms delay to ensure UI is ready
+  }
+
   private restartWave(): void {
     // Reset demons
     this.demonSystem.reset();
@@ -280,9 +298,15 @@ export class Game {
 
   public resetGameState(): void {
     this.initializeState();
+    this.stateManager.resetInputState(); // 重置输入状态但保持引用
     this.weaponSystem.reset();
     this.demonSystem.reset();
     this.playerController.reset();
+  }
+
+  // 通过StateManager访问inputState
+  private get inputState(): InputState {
+    return this.stateManager.getInputState();
   }
 
   private startGameLoop(): void {
@@ -471,15 +495,19 @@ export class Game {
 
     switch (event.code) {
       case "KeyW":
+      case "ArrowUp":
         this.inputState.moveForward = true;
         break;
       case "KeyS":
+      case "ArrowDown":
         this.inputState.moveBackward = true;
         break;
       case "KeyA":
+      case "ArrowLeft":
         this.inputState.moveLeft = true;
         break;
       case "KeyD":
+      case "ArrowRight":
         this.inputState.moveRight = true;
         break;
       case "Space":
@@ -510,15 +538,19 @@ export class Game {
   private onKeyUp(event: KeyboardEvent): void {
     switch (event.code) {
       case "KeyW":
+      case "ArrowUp":
         this.inputState.moveForward = false;
         break;
       case "KeyS":
+      case "ArrowDown":
         this.inputState.moveBackward = false;
         break;
       case "KeyA":
+      case "ArrowLeft":
         this.inputState.moveLeft = false;
         break;
       case "KeyD":
+      case "ArrowRight":
         this.inputState.moveRight = false;
         break;
     }

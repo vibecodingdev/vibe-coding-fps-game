@@ -8,7 +8,7 @@ export class PlayerController {
   private velocity = new THREE.Vector3();
   private direction = new THREE.Vector3();
 
-  private readonly MOVE_SPEED = 400;
+  private readonly MOVE_SPEED = 200;
 
   constructor(
     private playerState: PlayerState,
@@ -16,8 +16,10 @@ export class PlayerController {
   ) {}
 
   public async initialize(): Promise<void> {
-    // Camera will be set by SceneManager
-    this.setupPointerLockControls();
+    // Camera should be set before calling initialize
+    if (this.camera) {
+      this.setupPointerLockControls();
+    }
   }
 
   private setupPointerLockControls(): void {
@@ -87,12 +89,13 @@ export class PlayerController {
     }
   }
 
-  private updatePosition(delta: number): void {
+  private updatePosition(_delta: number): void {
     if (!this.controls || !this.camera) return;
 
     // Use PointerLockControls movement methods
-    this.controls.moveRight(-this.velocity.x * delta);
-    this.controls.moveForward(-this.velocity.z * delta);
+    // 注意：这里不需要乘以delta，因为velocity已经包含了delta
+    this.controls.moveRight(this.velocity.x);
+    this.controls.moveForward(-this.velocity.z);
 
     // Keep player within game boundaries
     const playerPos = this.controls.getObject().position;
@@ -120,20 +123,24 @@ export class PlayerController {
 
   public setCamera(camera: THREE.PerspectiveCamera): void {
     this.camera = camera;
-    this.setupPointerLockControls();
+
+    // If initialize() was already called, we need to setup controls now
+    if (!this.controls) {
+      this.setupPointerLockControls();
+    }
 
     // 确保camera被正确添加到controls中
     if (this.controls) {
       // 设置初始位置
       this.controls.getObject().position.set(0, 1.8, 20);
-      this.controls.getObject().lookAt(0, 1.8, 0);
+      // 不要调用lookAt！PointerLockControls会管理摄像头旋转
     }
   }
 
   public reset(): void {
     if (this.controls) {
       this.controls.getObject().position.set(0, 1.8, 20);
-      this.controls.getObject().lookAt(0, 1.8, 0);
+      // 不要调用lookAt！PointerLockControls会管理摄像头旋转
     }
     this.velocity.set(0, 0, 0);
     this.direction.set(0, 0, 0);

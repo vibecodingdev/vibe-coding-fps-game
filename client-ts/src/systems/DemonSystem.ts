@@ -367,7 +367,13 @@ export class DemonSystem implements IDemonSystem {
     leftEye.position.set(-0.1, 1.45, 0.25);
     demonGroup.add(leftEye);
 
-    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+    // Create a new material instead of cloning to avoid uniform issues
+    const rightEyeMaterial = new THREE.MeshLambertMaterial({
+      color: typeData.eyeColor,
+      emissive: new THREE.Color(typeData.eyeColor),
+      emissiveIntensity: 0.5,
+    });
+    const rightEye = new THREE.Mesh(eyeGeometry, rightEyeMaterial);
     rightEye.position.set(0.1, 1.45, 0.25);
     demonGroup.add(rightEye);
 

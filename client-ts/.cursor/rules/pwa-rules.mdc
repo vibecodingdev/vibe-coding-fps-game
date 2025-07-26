@@ -1,0 +1,10 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+0: Ensure exclusive use of English in this game project, encompassing UI, documentation, all messages, and all logs.
+1: Always maintain the maintainability of the project structure, avoiding issues such as excessively large single code files.
+2: Strive to fundamentally solve logical problems, avoiding the use of temporary and hack methods to solve problems.
+3: Strive to use the most concise logic and code to achieve the best results.

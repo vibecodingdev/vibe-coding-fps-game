@@ -226,14 +226,14 @@ export class WeaponSystem implements IWeaponSystem {
     if (!this.camera || !this.scene) return;
 
     const flashGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-    const flashMaterial = new THREE.MeshBasicMaterial({
+    // Use MeshStandardMaterial instead of MeshBasicMaterial for proper emissive support
+    const flashMaterial = new THREE.MeshStandardMaterial({
       color: 0xffaa00,
+      emissive: new THREE.Color(0xffaa00),
+      emissiveIntensity: 1,
       transparent: true,
       opacity: 0.8,
     });
-    // Set emissive properties
-    (flashMaterial as any).emissive = new THREE.Color(0xffaa00);
-    (flashMaterial as any).emissiveIntensity = 1;
 
     const flash = new THREE.Mesh(flashGeometry, flashMaterial);
 
