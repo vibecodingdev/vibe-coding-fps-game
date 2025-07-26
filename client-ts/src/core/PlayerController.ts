@@ -46,10 +46,39 @@ export class PlayerController {
     this.controls.addEventListener("unlock", () => {
       console.log("🔓 Pointer lock released");
       this.inputState.isMouseLocked = false;
+
+      // Add click listener to re-lock when user clicks
+      this.addRelockClickListener();
     });
 
     // 添加controls对象到场景中，而不是camera
     // 这样camera的位置将由controls管理
+  }
+
+  private addRelockClickListener(): void {
+    const relockHandler = (event: MouseEvent) => {
+      event.preventDefault();
+
+      if (this.controls && !this.controls.isLocked) {
+        console.log("🔒 Attempting to re-lock pointer...");
+        try {
+          this.controls.lock();
+        } catch (error) {
+          console.warn("⚠️ Failed to re-lock pointer:", error);
+        }
+      }
+
+      // Remove this specific listener after one use
+      document.removeEventListener("click", relockHandler);
+    };
+
+    // Add the click listener
+    document.addEventListener("click", relockHandler);
+
+    // Auto-remove after 10 seconds if not used
+    setTimeout(() => {
+      document.removeEventListener("click", relockHandler);
+    }, 10000);
   }
 
   public update(deltaTime: number): void {

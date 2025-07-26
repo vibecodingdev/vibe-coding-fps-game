@@ -22,7 +22,8 @@ body {
   }
 }
 
-canvas {
+/* Main game canvas styles */
+canvas:not(#radarCanvas) {
   display: block;
   position: fixed;
   top: 0;
@@ -276,6 +277,9 @@ canvas {
   pointer-events: none;
   margin: 0 !important; /* Reset any margin */
   transform: none !important; /* Reset any transform */
+  /* Ensure the radar is not affected by parent flex layout */
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
 #radarCanvas {
@@ -284,6 +288,10 @@ canvas {
   border-radius: 50%;
   background: rgba(0, 20, 0, 0.5);
   display: block !important;
+  position: relative !important; /* Override any fixed positioning */
+  top: auto !important;
+  left: auto !important;
+  z-index: auto !important;
 }
 
 .radar-label {
@@ -303,7 +311,7 @@ canvas {
   position: absolute;
   top: 20px;
   left: 20px;
-  right: 200px; /* Make room for radar */
+  right: 180px; /* Make room for radar (140px width + 20px margin + 20px padding) */
   display: flex;
   justify-content: space-between;
   align-items: flex-start;

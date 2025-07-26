@@ -39,8 +39,30 @@ export class DemonSystem implements IDemonSystem {
       this.updateDemonAI(demon, deltaTime);
     });
 
+    // Remove demons marked for removal
+    this.removeDeadDemons();
+
     // Check if wave is complete
     this.checkWaveComplete();
+  }
+
+  private removeDeadDemons(): void {
+    // Find demons marked for removal
+    const demonsToRemove = this.demons.filter(
+      (demon) => demon.mesh.userData.markedForRemoval
+    );
+
+    // Remove them from scene and array
+    demonsToRemove.forEach((demon) => {
+      console.log(`🗑️ Removing dead ${demon.type} from scene`);
+      this.scene.remove(demon.mesh);
+
+      // Remove from demons array
+      const index = this.demons.indexOf(demon);
+      if (index > -1) {
+        this.demons.splice(index, 1);
+      }
+    });
   }
 
   private updateDemonAI(demon: DemonInstance, deltaTime: number): void {
@@ -64,6 +86,13 @@ export class DemonSystem implements IDemonSystem {
         userData.isFalling = false;
         demon.state = "dead";
         console.log(`${demon.type} fell down and is now dead`);
+
+        // Mark for removal after a short delay
+        setTimeout(() => {
+          if (demon.state === "dead") {
+            userData.markedForRemoval = true;
+          }
+        }, 2000); // Remove corpse after 2 seconds
       }
       return;
     }

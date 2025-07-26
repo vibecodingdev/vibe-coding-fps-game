@@ -171,7 +171,13 @@ export class UIManager {
     demons: Array<{ position: THREE.Vector3 }>,
     camera: THREE.Camera
   ): void {
-    if (!this.radarContext || !this.radarCanvas) return;
+    if (!this.radarContext || !this.radarCanvas) {
+      console.warn("🔴 Radar not available:", {
+        context: !!this.radarContext,
+        canvas: !!this.radarCanvas,
+      });
+      return;
+    }
 
     // 清除画布
     this.radarContext.clearRect(0, 0, this.RADAR_SIZE, this.RADAR_SIZE);
@@ -245,7 +251,7 @@ export class UIManager {
     const angle = Math.atan2(direction.x, direction.z);
     const lineLength = 8;
     const endX = centerX + Math.sin(angle) * lineLength;
-    const endY = centerY + Math.cos(angle) * lineLength;
+    const endY = centerY - Math.cos(angle) * lineLength; // 反转Y轴以匹配雷达坐标系
 
     this.radarContext.strokeStyle = "#00ff00";
     this.radarContext.lineWidth = 2;
@@ -271,11 +277,11 @@ export class UIManager {
         const relativeX = demon.position.x - playerPos.x;
         const relativeZ = demon.position.z - playerPos.z;
 
-        // 转换到雷达坐标
+        // 转换到雷达坐标（注意：Z轴方向相反）
         const radarX =
           centerX + (relativeX / this.RADAR_RANGE) * (this.RADAR_SIZE / 2);
         const radarY =
-          centerY + (relativeZ / this.RADAR_RANGE) * (this.RADAR_SIZE / 2);
+          centerY - (relativeZ / this.RADAR_RANGE) * (this.RADAR_SIZE / 2); // 反转Z轴
 
         // 确保在雷达范围内
         if (
@@ -287,8 +293,15 @@ export class UIManager {
         ) {
           this.radarContext.fillStyle = "#ff0000"; // 红色表示恶魔
           this.radarContext.beginPath();
-          this.radarContext.arc(radarX, radarY, 2, 0, Math.PI * 2);
+          this.radarContext.arc(radarX, radarY, 3, 0, Math.PI * 2); // 稍微大一点便于看见
           this.radarContext.fill();
+
+          // 添加外环以便更好地识别
+          this.radarContext.strokeStyle = "#ff4444";
+          this.radarContext.lineWidth = 1;
+          this.radarContext.beginPath();
+          this.radarContext.arc(radarX, radarY, 4, 0, Math.PI * 2);
+          this.radarContext.stroke();
         }
       }
     });

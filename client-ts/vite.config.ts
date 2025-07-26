@@ -21,6 +21,7 @@ export default defineConfig({
     port: 3000,
     open: true,
     cors: true,
+    host: "localhost",
     headers: {
       "Cache-Control": "no-cache, no-store, must-revalidate",
       Pragma: "no-cache",
@@ -32,9 +33,16 @@ export default defineConfig({
     outDir: "../dist",
     emptyOutDir: true,
     sourcemap: true,
+    target: "esnext",
     rollupOptions: {
       input: {
         main: resolve(__dirname, "src/index.html"),
+      },
+      output: {
+        manualChunks: {
+          three: ["three"],
+          socket: ["socket.io-client"],
+        },
       },
     },
   },
@@ -46,5 +54,11 @@ export default defineConfig({
   // 优化依赖项预构建
   optimizeDeps: {
     include: ["three", "socket.io-client"],
+    exclude: [],
+  },
+
+  // 确保热更新正常工作
+  define: {
+    global: "globalThis",
   },
 });

@@ -379,10 +379,12 @@ export class Game {
     // 更新游戏统计
     this.uiManager.updateGameStats(this.gameStats);
 
-    // 更新雷达
-    const demons = this.demonSystem.demons || [];
+    // 更新雷达 - 只显示活着的怪物
+    const aliveDemoms = (this.demonSystem.demons || []).filter(
+      (demon) => demon.state !== "dead" && !demon.mesh.userData.markedForRemoval
+    );
     const camera = this.sceneManager.getCamera();
-    this.uiManager.updateRadar(this.playerState.position, demons, camera);
+    this.uiManager.updateRadar(this.playerState.position, aliveDemoms, camera);
   }
 
   private render(): void {
@@ -399,14 +401,21 @@ export class Game {
       }
     });
 
-    // Check player-demon collisions
+    // Check player-demon collisions and attacks
     const nearbyDemons = this.demonSystem.getNearbyDemons(
       this.playerState.position,
       2
     );
     nearbyDemons.forEach((demon) => {
-      if (this.canTakeDamage()) {
+      // Only take damage if demon is attacking and we can take damage
+      if (
+        demon.state === "attacking" &&
+        demon.mesh.userData.isAttacking &&
+        this.canTakeDamage()
+      ) {
         this.takeDamage(demon.type);
+        // Reset demon attack state to prevent continuous damage
+        demon.mesh.userData.isAttacking = false;
       }
     });
 
