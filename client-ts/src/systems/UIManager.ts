@@ -13,6 +13,12 @@ export class UIManager {
   private scoreValue: HTMLElement | null = null;
   private crosshair: HTMLElement | null = null;
 
+  // FPS tracking
+  private fpsValue: HTMLElement | null = null;
+  private fpsFrameCount: number = 0;
+  private fpsLastTime: number = 0;
+  private fpsUpdateInterval: number = 1000; // Update every second
+
   // 雷达相关
   private radarCanvas: HTMLCanvasElement | null = null;
   private radarContext: CanvasRenderingContext2D | null = null;
@@ -50,10 +56,11 @@ export class UIManager {
   }
 
   private setupUIElements(): void {
-    // 获取UI元素引用
+    console.log("🔧 Setting up UI elements...");
+
     this.healthBar = document.getElementById("healthBar");
     this.healthValue = document.getElementById("healthValue");
-    this.weaponName = document.getElementById("currentWeapon");
+    this.weaponName = document.getElementById("weaponName");
     this.currentAmmo = document.getElementById("currentAmmo");
     this.maxAmmo = document.getElementById("maxAmmo");
     this.waveNumber = document.getElementById("waveNumber");
@@ -61,8 +68,26 @@ export class UIManager {
     this.scoreValue = document.getElementById("scoreValue");
     this.crosshair = document.querySelector(".crosshair");
 
-    // 如果UI元素不存在，创建它们
+    // Initialize FPS counter
+    this.fpsValue = document.getElementById("fpsValue");
+    this.fpsLastTime = performance.now();
+
+    if (!this.healthBar || !this.healthValue) {
+      console.warn("⚠️ Health UI elements not found");
+    }
+
+    if (!this.weaponName || !this.currentAmmo || !this.maxAmmo) {
+      console.warn("⚠️ Weapon UI elements not found");
+    }
+
+    if (!this.fpsValue) {
+      console.warn("⚠️ FPS counter element not found");
+    }
+
+    // Check for missing UI elements and provide warnings
     this.createMissingUIElements();
+
+    console.log("✅ UI elements setup complete");
   }
 
   private createMissingUIElements(): void {
@@ -615,6 +640,67 @@ export class UIManager {
 
   private updateAnimations(): void {
     // 可以在这里添加UI动画逻辑，比如准星动画、血量条动画等
+  }
+
+  /**
+   * Update FPS counter
+   */
+  public updateFPS(): void {
+    this.fpsFrameCount++;
+    const currentTime = performance.now();
+    const deltaTime = currentTime - this.fpsLastTime;
+
+    if (deltaTime >= this.fpsUpdateInterval) {
+      const fps = Math.round((this.fpsFrameCount * 1000) / deltaTime);
+
+      if (this.fpsValue) {
+        this.fpsValue.textContent = fps.toString();
+
+        // Update FPS color based on performance
+        this.fpsValue.className = "fps-value";
+        if (fps >= 50) {
+          this.fpsValue.classList.add("fps-good");
+        } else if (fps >= 30) {
+          this.fpsValue.classList.add("fps-medium");
+        } else {
+          this.fpsValue.classList.add("fps-poor");
+        }
+      }
+
+      this.fpsFrameCount = 0;
+      this.fpsLastTime = currentTime;
+    }
+  }
+
+  /**
+   * Setup ground texture toggle functionality
+   */
+  public setupGroundTextureToggle(sceneManager: any): void {
+    const groundTextureToggle = document.getElementById(
+      "pauseGroundTextures"
+    ) as HTMLInputElement;
+    const groundTextureDisplay = document.getElementById(
+      "groundTexturesDisplay"
+    );
+
+    if (groundTextureToggle && groundTextureDisplay) {
+      // Set initial state
+      groundTextureToggle.checked = sceneManager.getGroundTexturesEnabled();
+      groundTextureDisplay.textContent = groundTextureToggle.checked
+        ? "Enabled"
+        : "Disabled";
+
+      // Add event listener
+      groundTextureToggle.addEventListener("change", () => {
+        const enabled = groundTextureToggle.checked;
+        sceneManager.toggleGroundTextures(enabled);
+        groundTextureDisplay.textContent = enabled ? "Enabled" : "Disabled";
+
+        console.log(
+          `Ground textures ${enabled ? "enabled" : "disabled"} via UI`
+        );
+      });
+    }
   }
 
   public cleanup(): void {

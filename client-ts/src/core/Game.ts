@@ -250,6 +250,9 @@ export class Game {
         this.initializeState();
       };
     }
+
+    // Setup ground texture toggle
+    this.uiManager.setupGroundTextureToggle(this.sceneManager);
   }
 
   private addPointerLockListener(): void {
@@ -496,6 +499,9 @@ export class Game {
 
   private render(): void {
     this.sceneManager.render();
+
+    // Update FPS counter
+    this.uiManager.updateFPS();
   }
 
   private checkCollisions(): void {

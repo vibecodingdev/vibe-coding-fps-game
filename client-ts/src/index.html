@@ -303,6 +303,12 @@
             <div id="scoreValue" class="stat-value">0</div>
           </div>
         </div>
+        
+        <!-- FPS Counter -->
+        <div class="fps-counter">
+          <div class="fps-label">FPS</div>
+          <div id="fpsValue" class="fps-value">60</div>
+        </div>
       </div>
       
       <!-- Center crosshair -->
@@ -380,6 +386,22 @@
               />
               <span id="masterVolumeDisplay">100%</span>
             </label>
+          </div>
+
+          <!-- Graphics Settings -->
+          <div class="setting-group">
+            <label>
+              🌍 Ground Textures:
+              <input
+                type="checkbox"
+                id="pauseGroundTextures"
+                checked
+              />
+              <span id="groundTexturesDisplay">Enabled</span>
+            </label>
+            <small style="color: #888; display: block; margin-top: 4px;">
+              Disable to improve performance if experiencing lag
+            </small>
           </div>
           
           <!-- Voice Chat Settings -->
