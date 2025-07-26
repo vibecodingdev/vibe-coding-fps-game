@@ -702,41 +702,51 @@ export class UIManager {
   // Menu navigation
   public showMainMenu(): void {
     this.hideAllMenus();
+    // Set body to menu mode to allow scrolling
+    document.body.className = "menu-mode";
     const mainMenu = document.getElementById("mainMenu");
     if (mainMenu) {
-      mainMenu.style.display = "block";
+      mainMenu.style.display = "flex";
     }
   }
 
   public showMultiplayerLobby(): void {
     this.hideAllMenus();
+    // Set body to menu mode to allow scrolling
+    document.body.className = "menu-mode";
     const multiplayerLobby = document.getElementById("multiplayerLobby");
     if (multiplayerLobby) {
-      multiplayerLobby.style.display = "block";
+      multiplayerLobby.style.display = "flex";
     }
   }
 
   public showPartyRoom(): void {
     this.hideAllMenus();
+    // Set body to menu mode to allow scrolling
+    document.body.className = "menu-mode";
     const partyRoom = document.getElementById("partyRoom");
     if (partyRoom) {
-      partyRoom.style.display = "block";
+      partyRoom.style.display = "flex";
     }
   }
 
   public showInstructions(): void {
     this.hideAllMenus();
+    // Set body to menu mode to allow scrolling
+    document.body.className = "menu-mode";
     const instructions = document.getElementById("instructionsScreen");
     if (instructions) {
-      instructions.style.display = "block";
+      instructions.style.display = "flex";
     }
   }
 
   public showGameOver(): void {
     this.hideAllMenus();
+    // Set body to menu mode to allow scrolling
+    document.body.className = "menu-mode";
     const gameOver = document.getElementById("gameOverScreen");
     if (gameOver) {
-      gameOver.style.display = "block";
+      gameOver.style.display = "flex";
     }
   }
 

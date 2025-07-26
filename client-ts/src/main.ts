@@ -31,6 +31,10 @@ async function initializeGame(): Promise<void> {
     setupUIEventListeners(game, networkManager);
 
     console.log("🎮 Game and Network systems ready!");
+
+    // Set initial body class to menu mode
+    document.body.className = "menu-mode";
+
     showMainMenu();
   } catch (error) {
     console.error("Failed to initialize game:", error);
@@ -295,9 +299,11 @@ function updatePartyMembers(
   // Show party room
   console.log("🔧 Showing party room...");
   hideAllMenus();
+  // Set body to menu mode to allow scrolling
+  document.body.className = "menu-mode";
   const partyRoom = document.getElementById("partyRoom");
   if (partyRoom) {
-    partyRoom.style.display = "block";
+    partyRoom.style.display = "flex";
     console.log("✅ Party room shown");
   } else {
     console.warn("❗️ Party room element not found");
@@ -760,6 +766,9 @@ function startSinglePlayer(game: Game): void {
     menuElement.style.display = "none";
   }
 
+  // Set body to game mode to prevent scrolling
+  document.body.className = "game-mode";
+
   // Enter fullscreen mode
   requestFullscreen();
 
@@ -779,17 +788,21 @@ function startSinglePlayer(game: Game): void {
 
 function showMainMenu(): void {
   hideAllMenus();
+  // Set body to menu mode to allow scrolling
+  document.body.className = "menu-mode";
   const menuElement = document.getElementById("mainMenu");
   if (menuElement) {
-    menuElement.style.display = "block";
+    menuElement.style.display = "flex";
   }
 }
 
 function showMultiplayerLobby(): void {
   hideAllMenus();
+  // Set body to menu mode to allow scrolling
+  document.body.className = "menu-mode";
   const multiplayerLobby = document.getElementById("multiplayerLobby");
   if (multiplayerLobby) {
-    multiplayerLobby.style.display = "block";
+    multiplayerLobby.style.display = "flex";
   }
 }
 

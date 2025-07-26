@@ -343,11 +343,15 @@
 
     <script>
       function showInstructions() {
+        // Set body to menu mode to allow scrolling
+        document.body.className = "menu-mode";
         document.getElementById('mainMenu').style.display = 'none';
         document.getElementById('instructionsScreen').style.display = 'flex';
       }
       
       function hideInstructions() {
+        // Keep body in menu mode
+        document.body.className = "menu-mode";
         document.getElementById('instructionsScreen').style.display = 'none';
         document.getElementById('mainMenu').style.display = 'flex';
       }

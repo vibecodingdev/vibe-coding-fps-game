@@ -121,8 +121,7 @@ export class DemonSystem implements IDemonSystem {
 
     if (!userData || demonState === "dead") return;
 
-    // Get player position (this should come from the player controller)
-    // For now, we'll use camera position as a placeholder
+    // Get player position from camera (real-time position)
     const camera = this.scene.userData?.camera as THREE.Camera;
     if (!camera) return;
 
@@ -175,7 +174,7 @@ export class DemonSystem implements IDemonSystem {
       if (distanceToPlayer <= config.attackRange) {
         this.executeDemonAttack(demon, playerPosition);
       } else if (distanceToPlayer <= config.chaseRange) {
-        this.prepareDemonAttack(demon, playerPosition);
+        this.prepareDemonAttack(demon, playerPosition, deltaTime);
       } else {
         this.executeDemonChase(demon, playerPosition, deltaTime);
       }
@@ -194,10 +193,10 @@ export class DemonSystem implements IDemonSystem {
       Math.min(maxDistance, demonPosition.z)
     );
 
-    // Update mesh position and rotation (already updated in place for multiplayer demons)
+    // Update DemonInstance position from mesh position (single-player)
     if (demon.mesh) {
-      // Single-player: copy position from DemonInstance to mesh
-      demon.mesh.position.copy(demon.position);
+      // Single-player: copy position from mesh to DemonInstance
+      demon.position.copy(meshObject.position);
     }
     // For multiplayer demons, position is already updated directly on the object
 
@@ -269,6 +268,11 @@ export class DemonSystem implements IDemonSystem {
     // Stop all movement during attack
     userData.isAttacking = true;
 
+    // Set demon state to attacking for collision detection
+    if (demon.mesh) {
+      demon.state = "attacking";
+    }
+
     // Execute attack if cooldown is ready
     if (!userData.hasAttacked && userData.attackCooldown <= 0) {
       userData.attackCooldown = 180; // 3 seconds at 60fps
@@ -293,16 +297,23 @@ export class DemonSystem implements IDemonSystem {
     const direction = Math.atan2(dx, dz);
     meshObject.rotation.y = direction;
 
-    // Reset attack flag when cooldown ends
-    if (userData.attackCooldown <= 60) {
+    // Reset attack flag when cooldown ends - keep attacking state longer for damage detection
+    if (userData.attackCooldown <= 120) {
+      // Keep attacking state longer (was 60)
       userData.hasAttacked = false;
       userData.isAttacking = false;
+
+      // Reset demon state back to idle
+      if (demon.mesh) {
+        demon.state = "idle";
+      }
     }
   }
 
   private prepareDemonAttack(
     demon: DemonInstance | any,
-    playerPosition: THREE.Vector3
+    playerPosition: THREE.Vector3,
+    deltaTime: number = 16.67 // Default 60fps deltaTime
   ): void {
     // Handle both DemonInstance and direct THREE.Group objects
     let meshObject: THREE.Object3D;
@@ -322,9 +333,16 @@ export class DemonSystem implements IDemonSystem {
 
     userData.isAttacking = false;
 
-    // Move slowly toward player while preparing
-    const prepareSpeed = (userData.walkSpeed || 0.3) * 0.6;
-    const moveDistance = prepareSpeed * 0.016;
+    // Set demon state for collision detection
+    if (demon.mesh) {
+      demon.state = "idle";
+    }
+
+    // Move slowly toward player while preparing - use demon config speed
+    const demonType = userData.demonType || "IMP";
+    const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
+    const prepareSpeed = config.speed * 0.6; // 60% of normal speed when preparing
+    const moveDistance = prepareSpeed * (deltaTime / 1000); // Convert deltaTime to seconds
 
     const dx = playerPosition.x - meshObject.position.x;
     const dz = playerPosition.z - meshObject.position.z;
@@ -366,9 +384,16 @@ export class DemonSystem implements IDemonSystem {
 
     userData.isAttacking = false;
 
-    // Enhanced chase behavior
-    const chaseSpeed = userData.walkSpeed || 0.3;
-    const moveDistance = chaseSpeed * deltaTime * 0.1;
+    // Set demon state for collision detection
+    if (demon.mesh) {
+      demon.state = "idle";
+    }
+
+    // Enhanced chase behavior - use demon config speed (units per second)
+    const demonType = userData.demonType || "IMP";
+    const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
+    const chaseSpeed = config.speed; // Use configured speed from demon config
+    const moveDistance = chaseSpeed * (deltaTime / 1000); // Convert deltaTime to seconds
 
     const dx = playerPosition.x - meshObject.position.x;
     const dz = playerPosition.z - meshObject.position.z;
@@ -409,9 +434,16 @@ export class DemonSystem implements IDemonSystem {
 
     userData.isAttacking = false;
 
-    // Wandering behavior
-    const wanderSpeed = (userData.walkSpeed || 0.3) * 0.3;
-    const moveDistance = wanderSpeed * deltaTime * 0.1;
+    // Set demon state for collision detection
+    if (demon.mesh) {
+      demon.state = "idle";
+    }
+
+    // Wandering behavior - slow random movement using demon config speed
+    const demonType = userData.demonType || "IMP";
+    const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
+    const wanderSpeed = config.speed * 0.3; // 30% of normal speed when wandering
+    const moveDistance = wanderSpeed * (deltaTime / 1000); // Convert deltaTime to seconds
 
     // Update wander timer
     if (!userData.wanderTimer) userData.wanderTimer = 0;
@@ -505,12 +537,15 @@ export class DemonSystem implements IDemonSystem {
       attackRange: config.attackRange,
       chaseRange: config.chaseRange,
       attackDamage: config.attackDamage,
+      walkSpeed: config.speed, // Add walk speed from config
       attackCooldown: 0,
       isAttacking: false,
       isFalling: false,
       isDead: false,
       attackScaleSet: false,
       originalScale: config.scale,
+      wanderDirection: Math.random() * Math.PI * 2, // Add initial wander direction
+      wanderTimer: Math.random() * 120, // Add initial wander timer
     };
 
     this.demons.push(demonInstance);

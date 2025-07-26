@@ -176,6 +176,9 @@ export class Game {
         document.exitPointerLock();
       }
 
+      // Set body to menu mode to allow scrolling in pause menu
+      document.body.className = "menu-mode";
+
       // Show pause menu
       const pauseMenu = document.getElementById("pauseMenu");
 
@@ -191,6 +194,9 @@ export class Game {
   public resumeGame(): void {
     if (this.gameState === "paused") {
       this.gameState = "playing";
+
+      // Set body back to game mode to prevent scrolling
+      document.body.className = "game-mode";
 
       // Hide pause menu
       const pauseMenu = document.getElementById("pauseMenu");
@@ -224,6 +230,10 @@ export class Game {
     if (mainMenuBtn) {
       mainMenuBtn.onclick = () => {
         this.gameState = "mainMenu";
+
+        // Set body to menu mode to allow scrolling
+        document.body.className = "menu-mode";
+
         const pauseMenu = document.getElementById("pauseMenu");
         const mainMenu = document.getElementById("mainMenu");
         const gameUI = document.getElementById("gameUI");
@@ -436,20 +446,50 @@ export class Game {
     });
 
     // Check player-demon collisions and attacks
-    const nearbyDemons = this.demonSystem.getNearbyDemons(
-      this.playerState.position,
-      2
-    );
+    // Use real-time camera position instead of stale playerState.position
+    const playerPosition = this.playerController.getPosition();
+    const nearbyDemons = this.demonSystem.getNearbyDemons(playerPosition, 2);
     nearbyDemons.forEach((demon) => {
-      // Only take damage if demon is attacking and we can take damage
-      if (
-        demon.state === "attacking" &&
-        demon.mesh.userData.isAttacking &&
-        this.canTakeDamage()
-      ) {
-        this.takeDamage(demon.type);
+      // Handle both DemonInstance and direct THREE.Group objects
+      let isAttacking = false;
+      let demonType = "";
+      let meshObject: THREE.Object3D;
+
+      if (demon.mesh) {
+        // DemonInstance structure (single-player)
+        isAttacking =
+          demon.state === "attacking" && demon.mesh.userData?.isAttacking;
+        demonType = demon.type;
+        meshObject = demon.mesh;
+      } else if ((demon as any).userData) {
+        // Direct THREE.Group object (multiplayer)
+        const demonMesh = demon as any;
+        isAttacking = demonMesh.userData?.isAttacking;
+        demonType = demonMesh.userData?.demonType || "IMP";
+        meshObject = demonMesh;
+      } else {
+        return; // Invalid demon object
+      }
+
+      // Check distance to ensure demon is close enough to attack
+      const distance = playerPosition.distanceTo(meshObject.position);
+      const attackRange = meshObject.userData?.attackRange || 3.5;
+
+      // Only take damage if demon is attacking, close enough, and we can take damage
+      if (isAttacking && distance <= attackRange && this.canTakeDamage()) {
+        this.takeDamage(demonType);
+
         // Reset demon attack state to prevent continuous damage
-        demon.mesh.userData.isAttacking = false;
+        meshObject.userData.isAttacking = false;
+
+        // Also reset demon state for DemonInstance
+        if (demon.mesh) {
+          demon.state = "idle";
+        }
+
+        console.log(
+          `🩸 Player damaged by ${demonType} at distance ${distance.toFixed(2)}`
+        );
       }
     });
 
