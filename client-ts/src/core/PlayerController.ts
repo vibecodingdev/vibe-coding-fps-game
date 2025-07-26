@@ -1,12 +1,14 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { PlayerState, InputState } from "@/types/game";
+import { SceneManager } from "./SceneManager";
 
 export class PlayerController {
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: PointerLockControls | null = null;
   private velocity = new THREE.Vector3();
   private direction = new THREE.Vector3();
+  private sceneManager: SceneManager | null = null;
 
   private readonly MOVE_SPEED = 100;
 
@@ -126,22 +128,45 @@ export class PlayerController {
     this.controls.moveRight(this.velocity.x);
     this.controls.moveForward(-this.velocity.z);
 
-    // Keep player within game boundaries
+    // Keep player within game boundaries using SceneManager's boundary system
     const playerPos = this.controls.getObject().position;
-    const boundary = 900; // Match larger 2000x2000 ground size
 
-    // Clamp X position
-    if (playerPos.x > boundary) {
-      playerPos.x = boundary;
-    } else if (playerPos.x < -boundary) {
-      playerPos.x = -boundary;
-    }
+    if (this.sceneManager) {
+      // Use SceneManager's boundary system with camera offset consideration
+      const cameraOffset = 1.5; // Account for camera distance from player center
+      const adjustedBoundarySize =
+        this.sceneManager.BOUNDARY_SIZE - cameraOffset * 2;
+      const halfSize = adjustedBoundarySize / 2;
 
-    // Clamp Z position
-    if (playerPos.z > boundary) {
-      playerPos.z = boundary;
-    } else if (playerPos.z < -boundary) {
-      playerPos.z = -boundary;
+      // Clamp position with camera offset consideration
+      playerPos.x = Math.max(-halfSize, Math.min(halfSize, playerPos.x));
+      playerPos.z = Math.max(-halfSize, Math.min(halfSize, playerPos.z));
+
+      // Check if player hit a boundary and provide feedback
+      if (
+        Math.abs(playerPos.x) >= halfSize - 1 ||
+        Math.abs(playerPos.z) >= halfSize - 1
+      ) {
+        // Player is close to boundary wall
+        console.log("🚧 Player near boundary wall");
+      }
+    } else {
+      // Fallback to smaller boundary system if SceneManager not available
+      const boundary = 45; // Match client's boundary system
+
+      // Clamp X position
+      if (playerPos.x > boundary) {
+        playerPos.x = boundary;
+      } else if (playerPos.x < -boundary) {
+        playerPos.x = -boundary;
+      }
+
+      // Clamp Z position
+      if (playerPos.z > boundary) {
+        playerPos.z = boundary;
+      } else if (playerPos.z < -boundary) {
+        playerPos.z = -boundary;
+      }
     }
 
     // Keep camera above ground with better height management
@@ -197,5 +222,9 @@ export class PlayerController {
     const direction = new THREE.Vector3(0, 0, -1);
     direction.applyQuaternion(this.camera.quaternion);
     return direction;
+  }
+
+  public setSceneManager(sceneManager: SceneManager): void {
+    this.sceneManager = sceneManager;
   }
 }

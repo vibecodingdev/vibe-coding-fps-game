@@ -9,3 +9,7 @@ Currently, after p1 creates a multiplayer room and p2 joins, p1's interface cann
 Please attempt to add a demon configuration and design that can perform remote attacks, such as using fireballs for long-range attacks.
 
 Currently, the monster wearing a flaming hat correctly launches a red fireball. However, when the fireball comes into contact with the player's camera range, it does not actually cause damage. Is the collision range too small? Additionally, can the fireball effect be enhanced after a direct hit, making it more noticeable? Furthermore, all monster attacks should, like the old version of @/client, cause a full-screen red effect, alerting the user that they have been attacked, making the injury experience more intuitive.
+
+Please add a wall effect to the scene, you can refer to the implementation of @/client as appropriate to prevent players from leaving the core area. In addition, please match the scene with this border in various scene styles, add appropriate obstacle expressions, and make this wall effect more natural.
+
+Is there a way to prevent the visual penetration effect when the camera approaches the wall? Can we solve this problem by making the wall model slightly larger than the actual intercept action area?

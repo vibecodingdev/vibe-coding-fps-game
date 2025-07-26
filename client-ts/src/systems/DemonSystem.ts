@@ -7,6 +7,7 @@ import {
 } from "@/types/demons";
 import { Bullet } from "@/types/weapons";
 import { DEMON_CONFIGS, getDemonTypesForWave } from "@/config/demons";
+import { SceneManager } from "@/core/SceneManager";
 
 // Animation states for demons
 interface DemonAnimation {
@@ -35,6 +36,7 @@ export class DemonSystem implements IDemonSystem {
   } as Record<DemonType, number>;
 
   private scene!: THREE.Scene;
+  private sceneManager: SceneManager | null = null;
   private audioSystem: any = null;
   private demonSpawnTimer: NodeJS.Timeout | null = null;
   private nextWaveTimer: NodeJS.Timeout | null = null;
@@ -50,6 +52,10 @@ export class DemonSystem implements IDemonSystem {
 
   public setAudioSystem(audioSystem: any): void {
     this.audioSystem = audioSystem;
+  }
+
+  public setSceneManager(sceneManager: SceneManager): void {
+    this.sceneManager = sceneManager;
   }
 
   public update(deltaTime: number): void {
@@ -213,15 +219,23 @@ export class DemonSystem implements IDemonSystem {
     }
 
     // Keep demons within map bounds
-    const maxDistance = 90; // Increased map bounds
-    demonPosition.x = Math.max(
-      -maxDistance,
-      Math.min(maxDistance, demonPosition.x)
-    );
-    demonPosition.z = Math.max(
-      -maxDistance,
-      Math.min(maxDistance, demonPosition.z)
-    );
+    if (this.sceneManager) {
+      // Use SceneManager's boundary system
+      const clampedPosition = this.sceneManager.clampToBoundary(demonPosition);
+      demonPosition.x = clampedPosition.x;
+      demonPosition.z = clampedPosition.z;
+    } else {
+      // Fallback to hardcoded boundary if SceneManager not available
+      const maxDistance = 45; // Match player controller fallback
+      demonPosition.x = Math.max(
+        -maxDistance,
+        Math.min(maxDistance, demonPosition.x)
+      );
+      demonPosition.z = Math.max(
+        -maxDistance,
+        Math.min(maxDistance, demonPosition.z)
+      );
+    }
 
     // Update DemonInstance position from mesh position (single-player)
     if (demon.mesh) {
@@ -1205,9 +1219,19 @@ export class DemonSystem implements IDemonSystem {
     const config = DEMON_CONFIGS[demonType];
     const demon = this.createDemonModel(demonType);
 
-    // Position demon randomly around the map edges
+    // Position demon randomly around the map edges, respecting boundaries
     const angle = Math.random() * Math.PI * 2;
-    const distance = 35 + Math.random() * 10; // 35-45 units from center
+    let distance: number;
+
+    if (this.sceneManager) {
+      // Use SceneManager's boundary system for spawn positioning
+      const boundarySize = this.sceneManager.BOUNDARY_SIZE;
+      const spawnMargin = 10; // Keep demons away from the walls
+      distance = boundarySize / 2 - spawnMargin - Math.random() * 15; // Spawn 10-25 units inside boundary
+    } else {
+      // Fallback spawn distance
+      distance = 35 + Math.random() * 10; // 35-45 units from center
+    }
 
     const position = new THREE.Vector3(
       Math.cos(angle) * distance,

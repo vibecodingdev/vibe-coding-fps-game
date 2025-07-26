@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundary Wall System Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ff3300;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #ffff00;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <div>Position: <span id="position">0, 0, 0</span></div>
+        <div>Boundary Status: <span id="boundary">Inside</span></div>
+        <div>Boundary Size: <span id="boundarySize">90</span></div>
+    </div>
+    
+    <div id="instructions">
+        <h3>🚧 Boundary System Test</h3>
+        <p><strong>Controls:</strong></p>
+        <ul>
+            <li>WASD - Move around</li>
+            <li>Mouse - Look around</li>
+            <li>Click to lock mouse</li>
+        </ul>
+        <p><strong>Test:</strong> Try to walk through the hellish walls. You should be stopped by the boundary system!</p>
+        <p><strong>Fixed:</strong> Visual walls are now positioned 3 units beyond the movement boundary to prevent camera clipping when you get close to walls.</p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        import { PointerLockControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/PointerLockControls.js';
+        
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x2d1b1b);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // Boundary system constants (matching SceneManager)
+        const BOUNDARY_SIZE = 90;
+        const BOUNDARY_WALL_HEIGHT = 20;
+        const BOUNDARY_WALL_THICKNESS = 5;
+        const VISUAL_BOUNDARY_OFFSET = 3; // Visual walls extend beyond movement boundary
+        
+        function clampToBoundary(position) {
+            const halfSize = BOUNDARY_SIZE / 2;
+            const clampedPosition = position.clone();
+            
+            clampedPosition.x = Math.max(-halfSize, Math.min(halfSize, clampedPosition.x));
+            clampedPosition.z = Math.max(-halfSize, Math.min(halfSize, clampedPosition.z));
+            
+            return clampedPosition;
+        }
+        
+        function isWithinBoundary(position) {
+            const halfSize = BOUNDARY_SIZE / 2;
+            return (
+                position.x >= -halfSize &&
+                position.x <= halfSize &&
+                position.z >= -halfSize &&
+                position.z <= halfSize
+            );
+        }
+        
+        // Controls
+        const controls = new PointerLockControls(camera, document.body);
+        scene.add(controls.getObject());
+        
+        // Movement
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        
+        // Event listeners
+        document.addEventListener('click', () => {
+            controls.lock();
+        });
+        
+        document.addEventListener('keydown', (event) => {
+            switch (event.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyD': moveRight = true; break;
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            switch (event.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        });
+        
+        // Create hellish boundary walls
+        function createBoundaryWalls() {
+            const boundaryGroup = new THREE.Group();
+            const halfSize = BOUNDARY_SIZE / 2;
+            const visualHalfSize = halfSize + VISUAL_BOUNDARY_OFFSET;
+            
+            // Wall material
+            const wallMaterial = new THREE.MeshLambertMaterial({
+                color: 0x1a0808,
+                transparent: true,
+                opacity: 0.95,
+            });
+            
+            // Glowing edge material
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff3300,
+                transparent: true,
+                opacity: 0.6,
+            });
+            
+            // Create walls - positioned beyond movement boundary to prevent camera clipping
+            const wallConfigs = [
+                { pos: [0, BOUNDARY_WALL_HEIGHT / 2, visualHalfSize], size: [BOUNDARY_SIZE + BOUNDARY_WALL_THICKNESS + (VISUAL_BOUNDARY_OFFSET * 2), BOUNDARY_WALL_HEIGHT, BOUNDARY_WALL_THICKNESS] },
+                { pos: [0, BOUNDARY_WALL_HEIGHT / 2, -visualHalfSize], size: [BOUNDARY_SIZE + BOUNDARY_WALL_THICKNESS + (VISUAL_BOUNDARY_OFFSET * 2), BOUNDARY_WALL_HEIGHT, BOUNDARY_WALL_THICKNESS] },
+                { pos: [visualHalfSize, BOUNDARY_WALL_HEIGHT / 2, 0], size: [BOUNDARY_WALL_THICKNESS, BOUNDARY_WALL_HEIGHT, BOUNDARY_SIZE + (VISUAL_BOUNDARY_OFFSET * 2)] },
+                { pos: [-visualHalfSize, BOUNDARY_WALL_HEIGHT / 2, 0], size: [BOUNDARY_WALL_THICKNESS, BOUNDARY_WALL_HEIGHT, BOUNDARY_SIZE + (VISUAL_BOUNDARY_OFFSET * 2)] }
+            ];
+            
+            wallConfigs.forEach(config => {
+                // Main wall
+                const wallGeometry = new THREE.BoxGeometry(...config.size);
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                wall.position.set(...config.pos);
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                boundaryGroup.add(wall);
+                
+                // Glowing edge
+                const edgeGeometry = new THREE.BoxGeometry(config.size[0] * 1.02, 0.5, config.size[2] * 1.02);
+                const edge = new THREE.Mesh(edgeGeometry, glowMaterial);
+                edge.position.set(config.pos[0], config.pos[1] + config.size[1] / 2, config.pos[2]);
+                boundaryGroup.add(edge);
+            });
+            
+            scene.add(boundaryGroup);
+        }
+        
+        // Create ground
+        function createGround() {
+            const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+            const groundMaterial = new THREE.MeshLambertMaterial({
+                color: 0x3d2914,
+                transparent: true,
+                opacity: 0.9,
+            });
+            
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+        }
+        
+        // Lighting
+        function addLighting() {
+            const ambientLight = new THREE.AmbientLight(0x331111, 0.3);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xff3300, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+        }
+        
+        // Create scene
+        createGround();
+        createBoundaryWalls();
+        addLighting();
+        
+        // Set initial position
+        camera.position.set(0, 1.8, 20);
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (controls.isLocked) {
+                const delta = 0.016; // Approximate 60fps
+                
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+                
+                if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+                
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
+                
+                // Apply boundary constraints
+                const playerPos = controls.getObject().position;
+                const clampedPosition = clampToBoundary(playerPos);
+                playerPos.x = clampedPosition.x;
+                playerPos.z = clampedPosition.z;
+                
+                // Keep above ground
+                playerPos.y = Math.max(1.8, playerPos.y);
+                
+                // Update UI
+                document.getElementById('position').textContent = 
+                    `${playerPos.x.toFixed(1)}, ${playerPos.y.toFixed(1)}, ${playerPos.z.toFixed(1)}`;
+                
+                const isInside = isWithinBoundary(playerPos);
+                const boundaryEl = document.getElementById('boundary');
+                boundaryEl.textContent = isInside ? 'Inside' : 'Outside';
+                boundaryEl.style.color = isInside ? '#00ff00' : '#ff0000';
+                
+                document.getElementById('boundarySize').textContent = BOUNDARY_SIZE;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        animate();
+    </script>
+</body>
+</html> 

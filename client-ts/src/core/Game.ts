@@ -97,6 +97,8 @@ export class Game {
 
       // Set camera for player controller BEFORE initializing it
       this.playerController.setCamera(camera as THREE.PerspectiveCamera);
+      // Connect PlayerController with SceneManager for boundary enforcement
+      this.playerController.setSceneManager(this.sceneManager);
       await this.playerController.initialize();
 
       // Initialize other systems
@@ -119,6 +121,7 @@ export class Game {
       this.weaponSystem.setCamera(camera);
       this.weaponSystem.setAudioSystem(this.audioSystem);
       this.demonSystem.setScene(scene);
+      this.demonSystem.setSceneManager(this.sceneManager);
       this.demonSystem.setAudioSystem(this.audioSystem);
       this.collectibleSystem.setScene(scene);
 
