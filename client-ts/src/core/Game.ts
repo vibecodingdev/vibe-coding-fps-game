@@ -80,26 +80,18 @@ export class Game {
   }
 
   private initializeSystems(): void {
-    this.sceneManager = new SceneManager();
+    this.sceneManager = SceneManager.getInstance();
     this.playerController = new PlayerController(
       this.playerState,
       this.stateManager.getInputState()
     );
     this.weaponSystem = new WeaponSystem();
     this.demonSystem = new DemonSystem();
-    this.audioSystem = new AudioSystem();
-    // Create a temporary NetworkManager, will be replaced by setNetworkManager
-    this.networkManager = new NetworkManager();
-    this.uiManager = new UIManager();
+    this.audioSystem = AudioSystem.getInstance();
+    // Use singleton NetworkManager to ensure consistent state
+    this.networkManager = NetworkManager.getInstance();
+    this.uiManager = UIManager.getInstance();
     this.collectibleSystem = new CollectibleSystem();
-  }
-
-  /**
-   * Set the NetworkManager instance (used to replace the temporary one with the global instance)
-   */
-  public setNetworkManager(networkManager: NetworkManager): void {
-    this.networkManager = networkManager;
-    console.log("🔄 Game is now using the global NetworkManager instance");
   }
 
   public async initialize(themeName?: SceneThemeName): Promise<void> {

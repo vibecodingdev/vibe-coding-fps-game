@@ -171,14 +171,11 @@ declare global {
 async function initializeGame(): Promise<void> {
   try {
     const game = Game.getInstance();
-    const networkManager = new NetworkManager();
+    const networkManager = NetworkManager.getInstance();
 
     // Make instances globally accessible
     window.game = game;
     window.networkManager = networkManager;
-
-    // Set the global NetworkManager to Game instance
-    game.setNetworkManager(networkManager);
 
     await game.initialize();
     await networkManager.initialize();

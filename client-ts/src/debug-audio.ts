@@ -35,7 +35,7 @@ essentialSounds.forEach((sound) => {
 async function testAudioSystem() {
   try {
     console.log("\n🔧 Testing AudioSystem initialization...");
-    const audioSystem = new AudioSystem();
+    const audioSystem = AudioSystem.getInstance();
 
     // Mock DOM environment for testing
     global.document = global.document || {};

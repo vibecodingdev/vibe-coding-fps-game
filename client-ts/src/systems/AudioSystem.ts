@@ -3,6 +3,8 @@ import { AudioSystem as IAudioSystem } from "@/types/audio";
 import { AUDIO_CONFIGS } from "@/config/audio";
 
 export class AudioSystem implements IAudioSystem {
+  private static instance: AudioSystem | null = null;
+
   public context: AudioContext | null = null;
   public listener: THREE.AudioListener | null = null;
   public masterVolume = 1.0;
@@ -22,6 +24,17 @@ export class AudioSystem implements IAudioSystem {
   private backgroundTracks: THREE.Audio[] = [];
   private lastGrowlTime = 0;
   private readonly growlCooldownTime = 1500;
+
+  private constructor() {
+    // Private constructor to prevent direct instantiation
+  }
+
+  public static getInstance(): AudioSystem {
+    if (!AudioSystem.instance) {
+      AudioSystem.instance = new AudioSystem();
+    }
+    return AudioSystem.instance;
+  }
 
   public async initialize(): Promise<void> {
     try {

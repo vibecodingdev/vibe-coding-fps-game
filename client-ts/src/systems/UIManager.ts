@@ -4,6 +4,8 @@ import { VoiceChatSystem } from "@/systems/VoiceChatSystem";
 import { SceneThemeName } from "@/themes";
 
 export class UIManager {
+  private static instance: UIManager | null = null;
+
   private healthBar: HTMLElement | null = null;
   private healthValue: HTMLElement | null = null;
   private weaponName: HTMLElement | null = null;
@@ -39,6 +41,17 @@ export class UIManager {
 
   // Voice chat system
   private voiceChatSystem: VoiceChatSystem | null = null;
+
+  private constructor() {
+    // Private constructor to prevent direct instantiation
+  }
+
+  public static getInstance(): UIManager {
+    if (!UIManager.instance) {
+      UIManager.instance = new UIManager();
+    }
+    return UIManager.instance;
+  }
 
   public async initialize(): Promise<void> {
     console.log("🎮 UIManager initializing...");

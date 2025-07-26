@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { SCENE_THEMES, type SceneThemeName, BaseSceneTheme } from "../themes";
 
 export class SceneManager {
+  private static instance: SceneManager | null = null;
+
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
@@ -23,7 +25,8 @@ export class SceneManager {
   // Visual walls are larger than movement boundary to prevent camera clipping
   private readonly VISUAL_BOUNDARY_OFFSET = 3; // Visual walls extend 3 units beyond movement boundary
 
-  constructor() {
+  private constructor() {
+    // Private constructor to prevent direct instantiation
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
       75,
@@ -39,6 +42,13 @@ export class SceneManager {
 
     this.setupRenderer();
     this.setupCamera();
+  }
+
+  public static getInstance(): SceneManager {
+    if (!SceneManager.instance) {
+      SceneManager.instance = new SceneManager();
+    }
+    return SceneManager.instance;
   }
 
   public async initialize(themeName?: SceneThemeName): Promise<void> {

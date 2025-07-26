@@ -3,6 +3,8 @@ import { io, Socket } from "socket.io-client";
 import { NetworkState, PlayerData, RoomData } from "@/types/network";
 
 export class NetworkManager implements NetworkState {
+  private static instance: NetworkManager | null = null;
+
   public socket: Socket | null = null;
   public isConnected = false;
   public currentRoom: RoomData | null = null;
@@ -63,6 +65,17 @@ export class NetworkManager implements NetworkState {
   private onDemonUpdate?: (data: any) => void;
   private onWaveStart?: (data: any) => void;
   private onWaveComplete?: (data: any) => void;
+
+  private constructor() {
+    // Private constructor to prevent direct instantiation
+  }
+
+  public static getInstance(): NetworkManager {
+    if (!NetworkManager.instance) {
+      NetworkManager.instance = new NetworkManager();
+    }
+    return NetworkManager.instance;
+  }
 
   public async initialize(): Promise<void> {
     console.log("🎮 NetworkManager initializing...");
