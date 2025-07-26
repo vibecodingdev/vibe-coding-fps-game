@@ -16,7 +16,7 @@ export class UIManager {
   private radarCanvas: HTMLCanvasElement | null = null;
   private radarContext: CanvasRenderingContext2D | null = null;
   private readonly RADAR_SIZE = 120;
-  private readonly RADAR_RANGE = 50;
+  private readonly RADAR_RANGE = 60; // 增加范围以确保能看到所有怪物
 
   public async initialize(): Promise<void> {
     console.log("🎮 UIManager initializing...");
@@ -241,8 +241,15 @@ export class UIManager {
     // 绘制玩家位置（中心绿点）
     this.radarContext.fillStyle = "#00ff00";
     this.radarContext.beginPath();
-    this.radarContext.arc(centerX, centerY, 3, 0, Math.PI * 2);
+    this.radarContext.arc(centerX, centerY, 4, 0, Math.PI * 2);
     this.radarContext.fill();
+
+    // 添加外环
+    this.radarContext.strokeStyle = "#44ff44";
+    this.radarContext.lineWidth = 2;
+    this.radarContext.beginPath();
+    this.radarContext.arc(centerX, centerY, 6, 0, Math.PI * 2);
+    this.radarContext.stroke();
 
     // 绘制玩家方向指示器
     const direction = new THREE.Vector3();
@@ -269,7 +276,7 @@ export class UIManager {
   ): void {
     if (!this.radarContext) return;
 
-    demons.forEach((demon) => {
+    demons.forEach((demon, index) => {
       const distance = playerPos.distanceTo(demon.position);
 
       if (distance <= this.RADAR_RANGE) {
@@ -293,14 +300,14 @@ export class UIManager {
         ) {
           this.radarContext.fillStyle = "#ff0000"; // 红色表示恶魔
           this.radarContext.beginPath();
-          this.radarContext.arc(radarX, radarY, 3, 0, Math.PI * 2); // 稍微大一点便于看见
+          this.radarContext.arc(radarX, radarY, 4, 0, Math.PI * 2); // 更大更明显
           this.radarContext.fill();
 
           // 添加外环以便更好地识别
-          this.radarContext.strokeStyle = "#ff4444";
-          this.radarContext.lineWidth = 1;
+          this.radarContext.strokeStyle = "#ff6666";
+          this.radarContext.lineWidth = 2;
           this.radarContext.beginPath();
-          this.radarContext.arc(radarX, radarY, 4, 0, Math.PI * 2);
+          this.radarContext.arc(radarX, radarY, 6, 0, Math.PI * 2);
           this.radarContext.stroke();
         }
       }

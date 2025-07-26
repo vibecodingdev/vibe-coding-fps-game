@@ -384,7 +384,10 @@ export class Game {
       (demon) => demon.state !== "dead" && !demon.mesh.userData.markedForRemoval
     );
     const camera = this.sceneManager.getCamera();
-    this.uiManager.updateRadar(this.playerState.position, aliveDemoms, camera);
+    if (camera) {
+      // 使用相机的实时位置而不是playerState.position
+      this.uiManager.updateRadar(camera.position, aliveDemoms, camera);
+    }
   }
 
   private render(): void {
