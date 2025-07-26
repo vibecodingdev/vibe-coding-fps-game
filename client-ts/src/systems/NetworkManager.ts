@@ -1117,10 +1117,12 @@ export class NetworkManager implements NetworkState {
       const demon = createDemonCallback(data.demon);
       if (!demon) return null;
 
-      // Set position and rotation from server
+      // Set position and rotation from server, but ensure proper ground height
+      // Note: Server should ideally send correct Y position, but we fix it locally for now
+      const groundHeight = this.calculateDemonGroundHeight(data.demon.type);
       demon.position.set(
         data.demon.position.x,
-        data.demon.position.y,
+        data.demon.position.y || groundHeight, // Use server Y or calculate proper height
         data.demon.position.z
       );
       demon.rotation.set(
@@ -1354,5 +1356,28 @@ export class NetworkManager implements NetworkState {
     this.isRoomLeader = false;
     this.isPlayerReady = false;
     this.isMultiplayer = false;
+  }
+
+  /**
+   * Calculate the proper ground height for a demon based on its geometry
+   * to ensure feet touch the ground instead of body center
+   */
+  private calculateDemonGroundHeight(demonType: string): number {
+    switch (demonType) {
+      case "CACODEMON":
+        // Cacodemon floats, so keep it slightly above ground
+        return 0.5;
+      case "BARON":
+        // Baron has legs that extend to -0.4 - 0.5 (leg height/2), so need to offset upward
+        return 0.9; // 0.4 (leg bottom) + 0.5 (leg height/2) = 0.9
+      case "ARCHVILE":
+        // Similar to other humanoid demons but slightly taller
+        return 0.8;
+      case "DEMON":
+      case "IMP":
+      default:
+        // Standard humanoid demons: legs extend to -0.4 - 0.4 (leg height/2)
+        return 0.8; // 0.4 (leg bottom) + 0.4 (leg height/2) = 0.8
+    }
   }
 }

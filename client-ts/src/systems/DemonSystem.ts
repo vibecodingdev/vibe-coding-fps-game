@@ -1005,6 +1005,10 @@ export class DemonSystem implements IDemonSystem {
     meshObject.position.x += normalizedX * moveDistance;
     meshObject.position.z += normalizedZ * moveDistance;
 
+    // Ensure demon stays at proper ground height
+    const groundHeight = this.calculateDemonGroundHeight(demonType);
+    meshObject.position.y = groundHeight;
+
     // Face movement direction
     meshObject.rotation.y = direction;
 
@@ -1071,6 +1075,10 @@ export class DemonSystem implements IDemonSystem {
         Math.sin(userData.wanderDirection) * moveDistance;
       meshObject.position.z +=
         Math.cos(userData.wanderDirection) * moveDistance;
+
+      // Ensure demon stays at proper ground height
+      const groundHeight = this.calculateDemonGroundHeight(demonType);
+      meshObject.position.y = groundHeight;
     } else {
       userData.isMoving = false;
     }
@@ -1143,6 +1151,10 @@ export class DemonSystem implements IDemonSystem {
       meshObject.position.z -=
         normalizedX * strafeDirection * config.speed * 0.008;
 
+      // Ensure demon stays at proper ground height during strafing
+      const groundHeight = this.calculateDemonGroundHeight(demonType);
+      meshObject.position.y = groundHeight;
+
       // Face the player while strafing
       const direction = Math.atan2(dx, dz);
       meshObject.rotation.y = direction;
@@ -1160,6 +1172,10 @@ export class DemonSystem implements IDemonSystem {
 
     meshObject.position.x += normalizedX * moveDirection * moveDistance;
     meshObject.position.z += normalizedZ * moveDirection * moveDistance;
+
+    // Ensure demon stays at proper ground height
+    const groundHeight = this.calculateDemonGroundHeight(demonType);
+    meshObject.position.y = groundHeight;
 
     // Always face the player
     const direction = Math.atan2(dx, dz);
@@ -1233,9 +1249,12 @@ export class DemonSystem implements IDemonSystem {
       distance = 35 + Math.random() * 10; // 35-45 units from center
     }
 
+    // Calculate proper ground position based on demon geometry
+    const groundHeight = this.calculateDemonGroundHeight(demonType);
+
     const position = new THREE.Vector3(
       Math.cos(angle) * distance,
-      0,
+      groundHeight,
       Math.sin(angle) * distance
     );
 
@@ -1401,6 +1420,29 @@ export class DemonSystem implements IDemonSystem {
     });
 
     return demonGroup;
+  }
+
+  /**
+   * Calculate the proper ground height for a demon based on its geometry
+   * to ensure feet touch the ground instead of body center
+   */
+  private calculateDemonGroundHeight(demonType: DemonType): number {
+    switch (demonType) {
+      case "CACODEMON":
+        // Cacodemon floats, so keep it slightly above ground
+        return 0.5;
+      case "BARON":
+        // Baron has legs that extend to -0.4 - 0.5 (leg height/2), so need to offset upward
+        return 0.9; // 0.4 (leg bottom) + 0.5 (leg height/2) = 0.9
+      case "ARCHVILE":
+        // Similar to other humanoid demons but slightly taller
+        return 0.8;
+      case "DEMON":
+      case "IMP":
+      default:
+        // Standard humanoid demons: legs extend to -0.4 - 0.4 (leg height/2)
+        return 0.8; // 0.4 (leg bottom) + 0.4 (leg height/2) = 0.8
+    }
   }
 
   private addCacodemonFeatures(demonGroup: THREE.Group, typeData: any): void {

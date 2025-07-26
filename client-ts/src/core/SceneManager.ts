@@ -25,7 +25,7 @@ export class SceneManager {
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
-      0.01, // Very small near clip plane
+      0.1, // Increased near clip plane to reduce Z-fighting
       3000 // Very large far clip plane
     );
     this.renderer = new THREE.WebGLRenderer({
@@ -70,7 +70,7 @@ export class SceneManager {
     // Camera position for DOOM-style view
     this.camera.position.set(0, 1.8, 20);
     this.camera.lookAt(0, 1.8, 0);
-    this.camera.near = 0.01;
+    this.camera.near = 0.1; // Increased near clip to reduce Z-fighting
     this.camera.far = 3000;
     this.camera.updateProjectionMatrix();
 
@@ -151,7 +151,7 @@ export class SceneManager {
       stain.rotation.x = -Math.PI / 2;
       stain.position.set(
         (Math.random() - 0.5) * 180,
-        0.005 + Math.random() * 0.01, // Slightly varying heights
+        0.02 + Math.random() * 0.03, // Increased height separation to reduce Z-fighting
         (Math.random() - 0.5) * 180
       );
       this.addGroundTextureObject(stain);
@@ -173,7 +173,7 @@ export class SceneManager {
       splat.rotation.x = -Math.PI / 2;
       splat.position.set(
         (Math.random() - 0.5) * 200,
-        0.01 + Math.random() * 0.005,
+        0.06 + Math.random() * 0.02, // Increased height separation
         (Math.random() - 0.5) * 200
       );
       this.addGroundTextureObject(splat);
@@ -211,7 +211,7 @@ export class SceneManager {
         tile.rotation.z = (Math.random() - 0.5) * 0.1; // Slight rotation variation
         tile.position.set(
           (x - tilesPerSide / 2) * tileSize + (Math.random() - 0.5) * 0.5,
-          0.002,
+          0.01, // Increased base height
           (z - tilesPerSide / 2) * tileSize + (Math.random() - 0.5) * 0.5
         );
         tile.receiveShadow = true;
@@ -302,7 +302,7 @@ export class SceneManager {
       crack.rotation.z = Math.random() * Math.PI * 2;
       crack.position.set(
         (Math.random() - 0.5) * 160,
-        0.01,
+        0.08, // Increased height to reduce Z-fighting
         (Math.random() - 0.5) * 160
       );
       this.addGroundTextureObject(crack);
@@ -322,7 +322,7 @@ export class SceneManager {
       lava.rotation.x = -Math.PI / 2;
       lava.rotation.z = crack.rotation.z;
       lava.position.copy(crack.position);
-      lava.position.y += 0.005;
+      lava.position.y += 0.01; // Increased separation
       this.addGroundTextureObject(lava);
 
       // Add flickering light from lava
@@ -407,7 +407,7 @@ export class SceneManager {
       grating.rotation.x = -Math.PI / 2;
       grating.position.set(
         (Math.random() - 0.5) * 150,
-        0.02,
+        0.12, // Increased height to be clearly above other textures
         (Math.random() - 0.5) * 150
       );
       grating.receiveShadow = true;
@@ -454,7 +454,7 @@ export class SceneManager {
       rune.rotation.z = Math.random() * Math.PI * 2;
       rune.position.set(
         (Math.random() - 0.5) * 140,
-        0.008,
+        0.15, // Increased height to be clearly visible above other textures
         (Math.random() - 0.5) * 140
       );
       this.addGroundTextureObject(rune);
@@ -470,7 +470,7 @@ export class SceneManager {
       symbol.rotation.x = -Math.PI / 2;
       symbol.rotation.z = rune.rotation.z;
       symbol.position.copy(rune.position);
-      symbol.position.y += 0.002;
+      symbol.position.y += 0.005; // Increased separation
       this.addGroundTextureObject(symbol);
 
       // Add pulsing animation

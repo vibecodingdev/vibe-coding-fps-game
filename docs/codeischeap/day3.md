@@ -15,3 +15,5 @@ Please add a wall effect to the scene, you can refer to the implementation of @/
 Is there a way to prevent the visual penetration effect when the camera approaches the wall? Can we solve this problem by making the wall model slightly larger than the actual intercept action area?
 
 Can we add a few light sources to the scene to make it slightly brighter, as it currently fits the dark style but tends to cause visual fatigue?
+
+The flickering of the ground texture is quite severe, is it due to the camera being too close to the ground? Additionally, the phenomenon of monsters penetrating the ground is also quite severe, and it should be the monster's feet that touch the ground, not the center point of the body.
