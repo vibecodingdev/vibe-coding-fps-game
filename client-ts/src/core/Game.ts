@@ -10,6 +10,7 @@ import { UIManager } from "@/systems/UIManager";
 import { CollectibleSystem } from "@/systems/CollectibleSystem";
 import { StateManager } from "@/core/StateManager";
 import { GAME_CONFIG } from "@/config/game";
+import { type SceneThemeName } from "@/themes";
 
 export class Game {
   private static instance: Game | null = null;
@@ -84,12 +85,12 @@ export class Game {
     this.collectibleSystem = new CollectibleSystem();
   }
 
-  public async initialize(): Promise<void> {
+  public async initialize(themeName?: SceneThemeName): Promise<void> {
     if (this.gameInitialized) return;
 
     try {
-      // Initialize all systems
-      await this.sceneManager.initialize();
+      // Initialize all systems with optional theme
+      await this.sceneManager.initialize(themeName);
 
       // Get scene and camera first
       const scene = this.sceneManager.getScene();
@@ -154,10 +155,28 @@ export class Game {
     window.addEventListener("beforeunload", this.onBeforeUnload.bind(this));
   }
 
-  public startGame(isMultiplayer = false): void {
+  public async startGame(
+    isMultiplayer = false,
+    themeName?: SceneThemeName
+  ): Promise<void> {
     this.isMultiplayer = isMultiplayer;
     this.gameState = "playing";
     this.resetGameState();
+
+    // For single player, use random theme if not specified
+    if (!isMultiplayer && !themeName) {
+      const availableThemes = this.sceneManager.getAvailableThemes();
+      themeName =
+        availableThemes[Math.floor(Math.random() * availableThemes.length)];
+      console.log(`🎨 Selected random theme for single player: ${themeName}`);
+    }
+
+    // Switch to the selected theme if different from current
+    if (themeName) {
+      await this.sceneManager.switchTheme(themeName);
+      console.log(`🎮 Started game with ${themeName} theme`);
+    }
+
     this.startGameLoop();
 
     if (isMultiplayer) {
@@ -1246,5 +1265,32 @@ export class Game {
   public playSound(soundName: string): void {
     // AudioSystem playSound method access will be implemented when available
     console.log("Playing sound:", soundName);
+  }
+
+  /**
+   * Switch to a different scene theme
+   */
+  public async switchSceneTheme(themeName: SceneThemeName): Promise<void> {
+    try {
+      await this.sceneManager.switchTheme(themeName);
+      console.log(`🎨 Switched to ${themeName} theme`);
+    } catch (error) {
+      console.error(`Failed to switch to ${themeName} theme:`, error);
+    }
+  }
+
+  /**
+   * Get available scene themes
+   */
+  public getAvailableThemes(): SceneThemeName[] {
+    return this.sceneManager.getAvailableThemes();
+  }
+
+  /**
+   * Get current scene theme
+   */
+  public getCurrentTheme(): string | null {
+    const theme = this.sceneManager.getCurrentTheme();
+    return theme ? theme.getConfig().name : null;
   }
 }

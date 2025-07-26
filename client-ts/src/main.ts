@@ -481,8 +481,8 @@ function setupUIEventListeners(
 
   // Single player button
   const singlePlayerBtn = document.getElementById("singlePlayerBtn");
-  singlePlayerBtn?.addEventListener("click", () => {
-    startSinglePlayer(game);
+  singlePlayerBtn?.addEventListener("click", async () => {
+    await startSinglePlayer(game);
   });
 
   // Multiplayer button
@@ -781,7 +781,7 @@ function showInGameChat(networkManager: NetworkManager): void {
   chatInput.focus();
 }
 
-function startSinglePlayer(game: Game): void {
+async function startSinglePlayer(game: Game): Promise<void> {
   const menuElement = document.getElementById("mainMenu");
   if (menuElement) {
     menuElement.style.display = "none";
@@ -793,8 +793,8 @@ function startSinglePlayer(game: Game): void {
   // Enter fullscreen mode
   requestFullscreen();
 
-  // Start single player game
-  game.startGame(false);
+  // Start single player game with random theme
+  await game.startGame(false);
 
   // Setup pointer lock
   setTimeout(() => {
