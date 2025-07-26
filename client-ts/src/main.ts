@@ -194,7 +194,10 @@ function updatePartyMembers(
   networkManager: NetworkManager
 ): void {
   const partyMembers = document.getElementById("partyMembers");
-  if (!partyMembers) return;
+  if (!partyMembers) {
+    console.warn("❗️ Party members element not found");
+    return;
+  }
 
   partyMembers.innerHTML = members
     .map(

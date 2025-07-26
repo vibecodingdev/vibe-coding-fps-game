@@ -99,6 +99,13 @@ export class NetworkManager implements NetworkState {
       this.updateConnectionStatus(
         `🟢 Connected to Hell (${this.currentServerURL})`
       );
+
+      // Set player name on connection if available
+      const playerName = this.getPlayerName();
+      if (playerName && this.socket) {
+        this.socket.emit("user:joined", { name: playerName });
+        console.log(`👹 Player name set to: ${playerName}`);
+      }
     });
 
     this.socket.on("disconnect", () => {
@@ -136,15 +143,20 @@ export class NetworkManager implements NetworkState {
       this.isPlayerReady = false;
 
       if (this.onPartyMembersUpdate) {
-        const playerName = this.getPlayerName();
-        if (playerName) {
-          const currentPlayer = {
-            id: this.socket!.id,
-            name: playerName,
-            ready: false,
-            isLeader: true,
-          };
-          this.onPartyMembersUpdate([currentPlayer]);
+        // Use players data from server if available, otherwise create from local data
+        if (data.players) {
+          this.onPartyMembersUpdate(data.players);
+        } else {
+          const playerName = this.getPlayerName();
+          if (playerName) {
+            const currentPlayer = {
+              id: this.socket!.id,
+              name: playerName,
+              ready: false,
+              isLeader: true,
+            };
+            this.onPartyMembersUpdate([currentPlayer]);
+          }
         }
       }
     });
@@ -179,12 +191,20 @@ export class NetworkManager implements NetworkState {
       if (this.onChatMessage) {
         this.onChatMessage("system", `${data.player.name} entered the chamber`);
       }
+      // Update party members list
+      if (this.onPartyMembersUpdate && data.players) {
+        this.onPartyMembersUpdate(data.players);
+      }
     });
 
     this.socket.on("party:member_left", (data) => {
       console.log("👹 Demon left:", data);
       if (this.onChatMessage) {
         this.onChatMessage("system", `${data.playerName} left the chamber`);
+      }
+      // Update party members list
+      if (this.onPartyMembersUpdate && data.players) {
+        this.onPartyMembersUpdate(data.players);
       }
     });
 
@@ -197,15 +217,26 @@ export class NetworkManager implements NetworkState {
           `${data.newLeaderName} is now the chamber leader`
         );
       }
+      // Update party members list
+      if (this.onPartyMembersUpdate && data.players) {
+        this.onPartyMembersUpdate(data.players);
+      }
     });
 
     this.socket.on("party:ready_state", (data) => {
-      // Handle ready state updates
       console.log("Player ready state:", data);
+      // Update party members list with new ready states
+      if (this.onPartyMembersUpdate && data.players) {
+        this.onPartyMembersUpdate(data.players);
+      }
     });
 
     this.socket.on("party:all_ready", (data) => {
       console.log("All players ready:", data);
+      // Update UI to reflect all players are ready
+      if (this.onPartyMembersUpdate && data.players) {
+        this.onPartyMembersUpdate(data.players);
+      }
     });
 
     // Chat events
@@ -301,6 +332,10 @@ export class NetworkManager implements NetworkState {
       return;
     }
 
+    // First set the player name on the server
+    this.socket.emit("user:joined", { name: playerName });
+
+    // Then create the room
     this.socket.emit("room:create", {
       name: roomName,
       maxPlayers: maxPlayers,
@@ -321,6 +356,10 @@ export class NetworkManager implements NetworkState {
       return;
     }
 
+    // First set the player name on the server
+    this.socket.emit("user:joined", { name: playerName });
+
+    // Then join the room
     this.socket.emit("room:join", {
       roomId: roomId,
       playerName: playerName,
@@ -353,7 +392,13 @@ export class NetworkManager implements NetworkState {
     }
 
     this.isPlayerReady = !this.isPlayerReady;
-    this.socket.emit("party:ready", { ready: this.isPlayerReady });
+    console.log("🔄 Toggling ready state to:", this.isPlayerReady);
+
+    if (this.isPlayerReady) {
+      this.socket.emit("player:ready");
+    } else {
+      this.socket.emit("player:not_ready");
+    }
   }
 
   public startGame(): void {

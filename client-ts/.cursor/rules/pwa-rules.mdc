@@ -8,3 +8,4 @@ alwaysApply: true
 1: Always maintain the maintainability of the project structure, avoiding issues such as excessively large single code files.
 2: Strive to fundamentally solve logical problems, avoiding the use of temporary and hack methods to solve problems.
 3: Strive to use the most concise logic and code to achieve the best results.
+4: Avoid large-scale refactoring, and if necessary, perform small-scale refactoring step by step to optimize the overall structure.

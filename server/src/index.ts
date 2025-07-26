@@ -515,6 +515,14 @@ io.on("connection", (socket) => {
         mapType: room.mapType,
       },
       isLeader: true,
+      players: [
+        {
+          id: player.id,
+          name: player.name,
+          ready: player.ready,
+          isLeader: true,
+        },
+      ],
     });
 
     console.log(`🏰 Room created: ${roomId} by ${player.name}`);
@@ -570,6 +578,12 @@ io.on("connection", (socket) => {
         ready: player.ready,
         isLeader: false,
       },
+      players: room.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        ready: p.ready,
+        isLeader: p.id === room.leaderId,
+      })),
     });
 
     console.log(`👹 ${player.name} joined room ${roomId}`);
@@ -594,6 +608,12 @@ io.on("connection", (socket) => {
     socket.to(player.roomId).emit(GAME_EVENTS.PARTY.MEMBER_LEFT, {
       playerId: socket.id,
       playerName: player.name,
+      players: room.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        ready: p.ready,
+        isLeader: p.id === room.leaderId,
+      })),
     });
 
     // If room is empty or leader left, handle room cleanup
@@ -608,6 +628,12 @@ io.on("connection", (socket) => {
       broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.LEADER_CHANGED, {
         newLeaderId: room.leaderId,
         newLeaderName: room.players[0].name,
+        players: room.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          ready: p.ready,
+          isLeader: p.id === room.leaderId,
+        })),
       });
     }
 
@@ -691,6 +717,12 @@ io.on("connection", (socket) => {
     broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.READY_STATE, {
       playerId: socket.id,
       ready: true,
+      players: room.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        ready: p.ready,
+        isLeader: p.id === room.leaderId,
+      })),
     });
 
     // Check if all players are ready
@@ -698,6 +730,12 @@ io.on("connection", (socket) => {
     if (allReady && room.players.length >= 2) {
       broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.ALL_READY, {
         canStart: true,
+        players: room.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          ready: p.ready,
+          isLeader: p.id === room.leaderId,
+        })),
       });
     }
   });
@@ -707,9 +745,18 @@ io.on("connection", (socket) => {
     if (!player || !player.roomId) return;
 
     player.ready = false;
+    const room = rooms.get(player.roomId);
+    if (!room) return;
+
     broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.READY_STATE, {
       playerId: socket.id,
       ready: false,
+      players: room.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        ready: p.ready,
+        isLeader: p.id === room.leaderId,
+      })),
     });
   });
 
