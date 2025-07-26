@@ -11,7 +11,7 @@ module.exports = (env, argv) => {
       path: path.resolve(__dirname, "dist"),
       filename: isProduction ? "[name].[contenthash].js" : "[name].js",
       clean: true,
-      publicPath: "./",
+      publicPath: "/",
     },
     resolve: {
       extensions: [".ts", ".js"],
@@ -55,6 +55,8 @@ module.exports = (env, argv) => {
       new HtmlWebpackPlugin({
         template: "./src/index.html",
         filename: "index.html",
+        cache: false, // 禁用HTML缓存
+        inject: true,
       }),
       new CopyWebpackPlugin({
         patterns: [
@@ -66,14 +68,37 @@ module.exports = (env, argv) => {
       }),
     ],
     devServer: {
-      static: {
-        directory: path.join(__dirname, "dist"),
-      },
+      static: [
+        {
+          directory: path.join(__dirname, "dist"),
+          watch: true, // 监听静态文件变化
+        },
+        {
+          directory: path.join(__dirname, "src"),
+          watch: true, // 监听源文件变化
+        },
+      ],
       compress: true,
       port: 3000,
       open: true,
       hot: true,
+      liveReload: true, // 启用实时重载
       historyApiFallback: true,
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+      devMiddleware: {
+        writeToDisk: false,
+      },
+      client: {
+        overlay: {
+          errors: true,
+          warnings: false,
+        },
+        progress: true,
+      },
     },
     devtool: isProduction ? "source-map" : "eval-source-map",
     optimization: {
@@ -87,6 +112,18 @@ module.exports = (env, argv) => {
           },
         },
       },
+    },
+    // 开发环境缓存配置
+    cache: !isProduction
+      ? false
+      : {
+          type: "filesystem",
+        },
+    // 监听文件变化配置
+    watchOptions: {
+      ignored: /node_modules/,
+      aggregateTimeout: 300,
+      poll: 1000,
     },
   };
 };

@@ -130,6 +130,12 @@ canvas {
   font-size: 0.9rem;
 }
 
+.version {
+  margin-top: 1rem;
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
 .social-icons {
   position: absolute;
   bottom: 2rem;

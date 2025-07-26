@@ -1,0 +1,47 @@
+{
+  "name": "doom-protocol-client-ts",
+  "version": "1.0.0",
+  "description": "DOOM PROTOCOL - Hellish Combat Arena (TypeScript Client)",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:webpack": "webpack serve --mode development",
+    "build": "vite build",
+    "build:webpack": "webpack --mode production",
+    "preview": "vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/three": "^0.158.0",
+    "@types/socket.io-client": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
+    "eslint": "^8.50.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0",
+    "@vitejs/plugin-legacy": "^5.0.0",
+    "html-webpack-plugin": "^5.5.3",
+    "ts-loader": "^9.4.4",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
+    "style-loader": "^3.3.3"
+  },
+  "dependencies": {
+    "three": "^0.158.0",
+    "socket.io-client": "^4.7.2"
+  },
+  "keywords": ["game", "fps", "doom", "three.js", "typescript", "multiplayer"],
+  "author": "Game Developer",
+  "license": "MIT"
+}
