@@ -380,13 +380,44 @@ export class Game {
     this.uiManager.updateGameStats(this.gameStats);
 
     // 更新雷达 - 只显示活着的怪物
-    const aliveDemoms = (this.demonSystem.demons || []).filter(
-      (demon) => demon.state !== "dead" && !demon.mesh.userData.markedForRemoval
-    );
+    const aliveDemoms = (this.demonSystem.demons || []).filter((demon) => {
+      // Handle both DemonInstance (single-player) and THREE.Group (multiplayer server demons)
+      if ((demon as any).mesh) {
+        // DemonInstance type - single player demons
+        const demonInstance = demon as any;
+        return (
+          demonInstance.state !== "dead" &&
+          demonInstance.mesh.userData &&
+          !demonInstance.mesh.userData.markedForRemoval &&
+          !demonInstance.mesh.userData.isDead
+        );
+      } else if ((demon as any).userData) {
+        // THREE.Group type - multiplayer server demons (direct mesh objects)
+        const demonMesh = demon as any;
+        return (
+          !demonMesh.userData.markedForRemoval &&
+          !demonMesh.userData.isDead &&
+          (!demonMesh.userData.serverHealth ||
+            demonMesh.userData.serverHealth > 0)
+        );
+      }
+      // Skip invalid objects
+      return false;
+    });
     const camera = this.sceneManager.getCamera();
     if (camera) {
+      // 获取远程玩家信息（如果是多人游戏）
+      const remotePlayers = this.isMultiplayer
+        ? this.networkManager.remotePlayers
+        : undefined;
+
       // 使用相机的实时位置而不是playerState.position
-      this.uiManager.updateRadar(camera.position, aliveDemoms, camera);
+      this.uiManager.updateRadar(
+        camera.position,
+        aliveDemoms,
+        camera,
+        remotePlayers
+      );
     }
   }
 
@@ -657,10 +688,6 @@ export class Game {
     this.gameState = state;
   }
 
-  public getGameState(): GameState {
-    return this.gameState;
-  }
-
   public setMultiplayerMode(isMultiplayer: boolean): void {
     this.isMultiplayer = isMultiplayer;
   }
@@ -805,7 +832,15 @@ export class Game {
 
   public addDemon(demon: any): void {
     // For compatibility with multiplayer system
-    this.demonSystem.demons.push(demon);
+    // Check if this is already a THREE.Group with userData (server demon)
+    if (demon && demon.userData) {
+      // This is a server demon (THREE.Group), add directly to the demons array
+      this.demonSystem.demons.push(demon);
+    } else {
+      // This might be a DemonInstance, extract the mesh
+      const meshToAdd = demon.mesh || demon;
+      this.demonSystem.demons.push(meshToAdd);
+    }
   }
 
   public removeDemon(demon: any): void {
@@ -827,10 +862,12 @@ export class Game {
     const scene = this.getScene();
     if (scene) {
       this.demonSystem.demons.forEach((demon) => {
-        if (demon.mesh) {
-          scene.remove(demon.mesh);
+        if ((demon as any).mesh) {
+          // DemonInstance type - remove the mesh
+          scene.remove((demon as any).mesh);
         } else {
-          scene.remove(demon);
+          // THREE.Group type - remove the demon directly
+          scene.remove(demon as any);
         }
       });
     }
@@ -838,8 +875,143 @@ export class Game {
   }
 
   public createDemonModel(demonType: string): THREE.Group | null {
-    // Create a basic demon model for multiplayer compatibility
+    // 创建基于类型的demon模型，参考旧版实现
     try {
+      // 导入demon配置
+      const { DEMON_CONFIGS } = require("@/config/demons");
+      const typeData = DEMON_CONFIGS[demonType as keyof typeof DEMON_CONFIGS];
+
+      if (!typeData) {
+        console.warn(`Unknown demon type: ${demonType}, using IMP as fallback`);
+        return this.createDemonModel("IMP");
+      }
+
+      const demonGroup = new THREE.Group();
+
+      // 主体（使用box geometry以确保兼容性）
+      const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.3);
+      const bodyMaterial = new THREE.MeshLambertMaterial({
+        color: typeData.color,
+      });
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      body.position.y = 0.6;
+      demonGroup.add(body);
+
+      // 头部
+      const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      const headMaterial = new THREE.MeshLambertMaterial({
+        color: typeData.headColor,
+      });
+      const head = new THREE.Mesh(headGeometry, headMaterial);
+      head.position.y = 1.4;
+      demonGroup.add(head);
+
+      // 眼睛（不同类型有不同颜色）
+      const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+      const eyeMaterial = new THREE.MeshBasicMaterial({
+        color: typeData.eyeColor,
+      });
+
+      const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      leftEye.position.set(-0.1, 1.45, 0.25);
+      demonGroup.add(leftEye);
+
+      const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      rightEye.position.set(0.1, 1.45, 0.25);
+      demonGroup.add(rightEye);
+
+      // 手臂
+      const armGeometry = new THREE.BoxGeometry(0.15, 0.7, 0.15);
+      const armMaterial = new THREE.MeshLambertMaterial({
+        color: typeData.headColor,
+      });
+
+      const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+      leftArm.position.set(-0.45, 0.8, 0);
+      leftArm.rotation.z = 0.3;
+      demonGroup.add(leftArm);
+
+      const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+      rightArm.position.set(0.45, 0.8, 0);
+      rightArm.rotation.z = -0.3;
+      demonGroup.add(rightArm);
+
+      // 腿部
+      const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+      const legMaterial = new THREE.MeshLambertMaterial({
+        color: typeData.color,
+      });
+
+      const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+      leftLeg.position.set(-0.15, -0.4, 0);
+      demonGroup.add(leftLeg);
+
+      const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+      rightLeg.position.set(0.15, -0.4, 0);
+      demonGroup.add(rightLeg);
+
+      // 基于demon类型的特殊特征
+      if (demonType === "CACODEMON" || demonType === "BARON") {
+        // 为Cacodemon和Baron添加装甲/尖刺
+        const armorGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.4);
+        const armorMaterial = new THREE.MeshLambertMaterial({
+          color: 0x222222,
+        });
+        const armor = new THREE.Mesh(armorGeometry, armorMaterial);
+        armor.position.y = 1.0;
+        demonGroup.add(armor);
+      }
+
+      if (demonType === "DEMON") {
+        // 为快速demon添加头盔
+        const helmetGeometry = new THREE.BoxGeometry(0.45, 0.15, 0.45);
+        const helmetMaterial = new THREE.MeshLambertMaterial({
+          color: 0x444444,
+        });
+        const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+        helmet.position.y = 1.6;
+        demonGroup.add(helmet);
+      }
+
+      if (demonType === "BARON") {
+        // 为Baron添加王冠
+        const crownGeometry = new THREE.ConeGeometry(0.3, 0.4, 6);
+        const crownMaterial = new THREE.MeshLambertMaterial({
+          color: 0x8b0000,
+        });
+        const crown = new THREE.Mesh(crownGeometry, crownMaterial);
+        crown.position.y = 1.8;
+        demonGroup.add(crown);
+      }
+
+      // 应用大小缩放
+      demonGroup.scale.setScalar(typeData.scale);
+
+      // 启用阴影
+      demonGroup.traverse(function (child) {
+        if ((child as any).isMesh) {
+          (child as THREE.Mesh).castShadow = true;
+          (child as THREE.Mesh).receiveShadow = true;
+        }
+      });
+
+      // 在模型中存储demon类型和其他属性
+      demonGroup.userData = {
+        demonType: demonType,
+        health: typeData.health,
+        maxHealth: typeData.health,
+        isServerControlled: true,
+        speed: typeData.speed,
+        attackDamage: typeData.attackDamage,
+        isDead: false,
+        markedForRemoval: false,
+      };
+
+      return demonGroup;
+    } catch (error) {
+      console.error("Failed to create demon model:", error);
+
+      // 创建简单的备用模型
       const demonGeometry = new THREE.BoxGeometry(1, 2, 1);
       const demonMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
       const demon = new THREE.Mesh(demonGeometry, demonMaterial);
@@ -847,7 +1019,6 @@ export class Game {
       const demonGroup = new THREE.Group();
       demonGroup.add(demon);
 
-      // Add basic userData structure for compatibility
       demonGroup.userData = {
         demonType: demonType,
         health: 1,
@@ -856,9 +1027,6 @@ export class Game {
       };
 
       return demonGroup;
-    } catch (error) {
-      console.error("Failed to create demon model:", error);
-      return null;
     }
   }
 
@@ -872,23 +1040,6 @@ export class Game {
   public completeWave(waveNumber: number): void {
     console.log(`Wave ${waveNumber} completed!`);
     // Additional wave completion logic can be added here
-  }
-
-  // Pause and resume functionality
-  public pauseGame(): void {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
-    }
-    this.gameState = "paused";
-  }
-
-  public resumeGame(): void {
-    if (this.gameState === "paused") {
-      this.gameState = "playing";
-      this.prevTime = performance.now();
-      this.animate();
-    }
   }
 
   // Utility methods

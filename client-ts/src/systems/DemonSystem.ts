@@ -35,7 +35,7 @@ export class DemonSystem implements IDemonSystem {
 
   public update(deltaTime: number): void {
     // Update demon AI and animations
-    this.demons.forEach((demon) => {
+    this.demons.forEach((demon: any) => {
       this.updateDemonAI(demon, deltaTime);
     });
 
@@ -47,15 +47,46 @@ export class DemonSystem implements IDemonSystem {
   }
 
   private removeDeadDemons(): void {
-    // Find demons marked for removal
-    const demonsToRemove = this.demons.filter(
-      (demon) => demon.mesh.userData.markedForRemoval
-    );
+    const demonsToRemove: any[] = [];
 
-    // Remove them from scene and array
-    demonsToRemove.forEach((demon) => {
-      console.log(`🗑️ Removing dead ${demon.type} from scene`);
-      this.scene.remove(demon.mesh);
+    this.demons.forEach((demon: any) => {
+      let isDead = false;
+      let isMarkedForRemoval = false;
+      let meshObject: THREE.Object3D;
+
+      // Handle both DemonInstance and direct THREE.Group objects
+      if (demon.mesh) {
+        // DemonInstance structure
+        isDead = demon.state === "dead";
+        isMarkedForRemoval = demon.mesh.userData?.markedForRemoval;
+        meshObject = demon.mesh;
+      } else if (demon.userData) {
+        // Direct THREE.Group object (multiplayer)
+        isDead = demon.userData.isDead;
+        isMarkedForRemoval = demon.userData.markedForRemoval;
+        meshObject = demon;
+      } else {
+        // Invalid demon object
+        demonsToRemove.push(demon);
+        return;
+      }
+
+      if (isDead || isMarkedForRemoval) {
+        demonsToRemove.push(demon);
+      }
+    });
+
+    // Remove dead demons
+    demonsToRemove.forEach((demon: any) => {
+      // Remove from scene
+      let meshObject: THREE.Object3D;
+      if (demon.mesh) {
+        meshObject = demon.mesh;
+      } else {
+        meshObject = demon;
+      }
+
+      this.scene.remove(meshObject);
 
       // Remove from demons array
       const index = this.demons.indexOf(demon);
@@ -66,7 +97,29 @@ export class DemonSystem implements IDemonSystem {
   }
 
   private updateDemonAI(demon: DemonInstance, deltaTime: number): void {
-    if (!demon.mesh.userData || demon.state === "dead") return;
+    // Handle both single-player DemonInstance and multiplayer THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
+    let demonState: string;
+
+    // Check if this is a DemonInstance (single-player) or THREE.Group (multiplayer)
+    if (demon.mesh) {
+      // Single-player DemonInstance
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
+      demonState = demon.state;
+    } else if ((demon as any).userData) {
+      // Multiplayer THREE.Group
+      meshObject = demon as any;
+      userData = (demon as any).userData;
+      demonState = userData.isDead ? "dead" : "idle";
+    } else {
+      // Invalid demon object, skip
+      console.warn("Invalid demon object structure, skipping AI update");
+      return;
+    }
+
+    if (!userData || demonState === "dead") return;
 
     // Get player position (this should come from the player controller)
     // For now, we'll use camera position as a placeholder
@@ -74,36 +127,42 @@ export class DemonSystem implements IDemonSystem {
     if (!camera) return;
 
     const playerPosition = camera.position;
-    const userData = demon.mesh.userData;
 
     // Handle falling demons
     if (userData.isFalling) {
       userData.fallSpeed += 0.02;
-      demon.mesh.rotation.x += userData.fallSpeed;
+      meshObject.rotation.x += userData.fallSpeed;
 
-      if (demon.mesh.rotation.x >= Math.PI / 2) {
-        demon.mesh.rotation.x = Math.PI / 2;
+      if (meshObject.rotation.x >= Math.PI / 2) {
+        meshObject.rotation.x = Math.PI / 2;
         userData.isFalling = false;
-        demon.state = "dead";
-        console.log(`${demon.type} fell down and is now dead`);
+
+        // Update state properly for both types
+        if (demon.mesh) {
+          demon.state = "dead";
+        } else {
+          userData.isDead = true;
+        }
+
+        console.log(`Demon fell down and is now dead`);
 
         // Mark for removal after a short delay
         setTimeout(() => {
-          if (demon.state === "dead") {
-            userData.markedForRemoval = true;
-          }
+          userData.markedForRemoval = true;
         }, 2000); // Remove corpse after 2 seconds
       }
       return;
     }
 
     // Calculate distance to player
-    const dx = playerPosition.x - demon.position.x;
-    const dz = playerPosition.z - demon.position.z;
+    const demonPosition = meshObject.position;
+    const dx = playerPosition.x - demonPosition.x;
+    const dz = playerPosition.z - demonPosition.z;
     const distanceToPlayer = Math.sqrt(dx * dx + dz * dz);
 
-    // Get demon config
-    const config = DEMON_CONFIGS[demon.type];
+    // Get demon config - use default values if config not found
+    const demonType = userData.demonType || "IMP";
+    const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
 
     // Update attack cooldown
     if (userData.attackCooldown > 0) {
@@ -126,145 +185,247 @@ export class DemonSystem implements IDemonSystem {
 
     // Keep demons within map bounds
     const maxDistance = 90; // Increased map bounds
-    demon.position.x = Math.max(
+    demonPosition.x = Math.max(
       -maxDistance,
-      Math.min(maxDistance, demon.position.x)
+      Math.min(maxDistance, demonPosition.x)
     );
-    demon.position.z = Math.max(
+    demonPosition.z = Math.max(
       -maxDistance,
-      Math.min(maxDistance, demon.position.z)
+      Math.min(maxDistance, demonPosition.z)
     );
 
-    // Update mesh position and rotation
-    demon.mesh.position.copy(demon.position);
+    // Update mesh position and rotation (already updated in place for multiplayer demons)
+    if (demon.mesh) {
+      // Single-player: copy position from DemonInstance to mesh
+      demon.mesh.position.copy(demon.position);
+    }
+    // For multiplayer demons, position is already updated directly on the object
 
     // Add subtle animation effects
     this.updateDemonAnimation(demon, deltaTime);
   }
 
-  private updateDemonAnimation(demon: DemonInstance, _deltaTime: number): void {
-    const time = Date.now() * 0.001;
+  private updateDemonAnimation(
+    demon: DemonInstance | any,
+    deltaTime: number
+  ): void {
+    // Handle both DemonInstance and direct THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
 
-    // Breathing/bobbing animation
-    const bobAmount = 0.1;
-    const bobSpeed = 2.0;
-    demon.mesh.position.y =
-      demon.position.y + Math.sin(time * bobSpeed) * bobAmount;
-
-    // Subtle swaying when not moving aggressively
-    if (demon.state === "idle" || demon.state === "patrolling") {
-      const swayAmount = 0.05;
-      const swaySpeed = 1.5;
-      demon.mesh.rotation.z = Math.sin(time * swaySpeed) * swayAmount;
-    }
-
-    // Scale animation when attacking
-    if (demon.state === "attacking" && demon.mesh.userData.isAttacking) {
-      const scaleMultiplier = 1 + Math.sin(time * 8) * 0.1;
-      demon.mesh.scale.setScalar(
-        demon.mesh.userData.originalScale * scaleMultiplier
-      );
+    if (demon.mesh) {
+      // DemonInstance structure
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
     } else {
-      // Return to normal scale
-      demon.mesh.scale.setScalar(demon.mesh.userData.originalScale);
+      // Direct THREE.Group object (multiplayer)
+      meshObject = demon;
+      userData = demon.userData;
     }
+
+    if (!userData || userData.isDead) return;
+
+    // Handle attack scaling
+    if (userData.isAttacking) {
+      if (!userData.attackScaleSet) {
+        userData.originalScale = meshObject.scale.x;
+        meshObject.scale.setScalar(userData.originalScale * 1.15);
+        userData.attackScaleSet = true;
+      }
+    } else {
+      if (userData.attackScaleSet) {
+        meshObject.scale.setScalar(userData.originalScale || 1);
+        userData.attackScaleSet = false;
+      }
+    }
+
+    // Add subtle bobbing animation
+    const time = performance.now() * 0.001;
+    const bobAmount = 0.05;
+    const originalY = meshObject.position.y;
+    meshObject.position.y = originalY + Math.sin(time * 3) * bobAmount;
   }
 
   private executeDemonAttack(
-    demon: DemonInstance,
-    _playerPosition: THREE.Vector3
+    demon: DemonInstance | any,
+    playerPosition: THREE.Vector3
   ): void {
-    demon.state = "attacking";
-    const userData = demon.mesh.userData;
+    // Handle both DemonInstance and direct THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
 
-    if (userData.attackCooldown <= 0) {
-      // Execute attack
-      userData.attackCooldown = 60; // 1 second at 60fps
-      userData.isAttacking = true;
+    if (demon.mesh) {
+      // DemonInstance structure
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
+    } else {
+      // Direct THREE.Group object (multiplayer)
+      meshObject = demon;
+      userData = demon.userData;
+    }
 
-      // Scale up when attacking
-      if (!userData.attackScaleSet) {
-        userData.originalScale = demon.mesh.scale.x;
-        demon.mesh.scale.setScalar(userData.originalScale * 1.15);
-        userData.attackScaleSet = true;
-      }
+    if (!userData) return;
 
-      console.log(`${demon.type} attacks!`);
+    // Stop all movement during attack
+    userData.isAttacking = true;
+
+    // Execute attack if cooldown is ready
+    if (!userData.hasAttacked && userData.attackCooldown <= 0) {
+      userData.attackCooldown = 180; // 3 seconds at 60fps
+      userData.hasAttacked = true;
+
+      // Calculate direction to player
+      const dx = playerPosition.x - meshObject.position.x;
+      const dz = playerPosition.z - meshObject.position.z;
+      const direction = Math.atan2(dx, dz);
+
+      // Attack animation - lunge forward
+      const lungeDistance = 0.8;
+      meshObject.position.x += Math.sin(direction) * lungeDistance;
+      meshObject.position.z += Math.cos(direction) * lungeDistance;
+
+      console.log("Demon executing attack!");
+    }
+
+    // Face the player during attack
+    const dx = playerPosition.x - meshObject.position.x;
+    const dz = playerPosition.z - meshObject.position.z;
+    const direction = Math.atan2(dx, dz);
+    meshObject.rotation.y = direction;
+
+    // Reset attack flag when cooldown ends
+    if (userData.attackCooldown <= 60) {
+      userData.hasAttacked = false;
+      userData.isAttacking = false;
     }
   }
 
   private prepareDemonAttack(
-    demon: DemonInstance,
+    demon: DemonInstance | any,
     playerPosition: THREE.Vector3
   ): void {
-    demon.state = "chasing";
-    // Slow movement, preparing to attack
-    const dx = playerPosition.x - demon.position.x;
-    const dz = playerPosition.z - demon.position.z;
+    // Handle both DemonInstance and direct THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
+
+    if (demon.mesh) {
+      // DemonInstance structure
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
+    } else {
+      // Direct THREE.Group object (multiplayer)
+      meshObject = demon;
+      userData = demon.userData;
+    }
+
+    if (!userData) return;
+
+    userData.isAttacking = false;
+
+    // Move slowly toward player while preparing
+    const prepareSpeed = (userData.walkSpeed || 0.3) * 0.6;
+    const moveDistance = prepareSpeed * 0.016;
+
+    const dx = playerPosition.x - meshObject.position.x;
+    const dz = playerPosition.z - meshObject.position.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
 
     if (distance > 0) {
-      const speed = DEMON_CONFIGS[demon.type].speed * 0.5; // Slower when preparing
-      demon.position.x += (dx / distance) * speed * 0.016; // Assuming 60fps
-      demon.position.z += (dz / distance) * speed * 0.016;
+      const normalizedX = dx / distance;
+      const normalizedZ = dz / distance;
+
+      meshObject.position.x += normalizedX * moveDistance;
+      meshObject.position.z += normalizedZ * moveDistance;
+
+      // Face the player
+      const direction = Math.atan2(dx, dz);
+      meshObject.rotation.y = direction;
     }
   }
 
   private executeDemonChase(
-    demon: DemonInstance,
+    demon: DemonInstance | any,
     playerPosition: THREE.Vector3,
     deltaTime: number
   ): void {
-    demon.state = "chasing";
+    // Handle both DemonInstance and direct THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
 
-    const dx = playerPosition.x - demon.position.x;
-    const dz = playerPosition.z - demon.position.z;
+    if (demon.mesh) {
+      // DemonInstance structure
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
+    } else {
+      // Direct THREE.Group object (multiplayer)
+      meshObject = demon;
+      userData = demon.userData;
+    }
+
+    if (!userData) return;
+
+    userData.isAttacking = false;
+
+    // Enhanced chase behavior
+    const chaseSpeed = userData.walkSpeed || 0.3;
+    const moveDistance = chaseSpeed * deltaTime * 0.1;
+
+    const dx = playerPosition.x - meshObject.position.x;
+    const dz = playerPosition.z - meshObject.position.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
 
     if (distance > 0) {
-      const speed = DEMON_CONFIGS[demon.type].speed;
-      const moveDistance = speed * (deltaTime / 1000); // Convert deltaTime to seconds
+      const normalizedX = dx / distance;
+      const normalizedZ = dz / distance;
 
-      demon.position.x += (dx / distance) * moveDistance;
-      demon.position.z += (dz / distance) * moveDistance;
+      meshObject.position.x += normalizedX * moveDistance;
+      meshObject.position.z += normalizedZ * moveDistance;
 
-      // Face the player
-      demon.mesh.lookAt(playerPosition);
+      // Face movement direction
+      const direction = Math.atan2(dx, dz);
+      meshObject.rotation.y = direction;
     }
   }
 
-  private executeDemonWander(demon: DemonInstance, deltaTime: number): void {
-    demon.state = "patrolling";
+  private executeDemonWander(
+    demon: DemonInstance | any,
+    deltaTime: number
+  ): void {
+    // Handle both DemonInstance and direct THREE.Group objects
+    let meshObject: THREE.Object3D;
+    let userData: any;
 
-    // Simple wandering behavior
-    if (!demon.mesh.userData.wanderDirection) {
-      demon.mesh.userData.wanderDirection = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        0,
-        (Math.random() - 0.5) * 2
-      ).normalize();
-      demon.mesh.userData.wanderTimer = Math.random() * 3000 + 1000; // 1-4 seconds
+    if (demon.mesh) {
+      // DemonInstance structure
+      meshObject = demon.mesh;
+      userData = demon.mesh.userData;
+    } else {
+      // Direct THREE.Group object (multiplayer)
+      meshObject = demon;
+      userData = demon.userData;
     }
 
-    demon.mesh.userData.wanderTimer -= deltaTime;
+    if (!userData) return;
 
-    if (demon.mesh.userData.wanderTimer <= 0) {
-      // Change direction
-      demon.mesh.userData.wanderDirection = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        0,
-        (Math.random() - 0.5) * 2
-      ).normalize();
-      demon.mesh.userData.wanderTimer = Math.random() * 3000 + 1000;
+    userData.isAttacking = false;
+
+    // Wandering behavior
+    const wanderSpeed = (userData.walkSpeed || 0.3) * 0.3;
+    const moveDistance = wanderSpeed * deltaTime * 0.1;
+
+    // Update wander timer
+    if (!userData.wanderTimer) userData.wanderTimer = 0;
+    userData.wanderTimer--;
+
+    if (userData.wanderTimer <= 0) {
+      userData.wanderDirection = Math.random() * Math.PI * 2;
+      userData.wanderTimer = 60 + Math.random() * 120;
     }
 
     // Move in wander direction
-    const speed = DEMON_CONFIGS[demon.type].speed * 0.3; // Slower when wandering
-    const moveDistance = speed * (deltaTime / 1000);
-
-    demon.position.add(
-      demon.mesh.userData.wanderDirection.clone().multiplyScalar(moveDistance)
-    );
+    meshObject.position.x += Math.sin(userData.wanderDirection) * moveDistance;
+    meshObject.position.z += Math.cos(userData.wanderDirection) * moveDistance;
+    meshObject.rotation.y = userData.wanderDirection;
   }
 
   public startWaveSystem(): void {

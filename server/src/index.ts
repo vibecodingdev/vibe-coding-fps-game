@@ -714,29 +714,30 @@ io.on("connection", (socket) => {
     const room = rooms.get(player.roomId);
     if (!room) return;
 
-    broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.READY_STATE, {
+    const playersData = room.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      ready: p.ready,
+      isLeader: p.id === room.leaderId,
+    }));
+
+    const dataToSend = {
       playerId: socket.id,
       ready: true,
-      players: room.players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        ready: p.ready,
-        isLeader: p.id === room.leaderId,
-      })),
-    });
+      players: playersData,
+    };
+
+    broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.READY_STATE, dataToSend);
 
     // Check if all players are ready
     const allReady = room.players.every((p) => p.ready);
     if (allReady && room.players.length >= 2) {
-      broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.ALL_READY, {
+      const allReadyData = {
         canStart: true,
-        players: room.players.map((p) => ({
-          id: p.id,
-          name: p.name,
-          ready: p.ready,
-          isLeader: p.id === room.leaderId,
-        })),
-      });
+        players: playersData,
+      };
+
+      broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.ALL_READY, allReadyData);
     }
   });
 
@@ -748,16 +749,20 @@ io.on("connection", (socket) => {
     const room = rooms.get(player.roomId);
     if (!room) return;
 
-    broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.READY_STATE, {
+    const playersData = room.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      ready: p.ready,
+      isLeader: p.id === room.leaderId,
+    }));
+
+    const dataToSend = {
       playerId: socket.id,
       ready: false,
-      players: room.players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        ready: p.ready,
-        isLeader: p.id === room.leaderId,
-      })),
-    });
+      players: playersData,
+    };
+
+    broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.READY_STATE, dataToSend);
   });
 
   // Game start

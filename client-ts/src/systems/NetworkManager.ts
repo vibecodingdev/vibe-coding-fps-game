@@ -12,6 +12,9 @@ export class NetworkManager implements NetworkState {
   public isMultiplayer = false;
   public isPlayerReady = false;
 
+  // Backup: manually maintain current players list
+  private currentPlayers: any[] = [];
+
   // Server connection
   private currentServerURL = "http://localhost:3000";
 
@@ -166,6 +169,12 @@ export class NetworkManager implements NetworkState {
       this.currentRoom = data.room;
       this.isRoomLeader = data.isLeader;
       this.isPlayerReady = false;
+
+      // Store initial players list
+      if (data.players) {
+        this.currentPlayers = data.players;
+      }
+
       if (this.onPartyMembersUpdate) {
         this.onPartyMembersUpdate(data.players);
       }
@@ -225,17 +234,96 @@ export class NetworkManager implements NetworkState {
 
     this.socket.on("party:ready_state", (data) => {
       console.log("Player ready state:", data);
+      console.log("🔧 Processing ready state update:", {
+        hasPlayersArray: !!data.players,
+        playersCount: data.players?.length,
+        playerId: data.playerId,
+        ready: data.ready,
+        entireData: data,
+      });
+
+      // Update this player's ready state if it's us
+      if (data.playerId === this.socket!.id) {
+        this.isPlayerReady = data.ready;
+        console.log("🎭 Updated local player ready state:", this.isPlayerReady);
+      }
+
       // Update party members list with new ready states
       if (this.onPartyMembersUpdate && data.players) {
+        console.log(
+          "🎪 Calling onPartyMembersUpdate with players:",
+          data.players
+        );
+        this.currentPlayers = data.players;
         this.onPartyMembersUpdate(data.players);
+      } else {
+        console.warn(
+          "❗️ Cannot update party members - missing callback or players data"
+        );
+
+        // Backup: Update ready state in our local players list
+        if (this.currentPlayers.length > 0) {
+          console.log("🔧 Using backup player list update");
+          const playerIndex = this.currentPlayers.findIndex(
+            (p) => p.id === data.playerId
+          );
+          if (playerIndex !== -1) {
+            this.currentPlayers[playerIndex].ready = data.ready;
+            console.log(
+              "✅ Updated player in backup list:",
+              this.currentPlayers[playerIndex]
+            );
+
+            if (this.onPartyMembersUpdate) {
+              console.log(
+                "🎪 Calling onPartyMembersUpdate with backup players:",
+                this.currentPlayers
+              );
+              this.onPartyMembersUpdate([...this.currentPlayers]);
+            }
+          }
+        }
       }
     });
 
     this.socket.on("party:all_ready", (data) => {
       console.log("All players ready:", data);
+      console.log("🔧 Processing all ready update:", {
+        hasPlayersArray: !!data.players,
+        playersCount: data.players?.length,
+        canStart: data.canStart,
+        entireData: data,
+      });
+
       // Update UI to reflect all players are ready
       if (this.onPartyMembersUpdate && data.players) {
+        console.log(
+          "🎪 Calling onPartyMembersUpdate with players:",
+          data.players
+        );
+        this.currentPlayers = data.players;
         this.onPartyMembersUpdate(data.players);
+      } else {
+        console.warn(
+          "❗️ Cannot update party members - missing callback or players data"
+        );
+
+        // Backup: Mark all players as ready in local list
+        if (this.currentPlayers.length > 0) {
+          console.log("🔧 Using backup - marking all players ready");
+          this.currentPlayers = this.currentPlayers.map((p) => ({
+            ...p,
+            ready: true,
+          }));
+
+          if (this.onPartyMembersUpdate) {
+            console.log(
+              "🎪 Calling onPartyMembersUpdate with backup players:",
+              this.currentPlayers
+            );
+            this.onPartyMembersUpdate([...this.currentPlayers]);
+          }
+        }
       }
     });
 
@@ -1041,7 +1129,7 @@ export class NetworkManager implements NetworkState {
         data.demon.rotation.z
       );
 
-      // Initialize complete userData for server demons
+      // Initialize complete userData for server demons (matching original client demon structure)
       demon.userData = {
         serverId: data.demon.id,
         serverHealth: data.demon.health,
@@ -1060,10 +1148,17 @@ export class NetworkManager implements NetworkState {
         originalScale: 1.0,
         attackScaleSet: false,
 
+        // Type-specific properties (use defaults if not available)
+        detectRange: 60,
+        attackRange: 3.5,
+        chaseRange: 8,
+        attackDamage: 10,
+
         // State flags
         isDead: false,
         isFalling: false,
         fallSpeed: 0,
+        markedForRemoval: false,
       };
 
       console.log(
@@ -1116,8 +1211,10 @@ export class NetworkManager implements NetworkState {
 
   public handleServerDemonUpdate(data: any, demons: any[]): void {
     // Find the demon by server ID and update its state
+    // Add safety checks to prevent accessing undefined properties
     const demon = demons.find(
-      (demon) => demon.userData.serverId === data.demonId
+      (demon) =>
+        demon && demon.userData && demon.userData.serverId === data.demonId
     );
 
     if (demon) {
@@ -1139,6 +1236,10 @@ export class NetworkManager implements NetworkState {
       if (data.aiState) {
         Object.assign(demon.userData, data.aiState);
       }
+    } else {
+      console.warn(
+        `Cannot find demon with serverId: ${data.demonId} in demons array`
+      );
     }
   }
 

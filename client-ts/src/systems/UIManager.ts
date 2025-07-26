@@ -169,7 +169,8 @@ export class UIManager {
   public updateRadar(
     playerPosition: THREE.Vector3,
     demons: Array<{ position: THREE.Vector3 }>,
-    camera: THREE.Camera
+    camera: THREE.Camera,
+    remotePlayers?: Map<string, any>
   ): void {
     if (!this.radarContext || !this.radarCanvas) {
       console.warn("🔴 Radar not available:", {
@@ -190,6 +191,16 @@ export class UIManager {
 
     // 绘制恶魔
     this.drawDemonsOnRadar(playerPosition, demons, centerX, centerY);
+
+    // 绘制远程玩家
+    if (remotePlayers) {
+      this.drawRemotePlayersOnRadar(
+        playerPosition,
+        remotePlayers,
+        centerX,
+        centerY
+      );
+    }
 
     // 绘制玩家（中心点）
     this.drawPlayerOnRadar(centerX, centerY, camera);
@@ -298,18 +309,176 @@ export class UIManager {
           radarY <= this.RADAR_SIZE &&
           this.radarContext
         ) {
-          this.radarContext.fillStyle = "#ff0000"; // 红色表示恶魔
+          // 根据demon类型确定颜色和大小
+          let demonColor = "#ff0000"; // 默认红色
+          let demonSize = 3;
+          let strokeColor = "#ff6666";
+
+          // 检查demon类型（支持两种结构）
+          const demonType =
+            (demon as any).userData?.demonType || (demon as any).demonType;
+
+          if (demonType) {
+            switch (demonType) {
+              case "DEMON":
+                demonColor = "#ff8c00"; // 橙色表示快速demon
+                demonSize = 2.5;
+                strokeColor = "#ffaa44";
+                break;
+              case "CACODEMON":
+                demonColor = "#ff00ff"; // 紫色表示坦克demon
+                demonSize = 4;
+                strokeColor = "#ff66ff";
+                break;
+              case "BARON":
+                demonColor = "#ffff00"; // 黄色表示Boss demon
+                demonSize = 5;
+                strokeColor = "#ffff66";
+                break;
+              default: // IMP
+                demonColor = "#ff0000"; // 红色表示普通demon
+                demonSize = 3;
+                strokeColor = "#ff6666";
+            }
+          }
+
+          // 如果demon很接近，增加大小
+          if (distance < 10) {
+            demonSize += 1;
+          }
+
+          this.radarContext.fillStyle = demonColor;
           this.radarContext.beginPath();
-          this.radarContext.arc(radarX, radarY, 4, 0, Math.PI * 2); // 更大更明显
+          this.radarContext.arc(radarX, radarY, demonSize, 0, Math.PI * 2);
           this.radarContext.fill();
 
           // 添加外环以便更好地识别
-          this.radarContext.strokeStyle = "#ff6666";
+          this.radarContext.strokeStyle = strokeColor;
           this.radarContext.lineWidth = 2;
           this.radarContext.beginPath();
-          this.radarContext.arc(radarX, radarY, 6, 0, Math.PI * 2);
+          this.radarContext.arc(radarX, radarY, demonSize + 1, 0, Math.PI * 2);
           this.radarContext.stroke();
+
+          // 为非常接近的demon添加脉冲效果
+          if (distance < 5) {
+            const pulseAlpha = 0.3 + 0.3 * Math.sin(Date.now() * 0.01);
+            this.radarContext.fillStyle = demonColor
+              .replace(")", `, ${pulseAlpha})`)
+              .replace("#", "rgba(")
+              .replace(/(.{2})(.{2})(.{2})/, "$1,$2,$3")
+              .replace(/[a-f0-9]{2}/gi, (match) =>
+                parseInt(match, 16).toString()
+              );
+            this.radarContext.beginPath();
+            this.radarContext.arc(
+              radarX,
+              radarY,
+              demonSize + 2,
+              0,
+              Math.PI * 2
+            );
+            this.radarContext.fill();
+          }
         }
+      }
+    });
+  }
+
+  private drawRemotePlayersOnRadar(
+    playerPos: THREE.Vector3,
+    remotePlayers: Map<string, any>,
+    centerX: number,
+    centerY: number
+  ): void {
+    if (!this.radarContext) return;
+
+    remotePlayers.forEach((player, playerId) => {
+      if (!player.mesh || !player.mesh.position) return;
+
+      // 计算相对位置
+      const relativeX = player.mesh.position.x - playerPos.x;
+      const relativeZ = player.mesh.position.z - playerPos.z;
+      const distance = Math.sqrt(relativeX * relativeX + relativeZ * relativeZ);
+
+      // 只显示雷达范围内的玩家
+      if (distance > this.RADAR_RANGE) return;
+
+      // 转换到雷达坐标
+      const radarX =
+        centerX + (relativeX / this.RADAR_RANGE) * (this.RADAR_SIZE / 2);
+      const radarY =
+        centerY - (relativeZ / this.RADAR_RANGE) * (this.RADAR_SIZE / 2);
+
+      // 检查是否在雷达圆圈内
+      const radarDistance = Math.sqrt(
+        (radarX - centerX) ** 2 + (radarY - centerY) ** 2
+      );
+      if (radarDistance > this.RADAR_SIZE / 2) return;
+
+      // 获取玩家颜色方案（如果有的话）
+      const colorScheme = player.colorScheme || {
+        body: 0x0088ff,
+        eyes: 0x00ffff,
+      };
+      const playerColor = `#${colorScheme.body.toString(16).padStart(6, "0")}`;
+      const eyeColor = `#${colorScheme.eyes.toString(16).padStart(6, "0")}`;
+
+      // 绘制玩家基础圆圈（比demon大）
+      if (this.radarContext) {
+        this.radarContext.fillStyle = playerColor;
+        this.radarContext.beginPath();
+        this.radarContext.arc(radarX, radarY, 5, 0, Math.PI * 2);
+        this.radarContext.fill();
+
+        // 绘制玩家眼睛发光（内圆）
+        this.radarContext.fillStyle = eyeColor;
+        this.radarContext.beginPath();
+        this.radarContext.arc(radarX, radarY, 2, 0, Math.PI * 2);
+        this.radarContext.fill();
+
+        // 绘制玩家轮廓以区分demon
+        this.radarContext.strokeStyle = "#ffffff";
+        this.radarContext.lineWidth = 1;
+        this.radarContext.beginPath();
+        this.radarContext.arc(radarX, radarY, 6, 0, Math.PI * 2);
+        this.radarContext.stroke();
+
+        // 添加队友标记（小方块）
+        const markerSize = 2;
+        this.radarContext.fillStyle = eyeColor;
+        this.radarContext.fillRect(
+          radarX - markerSize / 2,
+          radarY - 8,
+          markerSize,
+          markerSize
+        );
+      }
+
+      // 为非常接近的玩家添加脉冲效果（友方识别）
+      if (distance < 8 && this.radarContext) {
+        const pulseAlpha = 0.4 + 0.4 * Math.sin(Date.now() * 0.008);
+        this.radarContext.fillStyle = `${eyeColor}${Math.floor(pulseAlpha * 255)
+          .toString(16)
+          .padStart(2, "0")}`;
+        this.radarContext.beginPath();
+        this.radarContext.arc(radarX, radarY, 8, 0, Math.PI * 2);
+        this.radarContext.fill();
+      }
+
+      // 绘制玩家方向指示器（如果有方向信息）
+      if ((player.rotation || player.mesh.rotation) && this.radarContext) {
+        const rotation = player.rotation || player.mesh.rotation;
+        const angle = rotation.y; // 使用Y轴旋转
+        const lineLength = 4;
+        const endX = radarX + Math.sin(angle) * lineLength;
+        const endY = radarY - Math.cos(angle) * lineLength;
+
+        this.radarContext.strokeStyle = eyeColor;
+        this.radarContext.lineWidth = 2;
+        this.radarContext.beginPath();
+        this.radarContext.moveTo(radarX, radarY);
+        this.radarContext.lineTo(endX, endY);
+        this.radarContext.stroke();
       }
     });
   }

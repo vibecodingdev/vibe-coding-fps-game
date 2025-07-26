@@ -8,7 +8,7 @@ export class PlayerController {
   private velocity = new THREE.Vector3();
   private direction = new THREE.Vector3();
 
-  private readonly MOVE_SPEED = 400;
+  private readonly MOVE_SPEED = 100;
 
   constructor(
     private playerState: PlayerState,

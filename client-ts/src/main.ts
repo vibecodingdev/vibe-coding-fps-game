@@ -193,13 +193,22 @@ function updatePartyMembers(
   members: any[],
   networkManager: NetworkManager
 ): void {
+  console.log("🎭 updatePartyMembers called with:", {
+    members,
+    memberCount: members.length,
+    networkManagerReady: networkManager.isPlayerReady,
+    networkManagerLeader: networkManager.isRoomLeader,
+    currentRoom: networkManager.currentRoom,
+  });
+
   const partyMembers = document.getElementById("partyMembers");
   if (!partyMembers) {
     console.warn("❗️ Party members element not found");
     return;
   }
+  console.log("✅ Found partyMembers element:", partyMembers);
 
-  partyMembers.innerHTML = members
+  const membersHTML = members
     .map(
       (member) => `
     <div class="party-member ${member.isLeader ? "leader" : ""} ${
@@ -222,28 +231,48 @@ function updatePartyMembers(
     )
     .join("");
 
+  console.log("🔧 Generated members HTML:", membersHTML);
+  partyMembers.innerHTML = membersHTML;
+
   // Update room title if we have room info
   if (networkManager.currentRoom) {
     const roomTitle = document.getElementById("roomTitle");
     if (roomTitle) {
       roomTitle.textContent = `🔥 ${networkManager.currentRoom.name} 🔥`;
+      console.log("✅ Updated room title");
+    } else {
+      console.warn("❗️ Room title element not found");
     }
   }
 
   // Update ready button state
   const readyButton = document.getElementById("readyButton");
   if (readyButton) {
+    console.log(
+      "🔧 Updating ready button. Player ready state:",
+      networkManager.isPlayerReady
+    );
     if (networkManager.isPlayerReady) {
       readyButton.textContent = "✅ READY";
       readyButton.classList.add("ready");
+      console.log("✅ Set ready button to READY state");
     } else {
       readyButton.textContent = "⏳ NOT READY";
       readyButton.classList.remove("ready");
+      console.log("✅ Set ready button to NOT READY state");
     }
+  } else {
+    console.warn("❗️ Ready button element not found");
   }
 
   // Update start game button
   const allReady = members.every((m) => m.ready);
+  console.log("🎮 All ready check:", {
+    allReady,
+    members: members.map((m) => ({ name: m.name, ready: m.ready })),
+    isRoomLeader: networkManager.isRoomLeader,
+  });
+
   const startButton = document.getElementById(
     "startGameButton"
   ) as HTMLButtonElement;
@@ -251,18 +280,27 @@ function updatePartyMembers(
     startButton.disabled = !allReady || !networkManager.isRoomLeader;
     if (!networkManager.isRoomLeader) {
       startButton.textContent = "🎮 WAITING FOR LEADER";
+      console.log("✅ Set start button: WAITING FOR LEADER");
     } else if (!allReady) {
       startButton.textContent = "🎮 WAITING FOR PLAYERS";
+      console.log("✅ Set start button: WAITING FOR PLAYERS");
     } else {
       startButton.textContent = "🎮 BEGIN HELLISH COMBAT";
+      console.log("✅ Set start button: BEGIN HELLISH COMBAT");
     }
+  } else {
+    console.warn("❗️ Start game button element not found");
   }
 
   // Show party room
+  console.log("🔧 Showing party room...");
   hideAllMenus();
   const partyRoom = document.getElementById("partyRoom");
   if (partyRoom) {
     partyRoom.style.display = "block";
+    console.log("✅ Party room shown");
+  } else {
+    console.warn("❗️ Party room element not found");
   }
 }
 
