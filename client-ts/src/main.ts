@@ -472,6 +472,9 @@ function setupUIEventListeners(
   // Setup multiplayer event listeners (using a simplified version)
   setupMultiplayerEventListeners(networkManager);
 
+  // Setup game over event listeners
+  setupGameOverEventListeners(game);
+
   // Single player button
   const singlePlayerBtn = document.getElementById("singlePlayerBtn");
   singlePlayerBtn?.addEventListener("click", () => {
@@ -584,6 +587,20 @@ function setupMultiplayerEventListeners(networkManager: NetworkManager): void {
     btn.addEventListener("click", () => {
       showMainMenu();
     });
+  });
+}
+
+function setupGameOverEventListeners(game: Game): void {
+  // Restart game button
+  const restartGameBtn = document.getElementById("restartGameBtn");
+  restartGameBtn?.addEventListener("click", () => {
+    game.restartGame();
+  });
+
+  // Back to main menu button
+  const backToMainMenuBtn = document.getElementById("backToMainMenuBtn");
+  backToMainMenuBtn?.addEventListener("click", () => {
+    showMainMenu();
   });
 }
 

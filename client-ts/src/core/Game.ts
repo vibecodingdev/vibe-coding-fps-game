@@ -297,9 +297,26 @@ export class Game {
   }
 
   public endGame(): void {
+    console.log("💀 Game Over!");
     this.gameState = "gameOver";
     this.stopGameLoop();
     this.audioSystem.stopBackgroundMusic();
+
+    // Reset demon system to stop wave spawning
+    this.demonSystem.waveInProgress = false;
+
+    // Update final stats in UI
+    this.uiManager.updateGameOverStats(this.gameStats);
+
+    // Show game over screen after a brief delay
+    setTimeout(() => {
+      this.uiManager.showGameOver();
+
+      // Exit pointer lock
+      if (document.exitPointerLock) {
+        document.exitPointerLock();
+      }
+    }, 1000);
 
     if (this.isMultiplayer) {
       this.networkManager.leaveGame();
@@ -312,6 +329,48 @@ export class Game {
     this.weaponSystem.reset();
     this.demonSystem.reset();
     this.playerController.reset();
+  }
+
+  public restartGame(): void {
+    console.log("🔄 Restarting game...");
+
+    // Reset all game systems
+    this.resetGameState();
+
+    // Reset game state
+    this.gameState = "playing";
+
+    // Start game loop
+    this.startGameLoop();
+
+    // Hide all menus
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const pauseMenu = document.getElementById("pauseMenu");
+    const mainMenu = document.getElementById("mainMenu");
+
+    if (gameOverScreen) gameOverScreen.style.display = "none";
+    if (pauseMenu) pauseMenu.style.display = "none";
+    if (mainMenu) mainMenu.style.display = "none";
+
+    // Set body to game mode
+    document.body.className = "game-mode";
+
+    // Show game UI
+    const gameUI = document.getElementById("gameUI");
+    if (gameUI) {
+      gameUI.style.display = "block";
+    }
+
+    // Lock pointer for controls
+    const blocker = document.getElementById("blocker");
+    if (blocker) {
+      blocker.style.display = "none";
+    }
+
+    // Start background music
+    this.audioSystem.startBackgroundMusic();
+
+    console.log("✅ Game restarted successfully");
   }
 
   // 通过StateManager访问inputState
@@ -493,10 +552,9 @@ export class Game {
       }
     });
 
-    // Check player-collectible collisions
-    const collectibleCollision = this.collectibleSystem.checkPlayerCollision(
-      this.playerState.position
-    );
+    // Check player-collectible collisions (reuse existing playerPosition)
+    const collectibleCollision =
+      this.collectibleSystem.checkPlayerCollision(playerPosition);
     if (collectibleCollision.type) {
       this.onCollectiblePickup(collectibleCollision);
     }
@@ -508,6 +566,18 @@ export class Game {
     value: number;
   }): void {
     if (!collision.id || !collision.type) return;
+
+    // Check if we can benefit from this pickup
+    if (
+      collision.type === "health" &&
+      this.playerState.health >= GAME_CONFIG.MAX_HEALTH
+    ) {
+      return; // Skip if health is already full
+    }
+
+    if (collision.type === "ammo" && !this.weaponSystem.canBenefitFromAmmo()) {
+      return; // Skip if ammo is already full
+    }
 
     const collected = this.collectibleSystem.collectItem(collision.id);
     if (!collected) return;
@@ -524,14 +594,34 @@ export class Game {
         console.log(
           `💉 Healed ${actualHealing} HP! Health: ${this.playerState.health}/${GAME_CONFIG.MAX_HEALTH}`
         );
-        // TODO: Add health pack sound to AudioSystem
-        // this.audioSystem.playHealthPackSound();
+        // Play health pack sound
+        this.audioSystem.playHealthPackSound();
+
+        // Update UI to reflect health change
+        this.uiManager.updateHealth(this.playerState);
       }
     } else if (collision.type === "ammo") {
-      // TODO: Implement ammo refill when weapon system is enhanced
-      console.log(`🔋 Collected ${collision.value} ammo!`);
-      // TODO: Add ammo pack sound to AudioSystem
-      // this.audioSystem.playAmmoPackSound();
+      // Refill ammo using WeaponSystem method
+      const refillResult = this.weaponSystem.refillAmmo(collision.value);
+
+      if (refillResult.totalRefilled > 0) {
+        const refillText = refillResult.details.join(" + ");
+        console.log(`🔋 Energy cell collected! Refilled ${refillText}`);
+        // Play ammo pack sound
+        this.audioSystem.playAmmoPackSound();
+
+        // Update UI to reflect ammo changes
+        const currentWeapon = this.weaponSystem.currentWeapon;
+        const weaponState = this.weaponSystem.weaponStates[currentWeapon];
+        const weaponConfig = this.weaponSystem.weapons[currentWeapon];
+
+        this.uiManager.updateWeaponInfo({
+          name: weaponConfig.name,
+          currentAmmo: weaponState.currentAmmo,
+          maxAmmo: weaponConfig.maxAmmo,
+          emoji: weaponConfig.emoji,
+        });
+      }
     }
   }
 
@@ -550,6 +640,13 @@ export class Game {
     const damage = this.demonSystem.getDemonDamage(demonType);
     this.playerState.health = Math.max(0, this.playerState.health - damage);
     this.playerState.lastDamageTime = performance.now();
+
+    // Show damage effect
+    this.uiManager.showDamageEffect();
+
+    console.log(
+      `🩸 Player took ${damage} damage from ${demonType}. Health: ${this.playerState.health}`
+    );
 
     if (this.playerState.health <= 0) {
       this.playerState.isAlive = false;

@@ -5,13 +5,13 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     name: "Imp",
     emoji: "👹",
     health: 1,
-    speed: 20, // units per second - 60% of player speed (100)
+    speed: 1.0, // Base speed multiplier - matches original
     scale: 1.0,
     color: 0x8b4513, // Brown
     headColor: 0x654321, // Dark brown
     eyeColor: 0xff0000, // Red
     detectRange: 60,
-    attackRange: 30,
+    attackRange: 3.5, // Reduced to match original
     chaseRange: 8,
     attackDamage: 10,
     spawnWeight: 100,
@@ -20,13 +20,13 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     name: "Demon",
     emoji: "🐺",
     health: 2,
-    speed: 30, // units per second - 80% of player speed (faster than Imp)
+    speed: 1.8, // Faster than Imp - matches original
     scale: 0.9,
     color: 0x4b0000, // Dark red
     headColor: 0x8b0000, // Red
     eyeColor: 0xff4400, // Orange-red
     detectRange: 70,
-    attackRange: 40,
+    attackRange: 4.0, // Matches original
     chaseRange: 10,
     attackDamage: 15,
     spawnWeight: 60,
@@ -35,13 +35,13 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     name: "Cacodemon",
     emoji: "👁️",
     health: 4,
-    speed: 45, // units per second - slower but more tanky
+    speed: 0.8, // Slower but tanky - matches original
     scale: 1.6,
     color: 0x800080, // Purple
     headColor: 0x4b0082, // Indigo
     eyeColor: 0xff0000, // Red
     detectRange: 80,
-    attackRange: 60,
+    attackRange: 6.0, // Matches original
     chaseRange: 12,
     attackDamage: 20,
     spawnWeight: 30,
@@ -50,13 +50,13 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     name: "Baron of Hell",
     emoji: "👑",
     health: 8,
-    speed: 35, // units per second - slowest but strongest
+    speed: 0.6, // Slowest but strongest - matches original
     scale: 2.2,
     color: 0x006400, // Dark green
     headColor: 0x228b22, // Forest green
     eyeColor: 0xff6600, // Bright orange
     detectRange: 100,
-    attackRange: 80,
+    attackRange: 8.0, // Matches original
     chaseRange: 15,
     attackDamage: 35,
     spawnWeight: 5,

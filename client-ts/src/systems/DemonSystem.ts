@@ -265,6 +265,13 @@ export class DemonSystem implements IDemonSystem {
 
     if (!userData) return;
 
+    // Initialize attack state if not present - matches original
+    if (userData.attackCooldown === undefined) {
+      userData.attackCooldown = 0;
+      userData.isAttacking = false;
+      userData.hasAttacked = false;
+    }
+
     // Stop all movement during attack
     userData.isAttacking = true;
 
@@ -273,22 +280,35 @@ export class DemonSystem implements IDemonSystem {
       demon.state = "attacking";
     }
 
-    // Execute attack if cooldown is ready
+    // Execute attack if cooldown is ready - matches original timing
     if (!userData.hasAttacked && userData.attackCooldown <= 0) {
-      userData.attackCooldown = 180; // 3 seconds at 60fps
+      userData.attackCooldown = 180; // 3 seconds at 60fps - matches original
       userData.hasAttacked = true;
 
-      // Calculate direction to player
+      // Calculate direction to player - matches original
       const dx = playerPosition.x - meshObject.position.x;
       const dz = playerPosition.z - meshObject.position.z;
       const direction = Math.atan2(dx, dz);
 
-      // Attack animation - lunge forward
+      // Attack animation - lunge forward - matches original
       const lungeDistance = 0.8;
       meshObject.position.x += Math.sin(direction) * lungeDistance;
       meshObject.position.z += Math.cos(direction) * lungeDistance;
 
-      console.log("Demon executing attack!");
+      // Get demon config for damage calculation
+      const demonType = userData.demonType || "IMP";
+      const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
+
+      console.log(`Demon executing attack! Damage: ${config.attackDamage}`);
+
+      // TODO: Play attack sound based on demon type
+      // if (demonType === "BARON" || demonType === "CACODEMON") {
+      //   // Stronger demons use warrior roar
+      //   this.audioSystem.playDemonWarriorRoar();
+      // } else {
+      //   // Regular attack sound
+      //   this.audioSystem.playDemonAttackSound();
+      // }
     }
 
     // Face the player during attack
@@ -297,13 +317,13 @@ export class DemonSystem implements IDemonSystem {
     const direction = Math.atan2(dx, dz);
     meshObject.rotation.y = direction;
 
-    // Reset attack flag when cooldown ends - keep attacking state longer for damage detection
-    if (userData.attackCooldown <= 120) {
-      // Keep attacking state longer (was 60)
+    // Reset attack flag when cooldown ends - matches original timing
+    if (userData.attackCooldown <= 60) {
+      // Last 1 second of cooldown - matches original
       userData.hasAttacked = false;
       userData.isAttacking = false;
 
-      // Reset demon state back to idle
+      // Reset demon state
       if (demon.mesh) {
         demon.state = "idle";
       }
@@ -313,7 +333,7 @@ export class DemonSystem implements IDemonSystem {
   private prepareDemonAttack(
     demon: DemonInstance | any,
     playerPosition: THREE.Vector3,
-    deltaTime: number = 16.67 // Default 60fps deltaTime
+    deltaTime: number
   ): void {
     // Handle both DemonInstance and direct THREE.Group objects
     let meshObject: THREE.Object3D;
@@ -333,31 +353,38 @@ export class DemonSystem implements IDemonSystem {
 
     userData.isAttacking = false;
 
-    // Set demon state for collision detection
-    if (demon.mesh) {
-      demon.state = "idle";
-    }
-
-    // Move slowly toward player while preparing - use demon config speed
+    // Get demon config for speed
     const demonType = userData.demonType || "IMP";
     const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
-    const prepareSpeed = config.speed * 0.6; // 60% of normal speed when preparing
-    const moveDistance = prepareSpeed * (deltaTime / 1000); // Convert deltaTime to seconds
 
+    // Calculate direction to player
     const dx = playerPosition.x - meshObject.position.x;
     const dz = playerPosition.z - meshObject.position.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
 
-    if (distance > 0) {
-      const normalizedX = dx / distance;
-      const normalizedZ = dz / distance;
+    if (distance === 0) return;
 
-      meshObject.position.x += normalizedX * moveDistance;
-      meshObject.position.z += normalizedZ * moveDistance;
+    const normalizedX = dx / distance;
+    const normalizedZ = dz / distance;
+    const direction = Math.atan2(dx, dz);
 
-      // Face the player
-      const direction = Math.atan2(dx, dz);
-      meshObject.rotation.y = direction;
+    // Move slowly toward player while preparing - matches original
+    const prepareSpeed = config.speed * 0.6; // Slower approach - matches original
+    const moveDistance = prepareSpeed * 0.016; // Frame-based movement
+
+    meshObject.position.x += normalizedX * moveDistance;
+    meshObject.position.z += normalizedZ * moveDistance;
+
+    // Face the player
+    meshObject.rotation.y = direction;
+
+    // Add anticipation animation (more aggressive bobbing) - matches original timing
+    const time = Date.now() * 0.008;
+    meshObject.position.y = Math.sin(time) * 0.25;
+
+    // Set demon state to preparing for collision detection
+    if (demon.mesh) {
+      demon.state = "preparing";
     }
   }
 
@@ -384,31 +411,39 @@ export class DemonSystem implements IDemonSystem {
 
     userData.isAttacking = false;
 
-    // Set demon state for collision detection
-    if (demon.mesh) {
-      demon.state = "idle";
-    }
-
-    // Enhanced chase behavior - use demon config speed (units per second)
+    // Get demon config for speed
     const demonType = userData.demonType || "IMP";
     const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
-    const chaseSpeed = config.speed; // Use configured speed from demon config
-    const moveDistance = chaseSpeed * (deltaTime / 1000); // Convert deltaTime to seconds
 
+    // Calculate direction to player - matches original pathfinding
     const dx = playerPosition.x - meshObject.position.x;
     const dz = playerPosition.z - meshObject.position.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
 
-    if (distance > 0) {
-      const normalizedX = dx / distance;
-      const normalizedZ = dz / distance;
+    if (distance === 0) return;
 
-      meshObject.position.x += normalizedX * moveDistance;
-      meshObject.position.z += normalizedZ * moveDistance;
+    const normalizedX = dx / distance;
+    const normalizedZ = dz / distance;
+    const direction = Math.atan2(dx, dz);
 
-      // Face movement direction
-      const direction = Math.atan2(dx, dz);
-      meshObject.rotation.y = direction;
+    // Fast aggressive movement toward player - matches original speed calculation
+    const chaseSpeed = config.speed * 1.5; // Faster when chasing - matches original
+    const moveDistance = chaseSpeed * 0.016; // Frame-based movement like original
+
+    // Move directly toward player using pathfinding
+    meshObject.position.x += normalizedX * moveDistance;
+    meshObject.position.z += normalizedZ * moveDistance;
+
+    // Face movement direction
+    meshObject.rotation.y = direction;
+
+    // Add running animation (faster bobbing) - matches original timing
+    const time = Date.now() * 0.006;
+    meshObject.position.y = Math.sin(time) * 0.3;
+
+    // Set demon state to chasing for collision detection
+    if (demon.mesh) {
+      demon.state = "chasing";
     }
   }
 
@@ -434,30 +469,43 @@ export class DemonSystem implements IDemonSystem {
 
     userData.isAttacking = false;
 
-    // Set demon state for collision detection
-    if (demon.mesh) {
-      demon.state = "idle";
+    // Initialize wander properties if not set
+    if (userData.wanderTimer === undefined) {
+      userData.wanderTimer = 0;
+      userData.wanderDirection = Math.random() * Math.PI * 2;
     }
 
-    // Wandering behavior - slow random movement using demon config speed
+    userData.wanderTimer++;
+
+    // Change direction occasionally - matches original timing
+    if (userData.wanderTimer > 180 + Math.random() * 120) {
+      // More frequent direction changes - matches original
+      userData.wanderDirection += (Math.random() - 0.5) * 1.0; // Larger direction changes
+      userData.wanderTimer = 0;
+    }
+
+    // Get demon config for speed
     const demonType = userData.demonType || "IMP";
     const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
-    const wanderSpeed = config.speed * 0.3; // 30% of normal speed when wandering
-    const moveDistance = wanderSpeed * (deltaTime / 1000); // Convert deltaTime to seconds
 
-    // Update wander timer
-    if (!userData.wanderTimer) userData.wanderTimer = 0;
-    userData.wanderTimer--;
+    // Slow wandering movement - matches original
+    const wanderSpeed = config.speed * 0.3; // Very slow when wandering
+    const moveDistance = wanderSpeed * 0.016; // Frame-based movement
 
-    if (userData.wanderTimer <= 0) {
-      userData.wanderDirection = Math.random() * Math.PI * 2;
-      userData.wanderTimer = 60 + Math.random() * 120;
-    }
-
-    // Move in wander direction
     meshObject.position.x += Math.sin(userData.wanderDirection) * moveDistance;
     meshObject.position.z += Math.cos(userData.wanderDirection) * moveDistance;
+
+    // Face movement direction
     meshObject.rotation.y = userData.wanderDirection;
+
+    // Normal idle animation - matches original timing
+    const time = Date.now() * 0.002;
+    meshObject.position.y = Math.sin(time) * 0.15;
+
+    // Set demon state to wandering
+    if (demon.mesh) {
+      demon.state = "wandering";
+    }
   }
 
   public startWaveSystem(): void {

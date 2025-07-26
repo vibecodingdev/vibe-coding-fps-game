@@ -87,8 +87,8 @@
               <span>Reload weapon</span>
             </div>
             <div class="control-item">
-              <strong>1-4</strong>
-              <span>Switch weapons</span>
+              <strong>1-4 数字键</strong>
+              <span>切换武器 (1-霰弹枪, 2-链枪, 3-火箭炮, 4-等离子步枪)</span>
             </div>
             <div class="control-item">
               <strong>ESC</strong>
@@ -321,6 +321,24 @@
             <span id="currentAmmo">8</span> / <span id="maxAmmo">50</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="menu-screen" style="display: none;">
+      <h1>💀 HELL HAS CLAIMED YOU 💀</h1>
+      <div id="finalStats">
+        <div>🔥 Demons Slain: <span id="finalKills">0</span></div>
+        <div>🌊 Waves Survived: <span id="finalWaves">0</span></div>
+        <div>⏱️ Time in Hell: <span id="finalTime">0</span></div>
+      </div>
+      <div class="menu-buttons">
+        <button id="restartGameBtn" class="menu-button success">
+          🔄 RETURN TO HELL
+        </button>
+        <button id="backToMainMenuBtn" class="menu-button">
+          🏠 BACK TO MENU
+        </button>
       </div>
     </div>
 

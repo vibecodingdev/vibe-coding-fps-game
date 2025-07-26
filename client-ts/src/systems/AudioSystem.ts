@@ -158,6 +158,10 @@ export class AudioSystem implements IAudioSystem {
     }
   }
 
+  public playBackgroundMusic(): void {
+    this.startBackgroundMusic();
+  }
+
   public pauseBackgroundMusic(): void {
     if (this.currentBackgroundTrack?.isPlaying) {
       this.currentBackgroundTrack.pause();
@@ -240,6 +244,82 @@ export class AudioSystem implements IAudioSystem {
   public playExplosionSound(): void {
     if (!this.isInitialized || this.isMuted) return;
     this.playSound("explosion");
+  }
+
+  public playHealthPackSound(): void {
+    if (!this.isInitialized || this.isMuted || !this.context) return;
+
+    // Create a pleasant chime sound for health pack collection - matches original
+    const oscillator = this.context.createOscillator();
+    const gainNode = this.context.createGain();
+
+    // Configure healing sound - matches original frequencies
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(523, this.context.currentTime); // C5
+    oscillator.frequency.exponentialRampToValueAtTime(
+      784,
+      this.context.currentTime + 0.3
+    ); // G5
+
+    // Envelope for chime - matches original timing
+    gainNode.gain.setValueAtTime(0, this.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(
+      this.volumes.environment * 0.5,
+      this.context.currentTime + 0.1
+    );
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.001,
+      this.context.currentTime + 0.6
+    );
+
+    // Connect and play
+    oscillator.connect(gainNode);
+    gainNode.connect(this.context.destination);
+
+    oscillator.start();
+    oscillator.stop(this.context.currentTime + 0.6);
+
+    console.log("🔊 Playing health pack collection sound");
+  }
+
+  public playAmmoPackSound(): void {
+    if (!this.isInitialized || this.isMuted || !this.context) return;
+
+    // Create a distinctive electric/power sound for ammo pack collection - matches original
+    const oscillator = this.context.createOscillator();
+    const gainNode = this.context.createGain();
+
+    // Configure electric power sound - matches original frequencies
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(220, this.context.currentTime); // A3
+    oscillator.frequency.exponentialRampToValueAtTime(
+      440,
+      this.context.currentTime + 0.2
+    ); // A4
+    oscillator.frequency.exponentialRampToValueAtTime(
+      330,
+      this.context.currentTime + 0.4
+    ); // E4
+
+    // Envelope for electric sound - matches original timing
+    gainNode.gain.setValueAtTime(0, this.context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(
+      this.volumes.environment * 0.6,
+      this.context.currentTime + 0.05
+    );
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.001,
+      this.context.currentTime + 0.5
+    );
+
+    // Connect and play
+    oscillator.connect(gainNode);
+    gainNode.connect(this.context.destination);
+
+    oscillator.start();
+    oscillator.stop(this.context.currentTime + 0.5);
+
+    console.log("🔊 Playing ammo pack collection sound");
   }
 
   public playEnvironmentSound(soundType: string): void {

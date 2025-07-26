@@ -35,6 +35,25 @@ export interface AudioSystem {
   sources: Map<string, THREE.Audio>;
   isInitialized: boolean;
   isMuted: boolean;
+
+  // Audio playback methods
+  initialize(): Promise<void>;
+  setCamera(camera: THREE.Camera): void;
+  playWeaponSound(weaponType: string): void;
+  playDemonGrowlSound(): void;
+  playDemonDeathSound(): void;
+  playDemonHitSound(): void;
+  playExplosionSound(): void;
+  playHealthPackSound(): void;
+  playAmmoPackSound(): void;
+  playEnvironmentSound(soundType: string): void;
+  playBackgroundMusic(): void;
+  stopBackgroundMusic(): void;
+  pauseBackgroundMusic(): void;
+  resumeBackgroundMusic(): void;
+  setMasterVolume(volume: number): void;
+  toggleMute(): void;
+  reset(): void;
 }
 
 export type VoiceChatMode =

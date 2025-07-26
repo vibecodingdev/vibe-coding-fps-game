@@ -328,6 +328,63 @@ export class WeaponSystem implements IWeaponSystem {
     console.log(`Switched to ${this.weapons[weaponType].name}`);
   }
 
+  public refillAmmo(ammoAmount: number): {
+    totalRefilled: number;
+    details: string[];
+  } {
+    let totalRefilled = 0;
+    const details: string[] = [];
+
+    // Calculate ammo distribution like original client
+    const shotgunRefillAmount = Math.floor(ammoAmount * 0.4); // 40% for shotgun
+    const chainguRefillAmount = Math.floor(ammoAmount * 0.6); // 60% for chaingun
+
+    // Refill shotgun if needed
+    const shotgunState = this.weaponStates.shotgun;
+    const shotgunConfig = this.weapons.shotgun;
+    if (shotgunState.currentAmmo < shotgunConfig.maxAmmo) {
+      const oldShotgunAmmo = shotgunState.currentAmmo;
+      shotgunState.currentAmmo = Math.min(
+        shotgunConfig.maxAmmo,
+        shotgunState.currentAmmo + shotgunRefillAmount
+      );
+      const actualShotgunRefill = shotgunState.currentAmmo - oldShotgunAmmo;
+      if (actualShotgunRefill > 0) {
+        totalRefilled += actualShotgunRefill;
+        details.push(`${actualShotgunRefill} shells`);
+      }
+    }
+
+    // Refill chaingun if needed
+    const chainguState = this.weaponStates.chaingun;
+    const chainguConfig = this.weapons.chaingun;
+    if (chainguState.currentAmmo < chainguConfig.maxAmmo) {
+      const oldChainguAmmo = chainguState.currentAmmo;
+      chainguState.currentAmmo = Math.min(
+        chainguConfig.maxAmmo,
+        chainguState.currentAmmo + chainguRefillAmount
+      );
+      const actualChainguRefill = chainguState.currentAmmo - oldChainguAmmo;
+      if (actualChainguRefill > 0) {
+        totalRefilled += actualChainguRefill;
+        details.push(`${actualChainguRefill} rounds`);
+      }
+    }
+
+    console.log(
+      `🔋 Ammo refilled: ${details.join(" + ")} (Total: ${totalRefilled})`
+    );
+    return { totalRefilled, details };
+  }
+
+  public canBenefitFromAmmo(): boolean {
+    // Check if any weapon can benefit from ammo
+    return (
+      this.weaponStates.shotgun.currentAmmo < this.weapons.shotgun.maxAmmo ||
+      this.weaponStates.chaingun.currentAmmo < this.weapons.chaingun.maxAmmo
+    );
+  }
+
   public getBullets(): Bullet[] {
     return this.bullets;
   }

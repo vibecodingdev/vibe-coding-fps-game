@@ -748,6 +748,31 @@ export class UIManager {
     if (gameOver) {
       gameOver.style.display = "flex";
     }
+
+    // Hide game UI
+    const gameUI = document.getElementById("gameUI");
+    if (gameUI) {
+      gameUI.style.display = "none";
+    }
+  }
+
+  public updateGameOverStats(gameStats: GameStats): void {
+    const finalKillsElement = document.getElementById("finalKills");
+    const finalWavesElement = document.getElementById("finalWaves");
+    const finalTimeElement = document.getElementById("finalTime");
+
+    if (finalKillsElement) {
+      finalKillsElement.textContent = gameStats.demonKills.toString();
+    }
+
+    if (finalWavesElement) {
+      finalWavesElement.textContent = (gameStats.currentWave - 1).toString();
+    }
+
+    if (finalTimeElement) {
+      // TODO: Add proper time tracking in the future
+      finalTimeElement.textContent = "0:00";
+    }
   }
 
   private hideAllMenus(): void {
