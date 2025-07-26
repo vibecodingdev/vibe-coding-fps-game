@@ -315,6 +315,22 @@
       </div>
       
       <div class="hud-bottom">
+        <!-- Voice Chat Status in bottom left -->
+        <div id="voiceChatStatus" class="voice-chat-status">
+          <div class="voice-status-indicator">
+            <i class="fas fa-microphone-slash"></i>
+            <span>Hold T to speak</span>
+          </div>
+          <div class="voice-recording-indicator" style="display: none;">
+            <i class="fas fa-microphone recording"></i>
+            <span>Recording...</span>
+            <div class="recording-animation">
+              <div class="pulse"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Weapon info moved to bottom right -->
         <div class="weapon-info">
           <div id="currentWeapon" class="weapon-name">SHOTGUN</div>
           <div class="ammo-info">
@@ -345,6 +361,71 @@
     <!-- Pause Menu -->
     <div id="pauseMenu" class="menu-screen" style="display: none;">
       <h1>⏸️ GAME PAUSED ⏸️</h1>
+      
+      <!-- Game Settings Section -->
+      <div class="pause-settings">
+        <div class="settings-section">
+          <h3>🎛️ GAME SETTINGS</h3>
+          
+          <!-- Audio Settings -->
+          <div class="setting-group">
+            <label>
+              🔊 Master Volume:
+              <input
+                type="range"
+                id="pauseMasterVolume"
+                min="0"
+                max="100"
+                value="100"
+              />
+              <span id="masterVolumeDisplay">100%</span>
+            </label>
+          </div>
+          
+          <!-- Voice Chat Settings -->
+          <div id="pauseVoiceChatSettings" class="voice-chat-settings">
+            <h4>🎤 VOICE CHAT</h4>
+            
+            <div class="setting-group">
+              <label>
+                Voice Chat Mode:
+                <select id="pauseVoiceChatMode">
+                  <option value="speech-to-text">Speech to Text</option>
+                  <option value="voice-transmission">Direct Voice</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </label>
+            </div>
+            
+            <div class="setting-group">
+              <label>
+                Voice Volume:
+                <input
+                  type="range"
+                  id="pauseVoiceVolume"
+                  min="0"
+                  max="100"
+                  value="80"
+                />
+                <span id="voiceVolumeDisplay">80%</span>
+              </label>
+            </div>
+            
+            <div class="setting-group">
+              <label>
+                Push-to-Talk Key:
+                <select id="pausePushToTalkKey">
+                  <option value="KeyT">T</option>
+                  <option value="KeyV">V</option>
+                  <option value="KeyB">B</option>
+                  <option value="KeyG">G</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="menu-buttons">
         <button id="resumeBtn" class="menu-button success">
           ▶️ RESUME COMBAT

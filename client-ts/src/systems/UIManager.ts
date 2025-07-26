@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { PlayerState, GameStats } from "@/types/game";
+import { VoiceChatSystem } from "@/systems/VoiceChatSystem";
 
 export class UIManager {
   private healthBar: HTMLElement | null = null;
@@ -18,12 +19,32 @@ export class UIManager {
   private readonly RADAR_SIZE = 120;
   private readonly RADAR_RANGE = 60; // 增加范围以确保能看到所有怪物
 
+  // Voice chat system
+  private voiceChatSystem: VoiceChatSystem | null = null;
+
   public async initialize(): Promise<void> {
     console.log("🎮 UIManager initializing...");
 
     this.setupUIElements();
     this.initializeRadar();
     this.setupEventListeners();
+
+    // Initialize voice chat system
+    try {
+      this.voiceChatSystem = new VoiceChatSystem();
+      await this.voiceChatSystem.initialize();
+
+      // Set up voice message callback
+      this.voiceChatSystem.setVoiceMessageCallback(
+        (message: string, type: string) => {
+          this.addGameChatMessage("voice", message, "You");
+        }
+      );
+
+      console.log("✅ Voice chat system initialized");
+    } catch (error) {
+      console.warn("Failed to initialize voice chat system:", error);
+    }
 
     console.log("✅ UIManager initialized");
   }
@@ -594,6 +615,14 @@ export class UIManager {
 
   private updateAnimations(): void {
     // 可以在这里添加UI动画逻辑，比如准星动画、血量条动画等
+  }
+
+  public cleanup(): void {
+    // Cleanup voice chat system
+    if (this.voiceChatSystem) {
+      this.voiceChatSystem.cleanup();
+      this.voiceChatSystem = null;
+    }
   }
 
   // Multiplayer UI Management Methods

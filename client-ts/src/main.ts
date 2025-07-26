@@ -1,6 +1,7 @@
 import "./styles/main.css";
 import { Game } from "./core/Game";
 import { NetworkManager } from "./systems/NetworkManager";
+import { setupVoiceChatDebugFunctions } from "./debug-voice-chat";
 
 console.log("🔥 DOOM PROTOCOL - TypeScript Client Starting 🔥");
 
@@ -34,6 +35,9 @@ async function initializeGame(): Promise<void> {
 
     // Set initial body class to menu mode
     document.body.className = "menu-mode";
+
+    // Setup voice chat debug functions
+    setupVoiceChatDebugFunctions();
 
     showMainMenu();
   } catch (error) {
