@@ -119,6 +119,7 @@ export class Game {
       this.weaponSystem.setCamera(camera);
       this.weaponSystem.setAudioSystem(this.audioSystem);
       this.demonSystem.setScene(scene);
+      this.demonSystem.setAudioSystem(this.audioSystem);
       this.collectibleSystem.setScene(scene);
 
       // Connect audio system

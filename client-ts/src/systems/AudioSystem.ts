@@ -241,6 +241,75 @@ export class AudioSystem implements IAudioSystem {
     this.lastGrowlTime = now;
   }
 
+  public playDemonAttackSound(demonType: string): void {
+    if (!this.isInitialized || this.isMuted) return;
+
+    // Different attack sounds based on demon type
+    let attackSound: string;
+    switch (demonType) {
+      case "BARON":
+        attackSound = "demon-warrior";
+        break;
+      case "CACODEMON":
+        attackSound = "demon-roar-1";
+        break;
+      case "DEMON":
+        attackSound = "demon-bite";
+        break;
+      case "IMP":
+      default:
+        attackSound = "demon-growl-1";
+        break;
+    }
+    this.playSound(attackSound);
+  }
+
+  public playDemonChaseSound(demonType: string): void {
+    if (!this.isInitialized || this.isMuted) return;
+
+    // Different chase sounds based on demon type
+    let chaseSound: string;
+    switch (demonType) {
+      case "BARON":
+        chaseSound = "demon-roar-2";
+        break;
+      case "CACODEMON":
+        chaseSound = "demon-breath";
+        break;
+      case "DEMON":
+        chaseSound = "demon-growl-2";
+        break;
+      case "IMP":
+      default:
+        chaseSound = "demon-generic-1";
+        break;
+    }
+    this.playSound(chaseSound);
+  }
+
+  public playDemonSpawnSound(demonType: string): void {
+    if (!this.isInitialized || this.isMuted) return;
+
+    // Different spawn sounds based on demon type
+    let spawnSound: string;
+    switch (demonType) {
+      case "BARON":
+        spawnSound = "demon-warrior";
+        break;
+      case "CACODEMON":
+        spawnSound = "demon-roar-1";
+        break;
+      case "DEMON":
+        spawnSound = "demon-generic-2";
+        break;
+      case "IMP":
+      default:
+        spawnSound = "demon-growl-1";
+        break;
+    }
+    this.playSound(spawnSound);
+  }
+
   public playExplosionSound(): void {
     if (!this.isInitialized || this.isMuted) return;
     this.playSound("explosion");

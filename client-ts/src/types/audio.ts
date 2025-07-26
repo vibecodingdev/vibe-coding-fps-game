@@ -43,6 +43,9 @@ export interface AudioSystem {
   playDemonGrowlSound(): void;
   playDemonDeathSound(): void;
   playDemonHitSound(): void;
+  playDemonAttackSound(demonType: string): void;
+  playDemonChaseSound(demonType: string): void;
+  playDemonSpawnSound(demonType: string): void;
   playExplosionSound(): void;
   playHealthPackSound(): void;
   playAmmoPackSound(): void;
