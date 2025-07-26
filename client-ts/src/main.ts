@@ -177,6 +177,9 @@ async function initializeGame(): Promise<void> {
     window.game = game;
     window.networkManager = networkManager;
 
+    // Set the global NetworkManager to Game instance
+    game.setNetworkManager(networkManager);
+
     await game.initialize();
     await networkManager.initialize();
 
@@ -378,6 +381,10 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
       // Start new wave
       game.startWave(waveData.wave, waveData.demonsCount);
 
+      // Show wave start message to players
+      game.showMessage(`🌊 WAVE ${waveData.wave} INCOMING!`, 2000);
+      game.showMessage(`👹 ${waveData.demonsCount} demons spawning...`, 3000);
+
       console.log(
         `🌊 Started wave ${waveData.wave} with ${waveData.demonsCount} demons`
       );
@@ -388,6 +395,29 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
     const game = window.game;
     networkManager.handleServerWaveComplete(data, (waveData: any) => {
       game.completeWave(waveData.wave);
+
+      // Show wave completion messages
+      game.showMessage(`✅ WAVE ${waveData.wave} COMPLETE!`, 2000);
+      if (waveData.nextWave) {
+        setTimeout(() => {
+          game.showMessage(`⏳ Preparing Wave ${waveData.nextWave}...`, 3000);
+        }, 2000);
+      }
+
+      // Show player stats if available
+      if (waveData.playersStats && waveData.playersStats.length > 0) {
+        const topPlayer = waveData.playersStats.reduce(
+          (prev: any, current: any) =>
+            prev.kills > current.kills ? prev : current
+        );
+        setTimeout(() => {
+          game.showMessage(
+            `🏆 Top Killer: ${topPlayer.name} (${topPlayer.kills} kills)`,
+            2000
+          );
+        }, 4000);
+      }
+
       console.log(`✅ Completed wave ${waveData.wave}`);
     });
   });

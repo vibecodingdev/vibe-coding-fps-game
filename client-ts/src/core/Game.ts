@@ -40,6 +40,13 @@ export class Game {
   private animationId: number | null = null;
   private prevTime = performance.now();
 
+  // Wave tracking for multiplayer
+  public currentWaveStats = {
+    totalDemons: 0,
+    demonsRemaining: 0,
+    waveNumber: 1,
+  };
+
   private constructor() {
     this.initializeState();
     this.initializeSystems();
@@ -81,9 +88,18 @@ export class Game {
     this.weaponSystem = new WeaponSystem();
     this.demonSystem = new DemonSystem();
     this.audioSystem = new AudioSystem();
+    // Create a temporary NetworkManager, will be replaced by setNetworkManager
     this.networkManager = new NetworkManager();
     this.uiManager = new UIManager();
     this.collectibleSystem = new CollectibleSystem();
+  }
+
+  /**
+   * Set the NetworkManager instance (used to replace the temporary one with the global instance)
+   */
+  public setNetworkManager(networkManager: NetworkManager): void {
+    this.networkManager = networkManager;
+    console.log("🔄 Game is now using the global NetworkManager instance");
   }
 
   public async initialize(themeName?: SceneThemeName): Promise<void> {
@@ -302,6 +318,18 @@ export class Game {
     // Reset player position
     this.playerState.position.set(0, 1.8, 0);
     this.playerState.health = GAME_CONFIG.MAX_HEALTH;
+
+    // Force position update for multiplayer after respawn
+    if (this.isMultiplayer && this.networkManager) {
+      const camera = this.sceneManager.getCamera();
+      if (camera) {
+        this.networkManager.forcePositionUpdate(
+          camera.position,
+          camera.rotation
+        );
+        console.log("🔄 Forced position update after wave restart");
+      }
+    }
 
     // Reset weapon
     this.weaponSystem.reset();
@@ -789,13 +817,38 @@ export class Game {
     );
 
     if (networkDemon) {
+      console.log(
+        `🎯 Network demon hit: ${demonId}, damage: ${damage}, health: ${networkDemon.userData?.serverHealth}`
+      );
       // Network demon - apply damage locally for immediate visual feedback
       if (networkDemon.userData) {
         networkDemon.userData.serverHealth -= damage;
         if (networkDemon.userData.serverHealth <= 0) {
+          console.log(
+            `💀 Network demon killed: ${demonId}, checking multiplayer conditions:`,
+            {
+              isMultiplayer: this.isMultiplayer,
+              isConnected: this.networkManager.isConnected,
+            }
+          );
           // Demon killed - emit proper death event to server (matching old client)
-          if (this.networkManager.isMultiplayer) {
+          if (this.isMultiplayer) {
+            // Debug connection status before sending
+            console.log("🔍 NetworkManager instance check:", {
+              isGlobal: this.networkManager === window.networkManager,
+              gameNMId: this.networkManager.constructor.name,
+              globalNMId: window.networkManager?.constructor.name,
+            });
+            this.networkManager.debugConnectionStatus();
+
+            console.log(
+              `🎯 Sending demon death to server: ${demonId} (type: ${networkDemon.userData.demonType})`
+            );
             this.networkManager.sendDemonDeath(demonId);
+          } else {
+            console.warn(
+              `❌ Cannot send demon death - not in multiplayer mode`
+            );
           }
 
           // Mark as dead immediately for local client feedback
@@ -1243,6 +1296,15 @@ export class Game {
         scene.remove(demon);
       }
       this.networkDemons.splice(index, 1);
+
+      // Update wave progress
+      if (this.currentWaveStats.demonsRemaining > 0) {
+        this.currentWaveStats.demonsRemaining--;
+        console.log(
+          `👹 Demons remaining in wave: ${this.currentWaveStats.demonsRemaining}/${this.currentWaveStats.totalDemons}`
+        );
+      }
+
       console.log(`👹 Removed network demon by ID: ${serverId}`);
       return true;
     }
@@ -1452,13 +1514,36 @@ export class Game {
   // Wave management
   public startWave(waveNumber: number, demonCount?: number): void {
     this.gameStats.currentWave = waveNumber;
+
+    // Update wave tracking stats
+    this.currentWaveStats.waveNumber = waveNumber;
+    this.currentWaveStats.totalDemons = demonCount || 0;
+    this.currentWaveStats.demonsRemaining = demonCount || 0;
+
     this.uiManager.updateGameStats(this.gameStats);
+
+    // Log wave start for debugging
+    console.log(
+      `🎯 Starting Wave ${waveNumber}${
+        demonCount ? ` with ${demonCount} demons` : ""
+      }`
+    );
+
+    // Clear any remaining demons from previous wave
+    this.clearNetworkDemons();
+
+    // Reset wave-specific stats if needed
     // Additional wave start logic can be added here
   }
 
   public completeWave(waveNumber: number): void {
     console.log(`Wave ${waveNumber} completed!`);
+
+    // Update UI to reflect wave completion
+    this.uiManager.updateGameStats(this.gameStats);
+
     // Additional wave completion logic can be added here
+    // For example: bonus points, special effects, etc.
   }
 
   // Utility methods

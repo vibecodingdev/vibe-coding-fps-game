@@ -5,6 +5,8 @@ declare global {
     webkitSpeechRecognition: typeof SpeechRecognition;
     mozSpeechRecognition: typeof SpeechRecognition;
     msSpeechRecognition: typeof SpeechRecognition;
+    game: import("../core/Game").Game;
+    networkManager: import("../systems/NetworkManager").NetworkManager;
   }
 }
 

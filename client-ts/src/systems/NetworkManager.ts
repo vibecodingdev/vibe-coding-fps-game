@@ -18,6 +18,18 @@ export class NetworkManager implements NetworkState {
   // Server connection
   private currentServerURL = "http://localhost:3000";
 
+  // Position sync optimization
+  private lastSentPosition: THREE.Vector3 | null = null;
+  private lastSentRotation: THREE.Euler | null = null;
+  private lastPositionSendTime = 0;
+  private positionSyncInterval: NodeJS.Timeout | null = null;
+
+  // Position sync thresholds
+  private readonly POSITION_THRESHOLD = 0.1; // Minimum movement distance to trigger update
+  private readonly ROTATION_THRESHOLD = 0.05; // Minimum rotation change (radians)
+  private readonly MAX_SYNC_INTERVAL = 1000; // Maximum time between forced updates (ms)
+  private readonly MIN_SYNC_INTERVAL = 50; // Minimum time between updates (ms)
+
   // Voice chat properties
   private voiceChat = {
     audioStream: null as MediaStream | null,
@@ -541,19 +553,70 @@ export class NetworkManager implements NetworkState {
     });
   }
 
-  // Player position sync
+  // Player position sync with optimization
   public sendPlayerPosition(
     position: THREE.Vector3,
-    rotation: THREE.Euler
+    rotation: THREE.Euler,
+    forceUpdate: boolean = false
   ): void {
     if (!this.socket || !this.isConnected || !this.isMultiplayer) {
       return;
     }
 
-    this.socket.emit("player:position", {
-      position: { x: position.x, y: position.y, z: position.z },
-      rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
-    });
+    const currentTime = Date.now();
+
+    // Check if enough time has passed since last update
+    if (
+      !forceUpdate &&
+      currentTime - this.lastPositionSendTime < this.MIN_SYNC_INTERVAL
+    ) {
+      return;
+    }
+
+    // Check if position or rotation has changed significantly
+    let shouldUpdate = forceUpdate;
+
+    if (!shouldUpdate) {
+      if (this.lastSentPosition && this.lastSentRotation) {
+        const positionDelta = position.distanceTo(this.lastSentPosition);
+        const rotationDelta = Math.abs(rotation.y - this.lastSentRotation.y); // Primary rotation axis
+
+        shouldUpdate =
+          positionDelta > this.POSITION_THRESHOLD ||
+          rotationDelta > this.ROTATION_THRESHOLD ||
+          currentTime - this.lastPositionSendTime > this.MAX_SYNC_INTERVAL;
+      } else {
+        // First time sending position
+        shouldUpdate = true;
+      }
+    }
+
+    if (shouldUpdate) {
+      this.socket.emit("player:position", {
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
+      });
+
+      // Update tracking variables
+      this.lastSentPosition = position.clone();
+      this.lastSentRotation = rotation.clone();
+      this.lastPositionSendTime = currentTime;
+
+      // Debug logging (only log occasionally to avoid spam)
+      if (Math.random() < 0.05 || forceUpdate) {
+        // 5% chance or forced updates
+        const reason = forceUpdate
+          ? "FORCED"
+          : this.lastSentPosition
+          ? "MOVEMENT"
+          : "INITIAL";
+        console.log(`📡 Position sent (${reason}):`, {
+          pos: `(${position.x.toFixed(2)}, ${position.z.toFixed(2)})`,
+          rot: `${((rotation.y * 180) / Math.PI).toFixed(1)}°`,
+          timeSinceLastSend: currentTime - this.lastPositionSendTime,
+        });
+      }
+    }
   }
 
   // Voice chat methods
@@ -1102,18 +1165,45 @@ export class NetworkManager implements NetworkState {
     return playerColors[index % playerColors.length];
   }
 
-  // Position sync methods
+  // Position sync methods with intelligent throttling
   public startPositionSync(
     getPlayerPosition: () => { position: THREE.Vector3; rotation: THREE.Euler }
   ): void {
     if (!this.socket || !this.isMultiplayer) return;
 
-    setInterval(() => {
+    // Clear any existing interval
+    if (this.positionSyncInterval) {
+      clearInterval(this.positionSyncInterval);
+    }
+
+    // More frequent checks but intelligent sending
+    this.positionSyncInterval = setInterval(() => {
       if (this.socket?.connected && this.isMultiplayer) {
         const playerData = getPlayerPosition();
+        // Let sendPlayerPosition decide whether to actually send
         this.sendPlayerPosition(playerData.position, playerData.rotation);
       }
-    }, 50); // 20 FPS position updates
+    }, 33); // ~30 FPS checks, but smart sending
+
+    console.log(
+      "🎯 Optimized position sync started - only sends when player moves"
+    );
+  }
+
+  public stopPositionSync(): void {
+    if (this.positionSyncInterval) {
+      clearInterval(this.positionSyncInterval);
+      this.positionSyncInterval = null;
+      console.log("🛑 Position sync stopped");
+    }
+  }
+
+  public forcePositionUpdate(
+    position: THREE.Vector3,
+    rotation: THREE.Euler
+  ): void {
+    // Force an immediate position update regardless of thresholds
+    this.sendPlayerPosition(position, rotation, true);
   }
 
   // Clean up all remote players
@@ -1299,14 +1389,39 @@ export class NetworkManager implements NetworkState {
 
   // Send demon interaction events to server
   public sendDemonDeath(demonId: string): void {
-    if (!this.socket || !this.isConnected || !this.isMultiplayer) {
+    console.log(
+      `🔍 sendDemonDeath called for ${demonId}, checking conditions:`,
+      {
+        hasSocket: !!this.socket,
+        isConnected: this.isConnected,
+        socketConnected: this.socket?.connected,
+        isMultiplayer: this.isMultiplayer,
+        currentServerURL: this.currentServerURL,
+      }
+    );
+
+    // Use the same connection check as voice system for consistency
+    if (!this.socket || !this.socket.connected) {
+      console.warn("🔴 Socket not connected, cannot send demon death event", {
+        hasSocket: !!this.socket,
+        socketConnected: this.socket?.connected,
+        isConnected: this.isConnected,
+        isMultiplayer: this.isMultiplayer,
+      });
       return;
     }
 
+    if (!this.isMultiplayer) {
+      console.warn("🔴 Not in multiplayer mode, cannot send demon death event");
+      return;
+    }
+
+    console.log(`📤 Sending demon death to server: ${demonId}`);
     // Use the correct event name that matches the server expectation
     this.socket.emit("world:demon:death", {
       demonId: demonId,
     });
+    console.log(`✅ Demon death event sent for ${demonId}`);
   }
 
   // Game state synchronization
@@ -1363,6 +1478,7 @@ export class NetworkManager implements NetworkState {
 
   public joinGame(): void {
     console.log("Joining multiplayer game");
+    this.isMultiplayer = true;
   }
 
   public leaveGame(): void {
@@ -1371,6 +1487,9 @@ export class NetworkManager implements NetworkState {
   }
 
   public disconnect(): void {
+    // Stop position sync before disconnecting
+    this.stopPositionSync();
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -1380,6 +1499,25 @@ export class NetworkManager implements NetworkState {
     this.isRoomLeader = false;
     this.isPlayerReady = false;
     this.isMultiplayer = false;
+
+    // Reset position tracking
+    this.lastSentPosition = null;
+    this.lastSentRotation = null;
+    this.lastPositionSendTime = 0;
+  }
+
+  public debugConnectionStatus(): void {
+    console.log("🔍 NetworkManager Connection Debug Status:", {
+      hasSocket: !!this.socket,
+      socketConnected: this.socket?.connected,
+      socketId: this.socket?.id,
+      isConnected: this.isConnected,
+      isMultiplayer: this.isMultiplayer,
+      currentServerURL: this.currentServerURL,
+      currentRoom: this.currentRoom?.name,
+      isRoomLeader: this.isRoomLeader,
+      isPlayerReady: this.isPlayerReady,
+    });
   }
 
   /**

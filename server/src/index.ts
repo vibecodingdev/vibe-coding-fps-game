@@ -851,6 +851,7 @@ io.on("connection", (socket) => {
 
     const demon = room.gameState.demons.get(payload.demonId);
     if (demon && demon.isAlive) {
+      // Mark demon as dead immediately to prevent duplicate kills
       demon.isAlive = false;
       room.gameState.demonsKilledThisWave++;
 
@@ -858,7 +859,7 @@ io.on("connection", (socket) => {
       player.kills++;
       player.score += 100;
 
-      // Broadcast demon death to all players
+      // Broadcast demon death to all players in the room
       broadcastToRoom(player.roomId, GAME_EVENTS.WORLD.DEMON_DEATH, {
         demonId: payload.demonId,
         killerId: socket.id,
@@ -866,16 +867,42 @@ io.on("connection", (socket) => {
         position: demon.position,
       });
 
+      // Actually remove the demon from the demons map to prevent memory leaks
+      // and ensure it doesn't continue to be processed by AI or collision systems
+      room.gameState.demons.delete(payload.demonId);
+      console.log(
+        `💀 Removed demon ${payload.demonId} from server state (killed by ${player.name})`
+      );
+
       // Check if wave is complete
       const demonsThisWave = Math.min(5 + room.gameState.currentWave * 2, 20);
       if (room.gameState.demonsKilledThisWave >= demonsThisWave) {
-        // Wave complete
+        // Wave complete - stop AI processing for this wave
         room.gameState.waveInProgress = false;
+
+        // Clear the AI interval to stop processing demons
+        if (room.gameState.aiInterval) {
+          clearInterval(room.gameState.aiInterval);
+          room.gameState.aiInterval = undefined;
+        }
+
+        // Clear any remaining demons from the server state (cleanup)
+        const remainingDemons = room.gameState.demons.size;
+        if (remainingDemons > 0) {
+          console.log(
+            `🧹 Cleaning up ${remainingDemons} remaining demons from server state`
+          );
+          room.gameState.demons.clear();
+        }
+
         room.gameState.currentWave++;
 
         broadcastToRoom(player.roomId, GAME_EVENTS.WORLD.WAVE_COMPLETE, {
           wave: room.gameState.currentWave - 1,
           nextWave: room.gameState.currentWave,
+          totalKills: room.gameState.demonsKilledThisWave,
+          demonsThisWave: demonsThisWave,
+          waveTime: Date.now() - room.gameState.waveStartTime,
           playersStats: room.players.map((p) => ({
             id: p.id,
             name: p.name,
@@ -891,6 +918,10 @@ io.on("connection", (socket) => {
           }
         }, 5000);
       }
+    } else {
+      console.warn(
+        `❗️ Attempted to kill demon ${payload.demonId} but it was not found or already dead`
+      );
     }
   });
 
@@ -936,7 +967,12 @@ io.on("connection", (socket) => {
 
         // Handle room cleanup
         if (room.players.length === 0) {
+          // Stop demon AI when room becomes empty
+          stopDemonAI(room);
           rooms.delete(player.roomId);
+          console.log(
+            `🏰 Room ${player.roomId} destroyed (empty after disconnect)`
+          );
         } else if (room.leaderId === socket.id && room.players.length > 0) {
           room.leaderId = room.players[0].id;
           broadcastToRoom(player.roomId, GAME_EVENTS.PARTY.LEADER_CHANGED, {
@@ -967,8 +1003,10 @@ setInterval(() => {
       room.players.length === 0 &&
       now - room.createdAt.getTime() > 5 * 60 * 1000
     ) {
+      // Stop demon AI before deleting room
+      stopDemonAI(room);
       rooms.delete(roomId);
-      console.log(`🧹 Cleaned up empty room: ${roomId}`);
+      console.log(`🧹 Cleaned up expired empty room: ${roomId}`);
     }
   }
 }, 60000); // Check every minute
