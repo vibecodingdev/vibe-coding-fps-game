@@ -13,3 +13,5 @@ Currently, the monster wearing a flaming hat correctly launches a red fireball. 
 Please add a wall effect to the scene, you can refer to the implementation of @/client as appropriate to prevent players from leaving the core area. In addition, please match the scene with this border in various scene styles, add appropriate obstacle expressions, and make this wall effect more natural.
 
 Is there a way to prevent the visual penetration effect when the camera approaches the wall? Can we solve this problem by making the wall model slightly larger than the actual intercept action area?
+
+Can we add a few light sources to the scene to make it slightly brighter, as it currently fits the dark style but tends to cause visual fatigue?

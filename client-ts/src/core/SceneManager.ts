@@ -48,8 +48,8 @@ export class SceneManager {
 
   private setupRenderer(): void {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    // DOOM-style dark reddish background
-    this.renderer.setClearColor(0x2d1b1b);
+    // DOOM-style dark reddish background - slightly brighter for better visibility
+    this.renderer.setClearColor(0x3d2525);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -70,13 +70,13 @@ export class SceneManager {
     this.camera.far = 3000;
     this.camera.updateProjectionMatrix();
 
-    // Set dark hellish background color
-    this.renderer.setClearColor(0x2d1b1b, 1.0);
+    // Set dark hellish background color - slightly brighter for comfort
+    this.renderer.setClearColor(0x3d2525, 1.0);
   }
 
   private createHellishAtmosphere(): void {
-    // Add fog for atmospheric depth - DOOM-style red/brown fog
-    this.fog = new THREE.Fog(0x4a2c2c, 50, 300);
+    // Add fog for atmospheric depth - DOOM-style red/brown fog with reduced density
+    this.fog = new THREE.Fog(0x552c2c, 80, 400);
     this.scene.fog = this.fog;
   }
 
@@ -206,12 +206,12 @@ export class SceneManager {
   }
 
   private addLighting(): void {
-    // Reduced ambient light for darker DOOM atmosphere
-    const ambientLight = new THREE.AmbientLight(0x331111, 0.3);
+    // Increased ambient light for better visibility while maintaining atmosphere
+    const ambientLight = new THREE.AmbientLight(0x442222, 0.6);
     this.scene.add(ambientLight);
 
-    // Main directional light with hellish orange tint
-    const directionalLight = new THREE.DirectionalLight(0xff3300, 0.8);
+    // Main directional light with hellish orange tint - increased intensity
+    const directionalLight = new THREE.DirectionalLight(0xff5522, 1.2);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
@@ -224,33 +224,72 @@ export class SceneManager {
     directionalLight.shadow.camera.bottom = -100;
     this.scene.add(directionalLight);
 
-    // Multiple hellish point lights for atmospheric lighting
+    // Additional soft directional light from opposite side for fill lighting
+    const fillLight = new THREE.DirectionalLight(0xff7744, 0.6);
+    fillLight.position.set(-30, 80, -30);
+    fillLight.castShadow = false; // No shadows for fill light to avoid conflicts
+    this.scene.add(fillLight);
+
+    // Multiple hellish point lights for atmospheric lighting - increased intensity
     const hellLights: Array<{
       pos: [number, number, number];
       color: number;
       intensity: number;
     }> = [
-      { pos: [-30, 8, -30], color: 0xff0000, intensity: 1.2 },
-      { pos: [40, 12, 20], color: 0xff3300, intensity: 1.0 },
-      { pos: [-15, 6, 35], color: 0xff6600, intensity: 0.8 },
-      { pos: [25, 10, -40], color: 0xcc3300, intensity: 0.9 },
-      { pos: [-45, 15, 10], color: 0xff4400, intensity: 1.1 },
+      { pos: [-30, 8, -30], color: 0xff2200, intensity: 1.8 },
+      { pos: [40, 12, 20], color: 0xff4422, intensity: 1.5 },
+      { pos: [-15, 6, 35], color: 0xff7722, intensity: 1.3 },
+      { pos: [25, 10, -40], color: 0xdd4422, intensity: 1.4 },
+      { pos: [-45, 15, 10], color: 0xff5522, intensity: 1.6 },
+      // Additional strategic lights for better coverage
+      { pos: [0, 12, 0], color: 0xff6633, intensity: 2.0 }, // Central overhead light
+      { pos: [35, 8, -35], color: 0xff4411, intensity: 1.2 },
+      { pos: [-35, 8, 35], color: 0xff5533, intensity: 1.2 },
     ];
 
     hellLights.forEach(({ pos, color, intensity }) => {
-      const light = new THREE.PointLight(color, intensity, 40);
+      const light = new THREE.PointLight(color, intensity, 50); // Increased range
       light.position.set(pos[0], pos[1], pos[2]);
       this.scene.add(light);
     });
+
+    // Add elevated area lighting for better general illumination
+    this.createAreaLighting();
 
     // Add flickering fire lights
     this.createFlickeringLights();
   }
 
+  private createAreaLighting(): void {
+    // Create elevated area lights for general illumination
+    const areaLights: Array<{
+      pos: [number, number, number];
+      color: number;
+      intensity: number;
+    }> = [
+      // High overhead lights for general illumination
+      { pos: [0, 25, 0], color: 0xff6644, intensity: 1.8 },
+      { pos: [-25, 20, -25], color: 0xff5533, intensity: 1.4 },
+      { pos: [25, 20, 25], color: 0xff5533, intensity: 1.4 },
+      { pos: [-25, 20, 25], color: 0xff5533, intensity: 1.4 },
+      { pos: [25, 20, -25], color: 0xff5533, intensity: 1.4 },
+    ];
+
+    areaLights.forEach(({ pos, color, intensity }) => {
+      const light = new THREE.PointLight(color, intensity, 60);
+      light.position.set(pos[0], pos[1], pos[2]);
+      this.scene.add(light);
+    });
+
+    // Add soft hemisphere light for ambient fill
+    const hemisphereLight = new THREE.HemisphereLight(0xff7744, 0x441111, 0.4);
+    this.scene.add(hemisphereLight);
+  }
+
   private createFlickeringLights(): void {
-    // Create flickering lights that simulate fire/lava
-    for (let i = 0; i < 8; i++) {
-      const fireLight = new THREE.PointLight(0xff4400, 0.8, 25);
+    // Create flickering lights that simulate fire/lava - increased count and intensity
+    for (let i = 0; i < 12; i++) {
+      const fireLight = new THREE.PointLight(0xff5522, 1.2, 30);
       fireLight.position.set(
         (Math.random() - 0.5) * 150,
         Math.random() * 8 + 3,
@@ -260,7 +299,7 @@ export class SceneManager {
       // Add flickering animation
       const originalIntensity = fireLight.intensity;
       setInterval(() => {
-        fireLight.intensity = originalIntensity * (0.7 + Math.random() * 0.6);
+        fireLight.intensity = originalIntensity * (0.8 + Math.random() * 0.4);
       }, Math.floor(100 + Math.random() * 200));
 
       this.scene.add(fireLight);
@@ -1033,15 +1072,15 @@ export class SceneManager {
       flame.position.set(0, 0.5, 0);
       torchGroup.add(flame);
 
-      // Torch light
-      const torchLight = new THREE.PointLight(0xff4400, 1.5, 25);
+      // Torch light - increased intensity and range for better illumination
+      const torchLight = new THREE.PointLight(0xff5522, 2.2, 35);
       torchLight.position.set(0, 0.5, 0);
       torchGroup.add(torchLight);
 
       // Add flickering animation
       const originalIntensity = torchLight.intensity;
       setInterval(() => {
-        torchLight.intensity = originalIntensity * (0.8 + Math.random() * 0.4);
+        torchLight.intensity = originalIntensity * (0.85 + Math.random() * 0.3);
         flame.scale.y = 0.8 + Math.random() * 0.4;
       }, 150 + Math.random() * 100);
 
