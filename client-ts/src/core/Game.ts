@@ -421,6 +421,9 @@ export class Game {
     // Reset game state
     this.resetGameState();
 
+    // Hide multiplayer room info if present
+    this.uiManager.hideRoomInfo();
+
     // Show main menu with a small delay to ensure proper cleanup
     setTimeout(() => {
       this.uiManager.showMainMenu();
