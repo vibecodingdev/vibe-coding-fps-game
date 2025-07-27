@@ -156,6 +156,16 @@ export class SceneManager {
     this.renderer.domElement.style.zIndex = "1";
   }
 
+  public hideRenderer(): void {
+    this.renderer.domElement.style.display = "none";
+    console.log("🎮 Renderer canvas hidden");
+  }
+
+  public showRenderer(): void {
+    this.renderer.domElement.style.display = "block";
+    console.log("🎮 Renderer canvas shown");
+  }
+
   private setupCamera(): void {
     // Camera position for DOOM-style view
     this.camera.position.set(0, 1.8, 20);

@@ -890,12 +890,18 @@ export class UIManager {
 
   // Menu navigation
   public showMainMenu(): void {
+    console.log("🎮 UIManager.showMainMenu() called");
     this.hideAllMenus();
     // Set body to menu mode to allow scrolling
     document.body.className = "menu-mode";
     const mainMenu = document.getElementById("mainMenu");
     if (mainMenu) {
       mainMenu.style.display = "flex";
+      console.log("✅ Main menu display set to flex");
+    } else {
+      console.error(
+        "❌ Main menu element not found in UIManager.showMainMenu()"
+      );
     }
   }
 
@@ -971,6 +977,7 @@ export class UIManager {
       "partyRoom",
       "instructionsScreen",
       "gameOverScreen",
+      "pauseMenu",
     ];
 
     menus.forEach((menuId) => {

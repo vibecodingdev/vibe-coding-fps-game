@@ -377,9 +377,15 @@ export class Game {
     // Stop background music
     this.audioSystem.stopBackgroundMusic();
 
-    // Exit pointer lock
+    // Exit pointer lock and reset controls state
     if (document.exitPointerLock) {
       document.exitPointerLock();
+    }
+
+    // Reset pointer lock controls state to prevent relock attempts
+    const controls = this.playerController.getControls();
+    if (controls) {
+      this.playerController.resetPointerLockState();
     }
 
     // If in multiplayer, leave the game
@@ -391,20 +397,51 @@ export class Game {
     // Set body to menu mode to allow scrolling
     document.body.className = "menu-mode";
 
-    // Hide all game UI elements
+    // Hide the 3D renderer canvas
+    this.sceneManager.hideRenderer();
+
+    // Hide all game UI elements with more thorough cleanup
     const pauseMenu = document.getElementById("pauseMenu");
     const gameUI = document.getElementById("gameUI");
     const gameOverScreen = document.getElementById("gameOverScreen");
 
-    if (pauseMenu) pauseMenu.style.display = "none";
-    if (gameUI) gameUI.style.display = "none";
-    if (gameOverScreen) gameOverScreen.style.display = "none";
+    if (pauseMenu) {
+      pauseMenu.style.display = "none";
+      console.log("✅ Pause menu hidden");
+    }
+    if (gameUI) {
+      gameUI.style.display = "none";
+      console.log("✅ Game UI hidden");
+    }
+    if (gameOverScreen) {
+      gameOverScreen.style.display = "none";
+      console.log("✅ Game over screen hidden");
+    }
 
     // Reset game state
     this.resetGameState();
 
-    // Show main menu
-    this.uiManager.showMainMenu();
+    // Show main menu with a small delay to ensure proper cleanup
+    setTimeout(() => {
+      this.uiManager.showMainMenu();
+
+      // Double-check that main menu is visible
+      const mainMenu = document.getElementById("mainMenu");
+      if (mainMenu) {
+        console.log("✅ Main menu element found and should be visible");
+        console.log("Main menu display style:", mainMenu.style.display);
+        console.log(
+          "Main menu computed style display:",
+          window.getComputedStyle(mainMenu).display
+        );
+        console.log(
+          "Main menu z-index:",
+          window.getComputedStyle(mainMenu).zIndex
+        );
+      } else {
+        console.error("❌ Main menu element not found!");
+      }
+    }, 100);
 
     console.log("✅ Successfully returned to main menu");
   }
@@ -432,6 +469,9 @@ export class Game {
 
     // Set body to game mode
     document.body.className = "game-mode";
+
+    // Show the 3D renderer canvas
+    this.sceneManager.showRenderer();
 
     // Show game UI
     const gameUI = document.getElementById("gameUI");

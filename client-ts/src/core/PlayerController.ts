@@ -30,8 +30,19 @@ export class PlayerController {
       return;
     }
 
-    // Create pointer lock controls
-    this.controls = new PointerLockControls(this.camera, document.body);
+    // Check if Pointer Lock API is available
+    if (!document.body.requestPointerLock) {
+      console.warn("⚠️ Pointer Lock API not available in this browser");
+      return;
+    }
+
+    try {
+      // Create pointer lock controls
+      this.controls = new PointerLockControls(this.camera, document.body);
+    } catch (error) {
+      console.error("❌ Failed to create PointerLockControls:", error);
+      return;
+    }
 
     // Add event listeners for pointer lock
     this.controls.addEventListener("lock", () => {
@@ -49,8 +60,8 @@ export class PlayerController {
       console.log("🔓 Pointer lock released");
       this.inputState.isMouseLocked = false;
 
-      // Add click listener to re-lock when user clicks
-      this.addRelockClickListener();
+      // Check if we should show pause menu or add relock listener
+      this.handlePointerUnlock();
     });
 
     // 添加controls对象到场景中，而不是camera
@@ -58,8 +69,22 @@ export class PlayerController {
   }
 
   private addRelockClickListener(): void {
+    // Only add relock listener if we're still in playing state
+    const game = (window as any).game;
+    if (!game || game.getGameState() !== "playing") {
+      console.log("🚫 Not adding relock listener - not in game state");
+      return;
+    }
+
     const relockHandler = (event: MouseEvent) => {
       event.preventDefault();
+
+      // Double-check game state when clicked
+      if (game.getGameState() !== "playing") {
+        console.log("🚫 Ignoring relock attempt - not in game state");
+        document.removeEventListener("click", relockHandler);
+        return;
+      }
 
       if (this.controls && !this.controls.isLocked) {
         console.log("🔒 Attempting to re-lock pointer...");
@@ -226,5 +251,32 @@ export class PlayerController {
 
   public setSceneManager(sceneManager: SceneManager): void {
     this.sceneManager = sceneManager;
+  }
+
+  private handlePointerUnlock(): void {
+    // Get the current game state from global window object
+    const game = (window as any).game;
+    if (game && game.getGameState() === "playing") {
+      // If in game, show pause menu automatically when pointer is unlocked
+      console.log("🎮 Pointer unlocked during game - showing pause menu");
+      setTimeout(() => {
+        if (game.getGameState() === "playing") {
+          game.pauseGame();
+        }
+      }, 50); // Small delay to ensure proper state handling
+    } else {
+      // If not in game or no game instance, don't add relock listener
+      console.log("🔓 Pointer unlocked outside of game - no relock");
+    }
+  }
+
+  public resetPointerLockState(): void {
+    // Remove any existing click event listeners that might try to relock
+    // This is called when returning to main menu to prevent unwanted pointer locking
+    console.log("🔄 Resetting pointer lock state");
+
+    // Note: We can't easily remove specific listeners without references,
+    // but the addRelockClickListener already has auto-cleanup timeouts
+    // The main protection is in handlePointerUnlock() checking game state
   }
 }

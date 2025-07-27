@@ -609,6 +609,9 @@ function startMultiplayerGame(
   const gameUI = document.getElementById("gameUI");
   if (gameUI) gameUI.style.display = "block";
 
+  // Show the 3D renderer canvas
+  window.game.getSceneManager().showRenderer();
+
   // Show room info during game
   if (networkManager.currentRoom) {
     showRoomInfo(networkManager.currentRoom.name);
@@ -1075,6 +1078,9 @@ async function startSinglePlayer(game: Game): Promise<void> {
   // Set body to game mode to prevent scrolling
   document.body.className = "game-mode";
 
+  // Show the 3D renderer canvas
+  game.getSceneManager().showRenderer();
+
   // Enter fullscreen mode
   requestFullscreen();
 
@@ -1120,6 +1126,7 @@ function hideAllMenus(): void {
     "partyRoom",
     "instructionsScreen",
     "gameOverScreen",
+    "pauseMenu",
   ];
 
   menus.forEach((menuId) => {

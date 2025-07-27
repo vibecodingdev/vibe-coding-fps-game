@@ -1,5 +1,7 @@
 import { DemonType, DemonConfig } from "@/types/demons";
+import { SceneThemeName } from "@/themes";
 
+// Base demon configurations remain unchanged
 export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
   IMP: {
     name: "Imp",
@@ -80,6 +82,154 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     fireballRange: 30.0, // Maximum fireball range
   },
 };
+
+// Theme-specific demon visual configurations
+export const THEME_DEMON_CONFIGS: Record<
+  SceneThemeName,
+  Record<DemonType, DemonConfig>
+> = {
+  hell: {
+    IMP: {
+      ...DEMON_CONFIGS.IMP,
+      color: 0x8b0000, // Dark red for hell theme
+      headColor: 0xcd5c5c, // Indian red
+      eyeColor: 0xff4500, // Orange red
+    },
+    DEMON: {
+      ...DEMON_CONFIGS.DEMON,
+      color: 0x2f1b14, // Dark brown with fire tones
+      headColor: 0x8b0000, // Dark red
+      eyeColor: 0xff6347, // Tomato red
+    },
+    CACODEMON: {
+      ...DEMON_CONFIGS.CACODEMON,
+      color: 0x800000, // Maroon
+      headColor: 0x8b0000, // Dark red
+      eyeColor: 0xff0000, // Pure red
+    },
+    BARON: {
+      ...DEMON_CONFIGS.BARON,
+      color: 0x8b0000, // Dark red - classic hell baron
+      headColor: 0xcd5c5c, // Indian red
+      eyeColor: 0xff4500, // Orange red
+    },
+    ARCHVILE: {
+      ...DEMON_CONFIGS.ARCHVILE,
+      color: 0x2f1b14, // Dark charcoal
+      headColor: 0xff4500, // Orange red
+      eyeColor: 0xffd700, // Gold
+    },
+  },
+  ice: {
+    IMP: {
+      ...DEMON_CONFIGS.IMP,
+      color: 0x4682b4, // Steel blue
+      headColor: 0x708090, // Slate gray
+      eyeColor: 0x87ceeb, // Sky blue
+    },
+    DEMON: {
+      ...DEMON_CONFIGS.DEMON,
+      color: 0x2f4f4f, // Dark slate gray
+      headColor: 0x6495ed, // Cornflower blue
+      eyeColor: 0x00ffff, // Cyan
+    },
+    CACODEMON: {
+      ...DEMON_CONFIGS.CACODEMON,
+      color: 0x191970, // Midnight blue
+      headColor: 0x4169e1, // Royal blue
+      eyeColor: 0x87cefa, // Light sky blue
+    },
+    BARON: {
+      ...DEMON_CONFIGS.BARON,
+      color: 0x1e90ff, // Dodger blue
+      headColor: 0x4682b4, // Steel blue
+      eyeColor: 0x00bfff, // Deep sky blue
+    },
+    ARCHVILE: {
+      ...DEMON_CONFIGS.ARCHVILE,
+      color: 0x2f4f4f, // Dark slate gray
+      headColor: 0x87ceeb, // Sky blue
+      eyeColor: 0xe0ffff, // Light cyan
+    },
+  },
+  toxic: {
+    IMP: {
+      ...DEMON_CONFIGS.IMP,
+      color: 0x228b22, // Forest green
+      headColor: 0x32cd32, // Lime green
+      eyeColor: 0x00ff00, // Lime
+    },
+    DEMON: {
+      ...DEMON_CONFIGS.DEMON,
+      color: 0x006400, // Dark green
+      headColor: 0x9acd32, // Yellow green
+      eyeColor: 0xadff2f, // Green yellow
+    },
+    CACODEMON: {
+      ...DEMON_CONFIGS.CACODEMON,
+      color: 0x2e8b57, // Sea green
+      headColor: 0x3cb371, // Medium sea green
+      eyeColor: 0x00ff7f, // Spring green
+    },
+    BARON: {
+      ...DEMON_CONFIGS.BARON,
+      color: 0x556b2f, // Dark olive green
+      headColor: 0x6b8e23, // Olive drab
+      eyeColor: 0x32cd32, // Lime green
+    },
+    ARCHVILE: {
+      ...DEMON_CONFIGS.ARCHVILE,
+      color: 0x2f4f2f, // Dark sea green
+      headColor: 0x66cdaa, // Medium aquamarine
+      eyeColor: 0x00ff00, // Lime
+    },
+  },
+  industrial: {
+    IMP: {
+      ...DEMON_CONFIGS.IMP,
+      color: 0x696969, // Dim gray
+      headColor: 0x808080, // Gray
+      eyeColor: 0xff0000, // Red (classic contrast)
+    },
+    DEMON: {
+      ...DEMON_CONFIGS.DEMON,
+      color: 0x2f2f2f, // Dark gray
+      headColor: 0x4a4a4a, // Medium dark gray
+      eyeColor: 0xff4500, // Orange red
+    },
+    CACODEMON: {
+      ...DEMON_CONFIGS.CACODEMON,
+      color: 0x36454f, // Charcoal
+      headColor: 0x708090, // Slate gray
+      eyeColor: 0x00ffff, // Cyan (tech glow)
+    },
+    BARON: {
+      ...DEMON_CONFIGS.BARON,
+      color: 0x2f4f4f, // Dark slate gray
+      headColor: 0x696969, // Dim gray
+      eyeColor: 0x00ff00, // Green (industrial warning)
+    },
+    ARCHVILE: {
+      ...DEMON_CONFIGS.ARCHVILE,
+      color: 0x1c1c1c, // Almost black
+      headColor: 0x4a4a4a, // Medium dark gray
+      eyeColor: 0x00bfff, // Deep sky blue (tech)
+    },
+  },
+};
+
+// Helper function to get theme-specific demon config
+export function getThemeDemonConfig(
+  demonType: DemonType,
+  themeName?: SceneThemeName
+): DemonConfig {
+  if (themeName && THEME_DEMON_CONFIGS[themeName]) {
+    return (
+      THEME_DEMON_CONFIGS[themeName][demonType] || DEMON_CONFIGS[demonType]
+    );
+  }
+  return DEMON_CONFIGS[demonType];
+}
 
 export const DEMON_COUNT = 10;
 

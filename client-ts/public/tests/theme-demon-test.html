@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme-Specific Demon Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #ff4400;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #44ff44;
+        }
+        
+        button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #555;
+        }
+        
+        .theme-button.active {
+            background: #0066cc;
+            border-color: #0099ff;
+        }
+        
+        select {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 5px;
+            margin: 5px;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🎮 Theme-Specific Demon Test</h3>
+        <p><strong>Controls:</strong></p>
+        <ul>
+            <li>Mouse: Look around</li>
+            <li>WASD: Move</li>
+            <li>Click: Shoot</li>
+            <li>Switch themes to see different demon variants!</li>
+        </ul>
+        <p><strong>Current Theme:</strong> <span id="current-theme">Hell</span></p>
+        <p><strong>Demons Spawned:</strong> <span id="demon-count">0</span></p>
+    </div>
+    
+    <div id="controls">
+        <h4>🗺️ Theme Controls</h4>
+        <button class="theme-button active" onclick="switchTheme('hell')">🔥 Hell Theme</button>
+        <button class="theme-button" onclick="switchTheme('ice')">❄️ Ice Theme</button>
+        <button class="theme-button" onclick="switchTheme('toxic')">☢️ Toxic Theme</button>
+        <button class="theme-button" onclick="switchTheme('industrial')">🏭 Industrial Theme</button>
+        <br>
+        <h4>👹 Demon Controls</h4>
+        <select id="demon-type">
+            <option value="IMP">👹 Imp</option>
+            <option value="DEMON">🐺 Demon</option>
+            <option value="CACODEMON">👁️ Cacodemon</option>
+            <option value="BARON">👑 Baron</option>
+            <option value="ARCHVILE">🔥 Archvile</option>
+        </select>
+        <button onclick="spawnDemon()">Spawn Demon</button>
+        <button onclick="clearDemons()">Clear All</button>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        
+        // Game state
+        let scene, camera, renderer, gameInstance;
+        let currentTheme = 'hell';
+        let demonCount = 0;
+        
+        // Initialize the test
+        async function init() {
+            try {
+                // Import the game module
+                const { Game } = await import('/src/core/Game.js');
+                
+                // Create game instance
+                gameInstance = new Game();
+                await gameInstance.initialize(currentTheme);
+                
+                // Get Three.js objects
+                scene = gameInstance.getScene();
+                camera = gameInstance.getCamera();
+                renderer = gameInstance.getRenderer();
+                
+                // Add renderer to container
+                const container = document.getElementById('canvas-container');
+                container.appendChild(renderer.domElement);
+                
+                // Update UI
+                updateThemeDisplay();
+                
+                console.log('✅ Theme-specific demon test initialized');
+                
+                // Start render loop
+                animate();
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize test:', error);
+                document.getElementById('info').innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (gameInstance) {
+                gameInstance.update();
+            }
+        }
+        
+        // Theme switching
+        window.switchTheme = async function(themeName) {
+            if (currentTheme === themeName) return;
+            
+            try {
+                currentTheme = themeName;
+                
+                if (gameInstance) {
+                    await gameInstance.switchTheme(themeName);
+                    updateThemeDisplay();
+                    clearDemons(); // Clear existing demons to see new theme variants
+                }
+                
+                // Update active button
+                document.querySelectorAll('.theme-button').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                console.log(`🗺️ Switched to ${themeName} theme`);
+                
+            } catch (error) {
+                console.error('❌ Failed to switch theme:', error);
+            }
+        }
+        
+        // Demon spawning
+        window.spawnDemon = function() {
+            if (!gameInstance) return;
+            
+            try {
+                const demonType = document.getElementById('demon-type').value;
+                const demonSystem = gameInstance.getDemonSystem();
+                
+                if (demonSystem && demonSystem.createDemonModel) {
+                    // Create demon model using theme-specific variants
+                    const demonModel = demonSystem.createDemonModel(demonType);
+                    
+                    // Position randomly around the map
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 15 + Math.random() * 20;
+                    demonModel.position.set(
+                        Math.cos(angle) * distance,
+                        1,
+                        Math.sin(angle) * distance
+                    );
+                    
+                    // Add to scene
+                    scene.add(demonModel);
+                    demonCount++;
+                    
+                    // Store reference for cleanup
+                    if (!window.testDemons) window.testDemons = [];
+                    window.testDemons.push(demonModel);
+                    
+                    updateDemonCount();
+                    
+                    console.log(`👹 Spawned ${demonType} with ${currentTheme} theme at position (${demonModel.position.x.toFixed(1)}, ${demonModel.position.z.toFixed(1)})`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to spawn demon:', error);
+            }
+        }
+        
+        // Clear all test demons
+        window.clearDemons = function() {
+            if (window.testDemons) {
+                window.testDemons.forEach(demon => {
+                    scene.remove(demon);
+                    // Clean up materials and geometries
+                    demon.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => mat.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    });
+                });
+                window.testDemons = [];
+                demonCount = 0;
+                updateDemonCount();
+                console.log('🧹 Cleared all test demons');
+            }
+        }
+        
+        function updateThemeDisplay() {
+            document.getElementById('current-theme').textContent = currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1);
+        }
+        
+        function updateDemonCount() {
+            document.getElementById('demon-count').textContent = demonCount;
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (gameInstance) {
+                gameInstance.onResize();
+            }
+        });
+        
+        // Initialize when page loads
+        init();
+    </script>
+</body>
+</html> 

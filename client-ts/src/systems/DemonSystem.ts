@@ -6,8 +6,13 @@ import {
   Fireball,
 } from "@/types/demons";
 import { Bullet } from "@/types/weapons";
-import { DEMON_CONFIGS, getDemonTypesForWave } from "@/config/demons";
+import {
+  DEMON_CONFIGS,
+  getDemonTypesForWave,
+  getThemeDemonConfig,
+} from "@/config/demons";
 import { SceneManager } from "@/core/SceneManager";
+import { SceneThemeName } from "@/themes";
 
 // Animation states for demons
 interface DemonAnimation {
@@ -1350,7 +1355,14 @@ export class DemonSystem implements IDemonSystem {
   }
 
   public createDemonModel(demonType: DemonType): THREE.Group {
-    const typeData = DEMON_CONFIGS[demonType];
+    // Get current theme from SceneManager for theme-specific demon variants
+    const currentTheme = this.sceneManager?.getCurrentTheme();
+    const themeName = currentTheme
+      ?.getConfig()
+      .name.toLowerCase() as SceneThemeName;
+
+    // Use theme-specific configuration if available, otherwise fall back to base config
+    const typeData = getThemeDemonConfig(demonType, themeName);
     const demonGroup = new THREE.Group();
 
     // Create enhanced materials with DOOM-style aesthetics
@@ -1440,6 +1452,11 @@ export class DemonSystem implements IDemonSystem {
 
     // Add demon-specific details
     this.addDemonDetails(demonGroup, demonType, typeData);
+
+    // Add theme-specific enhancements
+    if (themeName) {
+      this.addThemeSpecificFeatures(demonGroup, demonType, themeName);
+    }
 
     // Enable shadows and set up materials
     demonGroup.traverse((child) => {
@@ -1987,5 +2004,246 @@ export class DemonSystem implements IDemonSystem {
       BARON: 0,
       ARCHVILE: 0,
     };
+  }
+
+  /**
+   * Add theme-specific visual enhancements to demons
+   */
+  private addThemeSpecificFeatures(
+    demonGroup: THREE.Group,
+    demonType: DemonType,
+    themeName: SceneThemeName
+  ): void {
+    switch (themeName) {
+      case "hell":
+        this.addHellThemeFeatures(demonGroup, demonType);
+        break;
+      case "ice":
+        this.addIceThemeFeatures(demonGroup, demonType);
+        break;
+      case "toxic":
+        this.addToxicThemeFeatures(demonGroup, demonType);
+        break;
+      case "industrial":
+        this.addIndustrialThemeFeatures(demonGroup, demonType);
+        break;
+    }
+  }
+
+  private addHellThemeFeatures(
+    demonGroup: THREE.Group,
+    demonType: DemonType
+  ): void {
+    // Add fire/lava effects for hell theme
+    const fireParticles = this.createDemonParticleSystem(20, 0xff4500, 2, 0.6);
+    fireParticles.position.y = demonType === "CACODEMON" ? 1.2 : 0.8;
+    fireParticles.name = "fireParticles";
+    demonGroup.add(fireParticles);
+
+    // Add glowing emissive effect to body and head
+    demonGroup.traverse((child) => {
+      if (
+        child instanceof THREE.Mesh &&
+        child.material instanceof THREE.MeshPhongMaterial
+      ) {
+        if (child.name === "body" || child.name === "head") {
+          child.material.emissive = new THREE.Color(0x330000);
+          child.material.emissiveIntensity = 0.2;
+        }
+      }
+    });
+
+    // Add flickering light for larger demons
+    if (demonType === "BARON" || demonType === "ARCHVILE") {
+      const fireLight = new THREE.PointLight(0xff4500, 2, 8);
+      fireLight.position.y = 1.5;
+      fireLight.name = "fireLight";
+      demonGroup.add(fireLight);
+
+      // Animate the light
+      const originalIntensity = fireLight.intensity;
+      setInterval(() => {
+        fireLight.intensity = originalIntensity * (0.7 + Math.random() * 0.6);
+      }, 150);
+    }
+  }
+
+  private addIceThemeFeatures(
+    demonGroup: THREE.Group,
+    demonType: DemonType
+  ): void {
+    // Add ice crystal spikes
+    const crystalGeometry = new THREE.ConeGeometry(0.1, 0.3, 6);
+    const crystalMaterial = new THREE.MeshPhongMaterial({
+      color: 0x87ceeb,
+      transparent: true,
+      opacity: 0.8,
+      emissive: new THREE.Color(0x001122),
+      emissiveIntensity: 0.3,
+    });
+
+    // Add multiple ice crystals to the demon
+    for (let i = 0; i < 3; i++) {
+      const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
+      const angle = (i / 3) * Math.PI * 2;
+      crystal.position.set(
+        Math.cos(angle) * 0.4,
+        0.2 + Math.random() * 0.6,
+        Math.sin(angle) * 0.4
+      );
+      crystal.rotation.z = Math.random() * Math.PI * 2;
+      crystal.name = `iceCrystal${i}`;
+      demonGroup.add(crystal);
+    }
+
+    // Add frost effect to materials
+    demonGroup.traverse((child) => {
+      if (
+        child instanceof THREE.Mesh &&
+        child.material instanceof THREE.MeshPhongMaterial
+      ) {
+        if (child.name === "body" || child.name === "head") {
+          child.material.emissive = new THREE.Color(0x001133);
+          child.material.emissiveIntensity = 0.1;
+          child.material.shininess = 50; // More reflective for icy look
+        }
+      }
+    });
+  }
+
+  private addToxicThemeFeatures(
+    demonGroup: THREE.Group,
+    demonType: DemonType
+  ): void {
+    // Add glowing veins/circuit-like patterns
+    const veinGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6);
+    const veinMaterial = new THREE.MeshLambertMaterial({
+      color: 0x00ff00,
+      emissive: new THREE.Color(0x00ff00),
+      transparent: true,
+      opacity: 0.7,
+    });
+
+    // Add glowing veins across the demon's body
+    for (let i = 0; i < 4; i++) {
+      const vein = new THREE.Mesh(veinGeometry, veinMaterial);
+      const angle = (i / 4) * Math.PI * 2;
+      vein.position.set(Math.cos(angle) * 0.3, 0.6, Math.sin(angle) * 0.3);
+      vein.rotation.z = angle + Math.PI / 2;
+      vein.name = `toxicVein${i}`;
+      demonGroup.add(vein);
+    }
+
+    // Add toxic glow to demon
+    demonGroup.traverse((child) => {
+      if (
+        child instanceof THREE.Mesh &&
+        child.material instanceof THREE.MeshPhongMaterial
+      ) {
+        if (child.name === "body" || child.name === "head") {
+          child.material.emissive = new THREE.Color(0x002200);
+          child.material.emissiveIntensity = 0.3;
+        }
+      }
+    });
+
+    // Add glowing particle cloud
+    const toxicParticles = this.createDemonParticleSystem(
+      30,
+      0x44ff44,
+      1.5,
+      0.4
+    );
+    toxicParticles.position.y = demonType === "CACODEMON" ? 1.2 : 0.8;
+    toxicParticles.name = "toxicParticles";
+    demonGroup.add(toxicParticles);
+  }
+
+  private addIndustrialThemeFeatures(
+    demonGroup: THREE.Group,
+    demonType: DemonType
+  ): void {
+    // Add metal plating/armor
+    const plateGeometry = new THREE.BoxGeometry(0.3, 0.1, 0.4);
+    const plateMaterial = new THREE.MeshPhongMaterial({
+      color: 0x666666,
+      shininess: 80,
+      specular: 0x888888,
+    });
+
+    // Add armor plates
+    for (let i = 0; i < 2; i++) {
+      const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+      plate.position.set(0, 0.4 + i * 0.3, 0.2);
+      plate.name = `armorPlate${i}`;
+      demonGroup.add(plate);
+    }
+
+    // Add glowing tech elements
+    const techGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const techMaterial = new THREE.MeshLambertMaterial({
+      color: 0x00ffff,
+      emissive: new THREE.Color(0x003333),
+    });
+
+    // Add tech lights/sensors
+    for (let i = 0; i < 3; i++) {
+      const tech = new THREE.Mesh(techGeometry, techMaterial.clone());
+      const angle = (i / 3) * Math.PI * 2;
+      tech.position.set(Math.cos(angle) * 0.35, 1.2, Math.sin(angle) * 0.35);
+      tech.name = `techSensor${i}`;
+      demonGroup.add(tech);
+
+      // Animate the tech lights by changing opacity
+      setInterval(() => {
+        if (tech.material instanceof THREE.MeshLambertMaterial) {
+          tech.material.opacity = 0.5 + Math.random() * 0.5;
+          tech.material.transparent = true;
+        }
+      }, 500 + Math.random() * 1000);
+    }
+
+    // Add metallic sheen to demon materials
+    demonGroup.traverse((child) => {
+      if (
+        child instanceof THREE.Mesh &&
+        child.material instanceof THREE.MeshPhongMaterial
+      ) {
+        if (child.name === "body" || child.name === "head") {
+          child.material.shininess = 60;
+          child.material.specular = new THREE.Color(0x444444);
+        }
+      }
+    });
+  }
+
+  /**
+   * Create a particle system for demon theme effects
+   */
+  private createDemonParticleSystem(
+    count: number,
+    color: number,
+    size: number,
+    opacity: number
+  ): THREE.Points {
+    const particles = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+
+    for (let i = 0; i < count * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 2;
+      positions[i + 1] = Math.random() * 2;
+      positions[i + 2] = (Math.random() - 0.5) * 2;
+    }
+
+    particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+    const particleMaterial = new THREE.PointsMaterial({
+      color,
+      size,
+      transparent: true,
+      opacity,
+    });
+
+    return new THREE.Points(particles, particleMaterial);
   }
 }
