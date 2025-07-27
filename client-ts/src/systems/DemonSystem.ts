@@ -38,6 +38,10 @@ export class DemonSystem implements IDemonSystem {
     CACODEMON: 0,
     BARON: 0,
     ARCHVILE: 0,
+    CHARIZARD: 0,
+    PIKACHU: 0,
+    SQUIRTLE: 0,
+    EEVEE: 0,
   } as Record<DemonType, number>;
 
   private scene!: THREE.Scene;
@@ -1251,6 +1255,10 @@ export class DemonSystem implements IDemonSystem {
       CACODEMON: 0,
       BARON: 0,
       ARCHVILE: 0,
+      CHARIZARD: 0,
+      PIKACHU: 0,
+      SQUIRTLE: 0,
+      EEVEE: 0,
     };
 
     // Spawn demons with delay
@@ -1441,13 +1449,32 @@ export class DemonSystem implements IDemonSystem {
     demonGroup.add(leftEye);
     demonGroup.add(rightEye);
 
-    // Demon-specific features
-    if (demonType === "CACODEMON") {
-      this.addCacodemonFeatures(demonGroup, typeData);
-    } else if (demonType === "ARCHVILE") {
-      this.addArchvileFeatures(demonGroup, typeData);
-    } else {
-      this.addHumanoidFeatures(demonGroup, typeData, demonType);
+    // Build demon based on body type for better modularity
+    switch (typeData.bodyType) {
+      case "floating":
+        if (demonType === "CACODEMON") {
+          this.addCacodemonFeatures(demonGroup, typeData);
+        } else {
+          this.addFloatingFeatures(demonGroup, typeData, demonType);
+        }
+        break;
+      case "dragon":
+        this.addDragonFeatures(demonGroup, typeData, demonType);
+        break;
+      case "quadruped":
+        this.addQuadrupedFeatures(demonGroup, typeData, demonType);
+        break;
+      case "small_biped":
+        this.addSmallBipedFeatures(demonGroup, typeData, demonType);
+        break;
+      case "humanoid":
+      default:
+        if (demonType === "ARCHVILE") {
+          this.addArchvileFeatures(demonGroup, typeData);
+        } else {
+          this.addHumanoidFeatures(demonGroup, typeData, demonType);
+        }
+        break;
     }
 
     // Add demon-specific details
@@ -2003,6 +2030,10 @@ export class DemonSystem implements IDemonSystem {
       CACODEMON: 0,
       BARON: 0,
       ARCHVILE: 0,
+      CHARIZARD: 0,
+      PIKACHU: 0,
+      SQUIRTLE: 0,
+      EEVEE: 0,
     };
   }
 
@@ -2245,5 +2276,456 @@ export class DemonSystem implements IDemonSystem {
     });
 
     return new THREE.Points(particles, particleMaterial);
+  }
+
+  /**
+   * Add features for floating type demons (non-Cacodemon)
+   */
+  private addFloatingFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: DemonType
+  ): void {
+    // Floating demons have no legs, but may have floating appendages
+    const tentacleGeometry = new THREE.CylinderGeometry(0.02, 0.08, 0.6, 6);
+    const tentacleMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.accentColor || typeData.headColor,
+    });
+
+    // Add floating tentacles/appendages
+    for (let i = 0; i < 4; i++) {
+      const tentacle = new THREE.Mesh(tentacleGeometry, tentacleMaterial);
+      const angle = (i / 4) * Math.PI * 2;
+      tentacle.position.set(Math.cos(angle) * 0.4, 0.2, Math.sin(angle) * 0.4);
+      tentacle.rotation.z = angle;
+      demonGroup.add(tentacle);
+    }
+  }
+
+  /**
+   * Add features for dragon type demons (Charizard)
+   */
+  private addDragonFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: DemonType
+  ): void {
+    const accentMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.accentColor || 0x8b0000,
+    });
+
+    const secondaryMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.secondaryColor || typeData.color,
+    });
+
+    // Wings
+    if (typeData.visualFeatures?.hasWings) {
+      const wingGeometry = new THREE.CylinderGeometry(0.05, 0.3, 1.2, 8);
+
+      const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+      leftWing.position.set(-0.8, 1.0, -0.2);
+      leftWing.rotation.z = Math.PI / 4;
+      leftWing.rotation.x = -Math.PI / 6;
+      leftWing.name = "leftWing";
+      demonGroup.add(leftWing);
+
+      const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
+      rightWing.position.set(0.8, 1.0, -0.2);
+      rightWing.rotation.z = -Math.PI / 4;
+      rightWing.rotation.x = -Math.PI / 6;
+      rightWing.name = "rightWing";
+      demonGroup.add(rightWing);
+    }
+
+    // Dragon legs (bipedal)
+    const legGeometry = new THREE.CylinderGeometry(0.15, 0.2, 1.0, 8);
+    const legMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.color,
+    });
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.3, -0.5, 0);
+    leftLeg.name = "leftLeg";
+    demonGroup.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.3, -0.5, 0);
+    rightLeg.name = "rightLeg";
+    demonGroup.add(rightLeg);
+
+    // Dragon arms
+    const armGeometry = new THREE.CylinderGeometry(0.1, 0.15, 0.8, 8);
+    const armMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.headColor,
+    });
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.5, 0.8, 0);
+    leftArm.rotation.z = 0.4;
+    leftArm.name = "leftArm";
+    demonGroup.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.5, 0.8, 0);
+    rightArm.rotation.z = -0.4;
+    rightArm.name = "rightArm";
+    demonGroup.add(rightArm);
+
+    // Tail with flame tip
+    if (typeData.visualFeatures?.hasTail) {
+      const tailGeometry = new THREE.CylinderGeometry(0.05, 0.15, 1.0, 8);
+      const tail = new THREE.Mesh(tailGeometry, secondaryMaterial);
+      tail.position.set(0, 0.5, -0.8);
+      tail.rotation.x = Math.PI / 3;
+      tail.name = "tail";
+      demonGroup.add(tail);
+
+      // Flame tip if it's a fire demon
+      if (typeData.visualFeatures?.specialFeatures?.includes("flame_tail")) {
+        const flameGeometry = new THREE.ConeGeometry(0.1, 0.3, 6);
+        const flameMaterial = new THREE.MeshLambertMaterial({
+          color: 0xff4500,
+          emissive: new THREE.Color(0xff2200),
+          emissiveIntensity: 0.6,
+        });
+        const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+        flame.position.set(0, 1.0, -1.3);
+        demonGroup.add(flame);
+      }
+    }
+
+    // Dragon claws
+    if (typeData.visualFeatures?.hasClaws) {
+      this.addClaws(demonGroup, leftArm.position, rightArm.position);
+    }
+  }
+
+  /**
+   * Add features for quadruped demons (Eevee)
+   */
+  private addQuadrupedFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: DemonType
+  ): void {
+    const legMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.color,
+    });
+
+    const accentMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.accentColor || typeData.headColor,
+    });
+
+    // Four legs for quadruped
+    const legGeometry = new THREE.CylinderGeometry(0.08, 0.12, 0.6, 6);
+
+    const frontLeft = new THREE.Mesh(legGeometry, legMaterial);
+    frontLeft.position.set(-0.25, -0.3, 0.3);
+    frontLeft.name = "frontLeftLeg";
+    demonGroup.add(frontLeft);
+
+    const frontRight = new THREE.Mesh(legGeometry, legMaterial);
+    frontRight.position.set(0.25, -0.3, 0.3);
+    frontRight.name = "frontRightLeg";
+    demonGroup.add(frontRight);
+
+    const backLeft = new THREE.Mesh(legGeometry, legMaterial);
+    backLeft.position.set(-0.25, -0.3, -0.3);
+    backLeft.name = "backLeftLeg";
+    demonGroup.add(backLeft);
+
+    const backRight = new THREE.Mesh(legGeometry, legMaterial);
+    backRight.position.set(0.25, -0.3, -0.3);
+    backRight.name = "backRightLeg";
+    demonGroup.add(backRight);
+
+    // Quadruped tail
+    if (typeData.visualFeatures?.hasTail) {
+      const tailGeometry = typeData.visualFeatures?.specialFeatures?.includes(
+        "bushy_tail"
+      )
+        ? new THREE.SphereGeometry(0.15, 8, 6) // Bushy tail like Eevee
+        : new THREE.CylinderGeometry(0.05, 0.1, 0.8, 6); // Regular tail
+
+      const tail = new THREE.Mesh(tailGeometry, accentMaterial);
+      tail.position.set(0, 0.6, -0.8);
+      if (!typeData.visualFeatures?.specialFeatures?.includes("bushy_tail")) {
+        tail.rotation.x = Math.PI / 4;
+      }
+      tail.name = "tail";
+      demonGroup.add(tail);
+    }
+
+    // Fluffy collar (Eevee specific)
+    if (typeData.visualFeatures?.specialFeatures?.includes("fluffy_collar")) {
+      const collarGeometry = new THREE.TorusGeometry(0.35, 0.15, 8, 16);
+      const collarMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.secondaryColor || 0xfffaf0,
+      });
+      const collar = new THREE.Mesh(collarGeometry, collarMaterial);
+      collar.position.y = 1.2;
+      collar.rotation.x = Math.PI / 2;
+      demonGroup.add(collar);
+    }
+
+    // Big ears
+    if (typeData.visualFeatures?.specialFeatures?.includes("big_ears")) {
+      const earGeometry = new THREE.ConeGeometry(0.15, 0.4, 6);
+      const earMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.headColor,
+      });
+
+      const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+      leftEar.position.set(-0.2, 1.6, 0);
+      leftEar.rotation.z = -0.3;
+      demonGroup.add(leftEar);
+
+      const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+      rightEar.position.set(0.2, 1.6, 0);
+      rightEar.rotation.z = 0.3;
+      demonGroup.add(rightEar);
+    }
+  }
+
+  /**
+   * Add features for small biped demons (Pikachu, Squirtle)
+   */
+  private addSmallBipedFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: DemonType
+  ): void {
+    const legMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.color,
+    });
+
+    const accentMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.accentColor || typeData.headColor,
+    });
+
+    // Small biped legs
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.5, 6);
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, -0.25, 0);
+    leftLeg.name = "leftLeg";
+    demonGroup.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, -0.25, 0);
+    rightLeg.name = "rightLeg";
+    demonGroup.add(rightLeg);
+
+    // Small arms
+    const armGeometry = new THREE.CylinderGeometry(0.06, 0.08, 0.4, 6);
+    const armMaterial = new THREE.MeshPhongMaterial({
+      color: typeData.color,
+    });
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.25, 0.5, 0);
+    leftArm.rotation.z = 0.2;
+    leftArm.name = "leftArm";
+    demonGroup.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.25, 0.5, 0);
+    rightArm.rotation.z = -0.2;
+    rightArm.name = "rightArm";
+    demonGroup.add(rightArm);
+
+    // Demon-specific features
+    if (demonType === "PIKACHU") {
+      this.addPikachuFeatures(demonGroup, typeData);
+    } else if (demonType === "SQUIRTLE") {
+      this.addSquirtleFeatures(demonGroup, typeData);
+    }
+
+    // Generic tail for small bipeds
+    if (
+      typeData.visualFeatures?.hasTail &&
+      !typeData.visualFeatures?.specialFeatures?.includes("lightning_tail")
+    ) {
+      const tailGeometry = new THREE.CylinderGeometry(0.05, 0.1, 0.6, 6);
+      const tail = new THREE.Mesh(tailGeometry, accentMaterial);
+      tail.position.set(0, 0.3, -0.4);
+      tail.rotation.x = Math.PI / 4;
+      tail.name = "tail";
+      demonGroup.add(tail);
+    }
+  }
+
+  /**
+   * Add Pikachu-specific features
+   */
+  private addPikachuFeatures(demonGroup: THREE.Group, typeData: any): void {
+    // Long ears
+    if (typeData.visualFeatures?.specialFeatures?.includes("long_ears")) {
+      const earGeometry = new THREE.CylinderGeometry(0.08, 0.02, 0.6, 6);
+      const earMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.color,
+      });
+      const tipMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.accentColor || 0x8b4513,
+      });
+
+      // Left ear
+      const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+      leftEar.position.set(-0.15, 1.6, 0);
+      leftEar.rotation.z = -0.2;
+      demonGroup.add(leftEar);
+
+      const leftTip = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 6, 4),
+        tipMaterial
+      );
+      leftTip.position.set(-0.2, 2.0, 0);
+      demonGroup.add(leftTip);
+
+      // Right ear
+      const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+      rightEar.position.set(0.15, 1.6, 0);
+      rightEar.rotation.z = 0.2;
+      demonGroup.add(rightEar);
+
+      const rightTip = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 6, 4),
+        tipMaterial
+      );
+      rightTip.position.set(0.2, 2.0, 0);
+      demonGroup.add(rightTip);
+    }
+
+    // Cheek pouches
+    if (typeData.visualFeatures?.specialFeatures?.includes("cheek_pouches")) {
+      const cheekGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+      const cheekMaterial = new THREE.MeshLambertMaterial({
+        color: typeData.secondaryColor || 0xff0000,
+        emissive: new THREE.Color(typeData.secondaryColor || 0xff0000),
+        emissiveIntensity: 0.3,
+      });
+
+      const leftCheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+      leftCheek.position.set(-0.25, 1.4, 0.2);
+      demonGroup.add(leftCheek);
+
+      const rightCheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+      rightCheek.position.set(0.25, 1.4, 0.2);
+      demonGroup.add(rightCheek);
+    }
+
+    // Lightning bolt tail
+    if (typeData.visualFeatures?.specialFeatures?.includes("lightning_tail")) {
+      const tailSegments = [];
+      const tailMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.color,
+      });
+
+      // Create zigzag tail
+      for (let i = 0; i < 3; i++) {
+        const segmentGeometry = new THREE.BoxGeometry(0.15, 0.05, 0.2);
+        const segment = new THREE.Mesh(segmentGeometry, tailMaterial);
+        segment.position.set(
+          i % 2 === 0 ? -0.1 : 0.1,
+          0.2 - i * 0.1,
+          -0.4 - i * 0.15
+        );
+        segment.rotation.z = i % 2 === 0 ? 0.3 : -0.3;
+        demonGroup.add(segment);
+        tailSegments.push(segment);
+      }
+    }
+  }
+
+  /**
+   * Add Squirtle-specific features
+   */
+  private addSquirtleFeatures(demonGroup: THREE.Group, typeData: any): void {
+    // Shell
+    if (typeData.visualFeatures?.specialFeatures?.includes("shell")) {
+      const shellGeometry = new THREE.SphereGeometry(
+        0.45,
+        12,
+        8,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2
+      );
+      const shellMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.secondaryColor || 0xf5deb3,
+      });
+
+      const shell = new THREE.Mesh(shellGeometry, shellMaterial);
+      shell.position.set(0, 0.6, -0.2);
+      shell.rotation.x = Math.PI;
+      demonGroup.add(shell);
+
+      // Shell pattern
+      const patternGeometry = new THREE.SphereGeometry(0.1, 8, 6);
+      const patternMaterial = new THREE.MeshPhongMaterial({
+        color: typeData.accentColor || 0x8b4513,
+      });
+
+      for (let i = 0; i < 6; i++) {
+        const pattern = new THREE.Mesh(patternGeometry, patternMaterial);
+        const angle = (i / 6) * Math.PI * 2;
+        pattern.position.set(
+          Math.cos(angle) * 0.25,
+          0.8,
+          -0.2 + Math.sin(angle) * 0.25
+        );
+        demonGroup.add(pattern);
+      }
+    }
+
+    // Water cannon (mouth feature)
+    if (typeData.visualFeatures?.specialFeatures?.includes("water_cannon")) {
+      const cannonGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.15, 8);
+      const cannonMaterial = new THREE.MeshPhongMaterial({
+        color: 0x4682b4,
+      });
+
+      const cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
+      cannon.position.set(0, 1.35, 0.3);
+      cannon.rotation.x = Math.PI / 2;
+      demonGroup.add(cannon);
+    }
+  }
+
+  /**
+   * Helper method to add claws to arms
+   */
+  private addClaws(
+    demonGroup: THREE.Group,
+    leftArmPos: THREE.Vector3,
+    rightArmPos: THREE.Vector3
+  ): void {
+    const clawGeometry = new THREE.ConeGeometry(0.02, 0.1, 6);
+    const clawMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+
+    // Left arm claws
+    for (let i = 0; i < 3; i++) {
+      const claw = new THREE.Mesh(clawGeometry, clawMaterial);
+      claw.position.set(
+        leftArmPos.x + (i - 1) * 0.05,
+        leftArmPos.y - 0.4,
+        leftArmPos.z + 0.1
+      );
+      claw.rotation.x = Math.PI;
+      demonGroup.add(claw);
+    }
+
+    // Right arm claws
+    for (let i = 0; i < 3; i++) {
+      const claw = new THREE.Mesh(clawGeometry, clawMaterial);
+      claw.position.set(
+        rightArmPos.x + (i - 1) * 0.05,
+        rightArmPos.y - 0.4,
+        rightArmPos.z + 0.1
+      );
+      claw.rotation.x = Math.PI;
+      demonGroup.add(claw);
+    }
   }
 }

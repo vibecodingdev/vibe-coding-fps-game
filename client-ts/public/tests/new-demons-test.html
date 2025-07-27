@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Pokemon-Inspired Demons Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        button:hover {
+            background: #555;
+        }
+        
+        button.active {
+            background: #666;
+            border-color: #888;
+        }
+        
+        #gameContainer {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #666;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        
+        .demon-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .demon-card {
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #555;
+        }
+        
+        .demon-name {
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+        
+        .demon-stats {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 New Pokemon-Inspired Demons Showcase</h1>
+        <p>Testing the enhanced demon system with modular body types</p>
+    </div>
+    
+    <div class="controls">
+        <button id="spawnCharizard">🐲 Spawn Charizard</button>
+        <button id="spawnPikachu">⚡ Spawn Pikachu</button>
+        <button id="spawnSquirtle">🐢 Spawn Squirtle</button>
+        <button id="spawnEevee">🦊 Spawn Eevee</button>
+        <button id="clearDemons">🗑️ Clear All</button>
+        <button id="testWave">🌊 Test Wave</button>
+    </div>
+    
+    <div id="gameContainer"></div>
+    
+    <div class="info">
+        <h3>🔧 Enhanced Demon System Features:</h3>
+        <ul>
+            <li><strong>Modular Body Types:</strong> Humanoid, Quadruped, Dragon, Small Biped, Floating</li>
+            <li><strong>Visual Features System:</strong> Wings, tails, claws, special features</li>
+            <li><strong>Theme Support:</strong> Hell, Ice, Toxic, Industrial variants</li>
+            <li><strong>Easy Extension:</strong> New demons can be added by configuring JSON-like data</li>
+        </ul>
+        
+        <div class="demon-list">
+            <div class="demon-card">
+                <div class="demon-name">🐲 Charizard (Dragon)</div>
+                <div class="demon-stats">
+                    Health: 6 | Speed: 0.9 | Attack: 30<br>
+                    Features: Wings, Tail, Fire Breath, Ranged
+                </div>
+            </div>
+            <div class="demon-card">
+                <div class="demon-name">⚡ Pikachu (Small Biped)</div>
+                <div class="demon-stats">
+                    Health: 3 | Speed: 2.2 | Attack: 18<br>
+                    Features: Long Ears, Cheek Pouches, Lightning
+                </div>
+            </div>
+            <div class="demon-card">
+                <div class="demon-name">🐢 Squirtle (Small Biped)</div>
+                <div class="demon-stats">
+                    Health: 4 | Speed: 1.1 | Attack: 22<br>
+                    Features: Shell, Water Cannon, Ranged
+                </div>
+            </div>
+            <div class="demon-card">
+                <div class="demon-name">🦊 Eevee (Quadruped)</div>
+                <div class="demon-stats">
+                    Health: 2 | Speed: 1.6 | Attack: 12<br>
+                    Features: Fluffy Collar, Big Ears, Bushy Tail
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from '/node_modules/three/build/three.module.js';
+        import { DemonSystem } from '/src/systems/DemonSystem.js';
+        import { SceneManager } from '/src/core/SceneManager.js';
+
+        class NewDemonsTest {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.demonSystem = new DemonSystem();
+                this.sceneManager = new SceneManager();
+                
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            async init() {
+                // Setup renderer
+                const container = document.getElementById('gameContainer');
+                const rect = container.getBoundingClientRect();
+                this.renderer.setSize(rect.width, rect.height);
+                this.renderer.setClearColor(0x1a1a2e);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                container.appendChild(this.renderer.domElement);
+
+                // Setup camera
+                this.camera.position.set(10, 8, 10);
+                this.camera.lookAt(0, 0, 0);
+
+                // Setup lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(20, 20, 20);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+
+                // Add ground plane
+                const groundGeometry = new THREE.PlaneGeometry(50, 50);
+                const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+
+                // Setup demon system
+                await this.demonSystem.initialize();
+                this.demonSystem.setScene(this.scene);
+                await this.sceneManager.initialize();
+                this.demonSystem.setSceneManager(this.sceneManager);
+
+                console.log('✅ New demons test initialized');
+            }
+
+            setupEventListeners() {
+                document.getElementById('spawnCharizard').addEventListener('click', () => {
+                    this.spawnDemon('CHARIZARD');
+                });
+
+                document.getElementById('spawnPikachu').addEventListener('click', () => {
+                    this.spawnDemon('PIKACHU');
+                });
+
+                document.getElementById('spawnSquirtle').addEventListener('click', () => {
+                    this.spawnDemon('SQUIRTLE');
+                });
+
+                document.getElementById('spawnEevee').addEventListener('click', () => {
+                    this.spawnDemon('EEVEE');
+                });
+
+                document.getElementById('clearDemons').addEventListener('click', () => {
+                    this.clearAllDemons();
+                });
+
+                document.getElementById('testWave').addEventListener('click', () => {
+                    this.spawnTestWave();
+                });
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    const container = document.getElementById('gameContainer');
+                    const rect = container.getBoundingClientRect();
+                    this.camera.aspect = rect.width / rect.height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(rect.width, rect.height);
+                });
+            }
+
+            spawnDemon(demonType) {
+                try {
+                    const demon = this.demonSystem.createDemonModel(demonType);
+                    
+                    // Random position around origin
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 3 + Math.random() * 4;
+                    demon.position.set(
+                        Math.cos(angle) * distance,
+                        0,
+                        Math.sin(angle) * distance
+                    );
+
+                    // Set appropriate scale
+                    const config = this.demonSystem.DEMON_CONFIGS?.[demonType];
+                    if (config) {
+                        demon.scale.setScalar(config.scale);
+                    }
+
+                    this.scene.add(demon);
+                    console.log(`✨ Spawned ${demonType} at position (${demon.position.x.toFixed(1)}, ${demon.position.z.toFixed(1)})`);
+                } catch (error) {
+                    console.error(`❌ Failed to spawn ${demonType}:`, error);
+                }
+            }
+
+            clearAllDemons() {
+                const demonsToRemove = [];
+                this.scene.traverse((child) => {
+                    if (child.userData && child.userData.demonType) {
+                        demonsToRemove.push(child);
+                    }
+                });
+
+                demonsToRemove.forEach(demon => {
+                    this.scene.remove(demon);
+                });
+
+                console.log(`🗑️ Cleared ${demonsToRemove.length} demons`);
+            }
+
+            spawnTestWave() {
+                this.clearAllDemons();
+                
+                // Spawn one of each new demon type
+                const newDemonTypes = ['CHARIZARD', 'PIKACHU', 'SQUIRTLE', 'EEVEE'];
+                
+                newDemonTypes.forEach((type, index) => {
+                    setTimeout(() => {
+                        this.spawnDemon(type);
+                    }, index * 1000);
+                });
+
+                console.log('🌊 Spawning test wave with new demon types');
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                // Simple rotation for better viewing
+                if (this.scene.children.length > 3) { // More than just lights and ground
+                    this.scene.traverse((child) => {
+                        if (child.userData && child.userData.demonType) {
+                            child.rotation.y += 0.01;
+                        }
+                    });
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Start the test when page loads
+        window.addEventListener('load', () => {
+            new NewDemonsTest();
+        });
+    </script>
+</body>
+</html> 
