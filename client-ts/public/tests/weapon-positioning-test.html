@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weapon Positioning Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            display: block;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .control-button {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .control-button:hover {
+            background: #555;
+        }
+        
+        .control-button.active {
+            background: #4CAF50;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui">
+            <h3>Weapon Positioning Test</h3>
+            <p>Current View: <span id="viewMode">First Person</span></p>
+            <p>Current Weapon: <span id="currentWeapon">shotgun</span></p>
+            
+            <div>
+                <button class="control-button active" id="firstPersonBtn">First Person</button>
+                <button class="control-button" id="thirdPersonBtn">Third Person</button>
+            </div>
+            
+            <div>
+                <button class="control-button" onclick="switchWeapon('shotgun')">Shotgun</button>
+                <button class="control-button" onclick="switchWeapon('chaingun')">Chaingun</button>
+                <button class="control-button" onclick="switchWeapon('rocket')">Rocket</button>
+                <button class="control-button" onclick="switchWeapon('plasma')">Plasma</button>
+            </div>
+        </div>
+        
+        <div id="instructions">
+            <h4>Instructions:</h4>
+            <ul>
+                <li><strong>Mouse:</strong> Look around</li>
+                <li><strong>WASD:</strong> Move</li>
+                <li><strong>Left Click:</strong> Shoot</li>
+                <li><strong>1-4:</strong> Switch weapons</li>
+                <li><strong>R:</strong> Reload</li>
+                <li><strong>First Person:</strong> Check if weapon is visible at bottom center</li>
+                <li><strong>Third Person:</strong> Check if weapon is in front of player</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.152.2';
+        import { PointerLockControls } from 'https://cdn.skypack.dev/three@0.152.2/examples/jsm/controls/PointerLockControls.js';
+
+        // Basic scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x404040);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas') });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 50, 50);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // Controls
+        const controls = new PointerLockControls(camera, document.body);
+        
+        // Add floor
+        const floorGeometry = new THREE.PlaneGeometry(100, 100);
+        const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Create test player model for third person view
+        const playerGroup = new THREE.Group();
+        
+        // Body
+        const bodyGeometry = new THREE.BoxGeometry(0.6, 1.8, 0.3);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x0066cc });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 0.9;
+        body.castShadow = true;
+        playerGroup.add(body);
+        
+        // Head
+        const headGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 1.5;
+        head.castShadow = true;
+        playerGroup.add(head);
+        
+        // Arms
+        const armGeometry = new THREE.BoxGeometry(0.25, 1.2, 0.25);
+        const armMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.5, 0.7, 0);
+        leftArm.castShadow = true;
+        playerGroup.add(leftArm);
+        
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.5, 0.7, 0);
+        rightArm.castShadow = true;
+        playerGroup.add(rightArm);
+        
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.25, 1.2, 0.25);
+        const legMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.15, -0.4, 0);
+        leftLeg.castShadow = true;
+        playerGroup.add(leftLeg);
+        
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.15, -0.4, 0);
+        rightLeg.castShadow = true;
+        playerGroup.add(rightLeg);
+
+        scene.add(playerGroup);
+
+        // Weapon models for testing (simplified versions)
+        const weaponModels = {};
+        let currentWeaponType = 'shotgun';
+        
+        function createShotgun() {
+            const group = new THREE.Group();
+            
+            // Main barrel
+            const barrelGeometry = new THREE.CylinderGeometry(0.035, 0.035, 1.0, 8);
+            const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+            const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+            barrel.rotation.z = Math.PI / 2;
+            group.add(barrel);
+            
+            // Stock
+            const stockGeometry = new THREE.BoxGeometry(0.08, 0.15, 0.35);
+            const stockMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+            const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+            stock.position.set(0, -0.08, 0.4);
+            group.add(stock);
+            
+            return group;
+        }
+        
+        function createChaingun() {
+            const group = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(0.12, 0.1, 0.8);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            group.add(body);
+            
+            // Rotating barrels
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const barrelGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 6);
+                const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
+                const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+                barrel.rotation.z = Math.PI / 2;
+                barrel.position.set(
+                    Math.cos(angle) * 0.05,
+                    Math.sin(angle) * 0.05,
+                    -0.3
+                );
+                group.add(barrel);
+            }
+            
+            return group;
+        }
+        
+        function createRocket() {
+            const group = new THREE.Group();
+            
+            // Main tube
+            const tubeGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8);
+            const tubeMaterial = new THREE.MeshLambertMaterial({ color: 0x2f4f4f });
+            const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            tube.rotation.z = Math.PI / 2;
+            group.add(tube);
+            
+            return group;
+        }
+        
+        function createPlasma() {
+            const group = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(0.1, 0.12, 0.9);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x000080,
+                emissive: 0x000020 
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            group.add(body);
+            
+            // Plasma chamber
+            const chamberGeometry = new THREE.SphereGeometry(0.08, 12, 8);
+            const chamberMaterial = new THREE.MeshLambertMaterial({
+                color: 0x00ffff,
+                emissive: 0x0080ff,
+                emissiveIntensity: 0.3
+            });
+            const chamber = new THREE.Mesh(chamberGeometry, chamberMaterial);
+            chamber.position.set(0, 0.02, -0.2);
+            group.add(chamber);
+            
+            return group;
+        }
+
+        // Create all weapons
+        weaponModels.shotgun = createShotgun();
+        weaponModels.chaingun = createChaingun();
+        weaponModels.rocket = createRocket();
+        weaponModels.plasma = createPlasma();
+
+        // Add all weapons to scene
+        Object.values(weaponModels).forEach(weapon => {
+            scene.add(weapon);
+            weapon.visible = false;
+        });
+
+        // Position weapons based on view mode
+        let isFirstPerson = true;
+        const gunBasePosition = { x: 0, y: -2.5, z: -4 }; // New positioning like optimized WeaponSystem
+
+                 function updateWeaponPosition() {
+             const activeWeapon = weaponModels[currentWeaponType];
+             if (!activeWeapon) return;
+
+             // Remove weapon from previous parent
+             if (activeWeapon.parent) {
+                 activeWeapon.parent.remove(activeWeapon);
+             }
+
+             if (isFirstPerson) {
+                 // First person positioning (like optimized WeaponSystem)
+                 scene.add(activeWeapon);
+                 
+                 const cameraPosition = camera.position.clone();
+                 const weaponOffset = new THREE.Vector3(
+                     gunBasePosition.x,
+                     gunBasePosition.y,
+                     gunBasePosition.z
+                 );
+                 weaponOffset.applyQuaternion(camera.quaternion);
+                 
+                 activeWeapon.position.copy(cameraPosition).add(weaponOffset);
+                 activeWeapon.rotation.copy(camera.rotation);
+                 activeWeapon.rotation.x += 0.1; // Slight upward tilt
+                 activeWeapon.scale.setScalar(0.8);
+             } else {
+                 // Third person - attach to player model (like remote player weapons)
+                 playerGroup.add(activeWeapon);
+                 activeWeapon.position.set(0.5, 0.7, -0.4); // In front of player's right hand
+                 activeWeapon.rotation.set(-0.2, 0, 0); // Point slightly downward
+                 activeWeapon.scale.setScalar(1.0);
+             }
+         }
+
+        function updateWeaponVisibility() {
+            Object.values(weaponModels).forEach(weapon => {
+                weapon.visible = false;
+            });
+            if (weaponModels[currentWeaponType]) {
+                weaponModels[currentWeaponType].visible = true;
+            }
+            updateWeaponPosition();
+        }
+
+        function switchToFirstPerson() {
+            isFirstPerson = true;
+            camera.position.set(0, 1.6, 0);
+            playerGroup.visible = false;
+            
+            // Update UI
+            document.getElementById('viewMode').textContent = 'First Person';
+            document.getElementById('firstPersonBtn').classList.add('active');
+            document.getElementById('thirdPersonBtn').classList.remove('active');
+            
+            updateWeaponPosition();
+        }
+
+        function switchToThirdPerson() {
+            isFirstPerson = false;
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 1, 0);
+            playerGroup.visible = true;
+            
+            // Update UI
+            document.getElementById('viewMode').textContent = 'Third Person';
+            document.getElementById('firstPersonBtn').classList.remove('active');
+            document.getElementById('thirdPersonBtn').classList.add('active');
+            
+            updateWeaponPosition();
+        }
+
+        window.switchWeapon = function(weaponType) {
+            currentWeaponType = weaponType;
+            document.getElementById('currentWeapon').textContent = weaponType;
+            updateWeaponVisibility();
+        };
+
+        // Event listeners
+        document.getElementById('firstPersonBtn').addEventListener('click', switchToFirstPerson);
+        document.getElementById('thirdPersonBtn').addEventListener('click', switchToThirdPerson);
+
+        // Movement
+        const moveSpeed = 5;
+        const keys = {};
+        
+        document.addEventListener('keydown', (event) => {
+            keys[event.code] = true;
+            
+            // Weapon switching
+            switch(event.code) {
+                case 'Digit1': switchWeapon('shotgun'); break;
+                case 'Digit2': switchWeapon('chaingun'); break;
+                case 'Digit3': switchWeapon('rocket'); break;
+                case 'Digit4': switchWeapon('plasma'); break;
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            keys[event.code] = false;
+        });
+
+        // Click to lock pointer for first person
+        document.addEventListener('click', () => {
+            if (isFirstPerson) {
+                controls.lock();
+            }
+        });
+
+        // Initialize
+        switchToFirstPerson();
+        updateWeaponVisibility();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Movement
+            if (isFirstPerson && controls.isLocked) {
+                const velocity = new THREE.Vector3();
+                
+                if (keys['KeyW']) velocity.z -= 1;
+                if (keys['KeyS']) velocity.z += 1;
+                if (keys['KeyA']) velocity.x -= 1;
+                if (keys['KeyD']) velocity.x += 1;
+                
+                velocity.normalize().multiplyScalar(moveSpeed * 0.016);
+                velocity.applyQuaternion(camera.quaternion);
+                velocity.y = 0; // Don't move vertically
+                
+                camera.position.add(velocity);
+                updateWeaponPosition();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html> 

@@ -39,8 +39,8 @@ export class WeaponSystem implements IWeaponSystem {
   private machineGunModel: THREE.Group | null = null;
   private rocketLauncherModel: THREE.Group | null = null;
   private plasmaRifleModel: THREE.Group | null = null;
-  // Position weapon at bottom-right corner with 45-degree angle for better first-person feel
-  private gunBasePosition = { x: 0.6, y: -0.8, z: -1.5 };
+  // Position weapon at bottom center like the old client for better first-person visibility
+  private gunBasePosition = { x: 0, y: -2.5, z: -4 };
 
   // Network callbacks for multiplayer synchronization
   private networkManager: any = null;
@@ -1459,9 +1459,9 @@ export class WeaponSystem implements IWeaponSystem {
       this.gunBasePosition.y,
       this.gunBasePosition.z
     );
-    // Position at 45-degree angle for better first-person visibility
-    weaponGroup.rotation.set(0.2, -0.4, 0.1); // Pitch up, yaw left, slight roll
-    weaponGroup.scale.setScalar(0.6); // Smaller scale for better view
+    // Position like the old client - minimal rotation for better first-person visibility
+    weaponGroup.rotation.set(0.1, 0, 0); // Slight upward tilt like old client
+    weaponGroup.scale.setScalar(0.8); // Slightly larger scale for better visibility
   }
 
   private updateWeaponModelVisibility(): void {
@@ -1494,29 +1494,25 @@ export class WeaponSystem implements IWeaponSystem {
     const activeWeapon = this.getActiveWeaponModel();
     if (!activeWeapon) return;
 
-    // Get camera position and direction
+    // Get camera position and direction (similar to old client)
     const cameraPosition = camera.position.clone();
-    const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
 
-    // Calculate weapon position with recoil offset
+    // Calculate weapon position with recoil offset (like old client)
     const weaponOffset = new THREE.Vector3(
       this.gunBasePosition.x,
       this.gunBasePosition.y,
       this.gunBasePosition.z + this.gunRecoilOffset // Apply recoil
     );
 
-    // Apply camera rotation to offset
+    // Apply camera rotation to offset (like old client)
     weaponOffset.applyQuaternion(camera.quaternion);
 
-    // Set weapon position relative to camera
+    // Set weapon position relative to camera (like old client)
     activeWeapon.position.copy(cameraPosition).add(weaponOffset);
 
-    // Maintain 45-degree angle positioning for first-person view
+    // Copy camera rotation and add slight upward tilt (like old client)
     activeWeapon.rotation.copy(camera.rotation);
-    activeWeapon.rotation.x += 0.2; // Pitch up
-    activeWeapon.rotation.y += -0.4; // Yaw left for bottom-right positioning
-    activeWeapon.rotation.z += 0.1; // Slight roll
+    activeWeapon.rotation.x += 0.1; // Slight upward tilt like old client
   }
 
   private getActiveWeaponModel(): THREE.Group | null {

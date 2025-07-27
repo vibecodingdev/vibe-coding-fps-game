@@ -1373,10 +1373,10 @@ export class NetworkManager implements NetworkState {
         return null;
     }
 
-    // Position weapon in front of player's body, similar to the body-mounted weapon size
-    weaponGroup.position.set(0.4, 0.6, 0.4); // Move to front of player
-    weaponGroup.rotation.set(-0.1, 0.2, 0); // Slight upward angle pointing forward
-    weaponGroup.scale.setScalar(1.2); // Larger size to match body proportions
+    // Position weapon in front of player's right hand, similar to old client
+    weaponGroup.position.set(0.5, 0.7, -0.4); // Move to front-right of player like old client
+    weaponGroup.rotation.set(-0.2, 0, 0); // Point slightly downward like holding weapon
+    weaponGroup.scale.setScalar(1.0); // Match body proportions
 
     return weaponGroup;
   }
