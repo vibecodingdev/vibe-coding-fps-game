@@ -1299,20 +1299,45 @@ export class UIManager {
 
     document.body.appendChild(deathScreen);
 
-    // Add event handler for quit button
-    const quitButton = document.getElementById("quitToMenuButton");
-    if (quitButton && onQuitToMenu) {
-      quitButton.onclick = onQuitToMenu;
-    }
+    // Set up event handler for quit button after DOM is ready
+    setTimeout(() => {
+      const quitButton = document.getElementById("quitToMenuButton");
+      if (quitButton && onQuitToMenu) {
+        console.log("🔧 Setting up quit button event handler");
+        quitButton.onclick = (e) => {
+          e.preventDefault();
+          console.log("🚪 Quit button clicked - calling onQuitToMenu");
+          onQuitToMenu();
+        };
+      } else {
+        console.warn("❗ Quit button or onQuitToMenu callback not found");
+      }
+    }, 50);
   }
 
   public updateRespawnCountdown(seconds: number): void {
-    const countdownElement = document.getElementById("countdownNumber");
-    if (countdownElement) {
-      countdownElement.textContent = seconds.toString();
-      console.log(`🔢 Updated countdown display to: ${seconds}`);
-    } else {
-      console.warn("❗ Countdown element not found!");
+    const updateCountdown = () => {
+      const countdownElement = document.getElementById("countdownNumber");
+      if (countdownElement) {
+        countdownElement.textContent = seconds.toString();
+        console.log(`🔢 Updated countdown display to: ${seconds}`);
+        return true;
+      } else {
+        console.warn("❗ Countdown element not found! Will retry...");
+        return false;
+      }
+    };
+
+    // Try to update immediately
+    if (!updateCountdown()) {
+      // If element not found, retry a few times with small delays
+      let retries = 0;
+      const retryInterval = setInterval(() => {
+        if (updateCountdown() || retries >= 5) {
+          clearInterval(retryInterval);
+        }
+        retries++;
+      }, 100);
     }
   }
 

@@ -1004,9 +1004,14 @@ export class NetworkManager implements NetworkState {
       nameSprite.scale.set(2.5, 0.6, 1);
 
       playerMesh.add(nameSprite);
+
+      // Convert camera position to foot-level position for proper player rendering
+      // Camera is at head level (1.6), player model should be positioned so feet are on ground
+      const footLevelY = Math.max(0, playerData.position.y - 1.6); // Subtract camera height offset
+
       playerMesh.position.set(
         playerData.position.x,
-        playerData.position.y,
+        footLevelY,
         playerData.position.z
       );
 
@@ -1033,7 +1038,9 @@ export class NetworkManager implements NetworkState {
       scene.add(playerMesh);
 
       console.log(
-        `👹 Created remote player: ${playerData.name} (${colorScheme.name})`
+        `👹 Created remote player: ${playerData.name} (${
+          colorScheme.name
+        }) at foot level Y: ${footLevelY.toFixed(2)}`
       );
       return playerMesh;
     } catch (error) {
@@ -1045,9 +1052,13 @@ export class NetworkManager implements NetworkState {
   public updateRemotePlayerPosition(data: any): void {
     const player = this.remotePlayers.get(data.playerId);
     if (player) {
-      // Smooth interpolation
+      // Convert camera position to foot-level position for proper player rendering
+      // Camera is at head level (1.6), player model should be positioned so feet are on ground
+      const footLevelY = Math.max(0, data.position.y - 1.6); // Subtract camera height offset
+
+      // Smooth interpolation with foot-level positioning
       player.mesh.position.lerp(
-        new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+        new THREE.Vector3(data.position.x, footLevelY, data.position.z),
         0.1
       );
       player.mesh.rotation.set(
@@ -1059,11 +1070,15 @@ export class NetworkManager implements NetworkState {
       // Only log position updates occasionally to avoid spam
       if (Math.random() < 0.01) {
         // Log ~1% of position updates
-        console.log(`👤 Updated player ${data.playerId} position:`, {
-          x: data.position.x.toFixed(2),
-          y: data.position.y.toFixed(2),
-          z: data.position.z.toFixed(2),
-        });
+        console.log(
+          `👤 Updated player ${data.playerId} position (foot level):`,
+          {
+            x: data.position.x.toFixed(2),
+            y: footLevelY.toFixed(2),
+            z: data.position.z.toFixed(2),
+            originalY: data.position.y.toFixed(2),
+          }
+        );
       }
     } else {
       console.warn(`❗️ Cannot find remote player with ID: ${data.playerId}`);
@@ -1507,7 +1522,15 @@ export class NetworkManager implements NetworkState {
 
       // Set position and rotation from server, but ensure proper ground height
       // Note: Server should ideally send correct Y position, but we fix it locally for now
-      const groundHeight = this.calculateDemonGroundHeight(data.demon.type);
+      const spawnPosition = new THREE.Vector3(
+        data.demon.position.x,
+        0, // Temporary Y position
+        data.demon.position.z
+      );
+      const groundHeight = this.calculateTerrainAwareGroundHeight(
+        data.demon.type,
+        spawnPosition
+      );
       demon.position.set(
         data.demon.position.x,
         data.demon.position.y || groundHeight, // Use server Y or calculate proper height
@@ -1868,5 +1891,59 @@ export class NetworkManager implements NetworkState {
         // Standard humanoid demons: legs extend to -0.4 - 0.4 (leg height/2)
         return 0.8; // 0.4 (leg bottom) + 0.4 (leg height/2) = 0.8
     }
+  }
+
+  /**
+   * Enhanced ground height calculation with terrain awareness and movement constraints
+   */
+  private calculateTerrainAwareGroundHeight(
+    demonType: string,
+    position: THREE.Vector3,
+    currentHeight?: number
+  ): number {
+    const baseHeight = this.calculateDemonGroundHeight(demonType);
+
+    // Special handling for floating demons
+    if (demonType === "CACODEMON") {
+      // Floating demons can have slight variation but stay near ground
+      const minFloat = 0.3;
+      const maxFloat = 1.2;
+      const targetFloat = baseHeight;
+
+      // If we have current height, smoothly adjust toward target
+      if (currentHeight !== undefined) {
+        const heightDiff = Math.abs(currentHeight - targetFloat);
+        if (heightDiff > 0.1) {
+          // Gradually move toward target height
+          const adjustSpeed = 0.02;
+          if (currentHeight > targetFloat) {
+            return Math.max(targetFloat, currentHeight - adjustSpeed);
+          } else {
+            return Math.min(targetFloat, currentHeight + adjustSpeed);
+          }
+        }
+      }
+
+      return Math.max(minFloat, Math.min(maxFloat, targetFloat));
+    }
+
+    // For ground-based demons, enforce strict ground contact
+    const groundLevel = 0.0; // Scene ground level
+    const minHeight = groundLevel + baseHeight * 0.9; // Allow slight ground penetration tolerance
+    const maxHeight = groundLevel + baseHeight * 1.1; // Prevent excessive floating
+
+    // If we have current height, prevent rapid height changes
+    if (currentHeight !== undefined) {
+      const maxHeightChange = 0.05; // Maximum height change per frame
+      const targetHeight = Math.max(minHeight, Math.min(maxHeight, baseHeight));
+      const heightDiff = targetHeight - currentHeight;
+
+      if (Math.abs(heightDiff) > maxHeightChange) {
+        // Gradually adjust height to prevent jumping
+        return currentHeight + Math.sign(heightDiff) * maxHeightChange;
+      }
+    }
+
+    return Math.max(minHeight, Math.min(maxHeight, baseHeight));
   }
 }

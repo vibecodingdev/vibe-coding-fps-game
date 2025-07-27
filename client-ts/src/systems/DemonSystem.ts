@@ -214,6 +214,9 @@ export class DemonSystem implements IDemonSystem {
       );
     }
 
+    // Final ground enforcement for all demons (safety net)
+    this.enforceGroundMovement(meshObject, demonType, deltaTime);
+
     // Update DemonInstance position from mesh position (single-player)
     if ("mesh" in demon && demon.mesh) {
       // Single-player: copy position from mesh to DemonInstance
@@ -1032,9 +1035,8 @@ export class DemonSystem implements IDemonSystem {
     meshObject.position.x += normalizedX * moveDistance;
     meshObject.position.z += normalizedZ * moveDistance;
 
-    // Ensure demon stays at proper ground height
-    const groundHeight = this.calculateDemonGroundHeight(demonType);
-    meshObject.position.y = groundHeight;
+    // Enforce proper ground movement with smooth transitions
+    this.enforceGroundMovement(meshObject, demonType, deltaTime);
 
     // Face movement direction
     meshObject.rotation.y = direction;
@@ -1103,9 +1105,8 @@ export class DemonSystem implements IDemonSystem {
       meshObject.position.z +=
         Math.cos(userData.wanderDirection) * moveDistance;
 
-      // Ensure demon stays at proper ground height
-      const groundHeight = this.calculateDemonGroundHeight(demonType);
-      meshObject.position.y = groundHeight;
+      // Enforce proper ground movement with smooth transitions
+      this.enforceGroundMovement(meshObject, demonType, deltaTime);
     } else {
       userData.isMoving = false;
     }
@@ -1302,16 +1303,19 @@ export class DemonSystem implements IDemonSystem {
       distance = 35 + Math.random() * 10; // 35-45 units from center
     }
 
-    // Calculate proper ground position based on demon geometry
-    const groundHeight = this.calculateDemonGroundHeight(demonType);
-
-    const position = new THREE.Vector3(
+    // Calculate proper ground position based on demon geometry with terrain awareness
+    const spawnPosition = new THREE.Vector3(
       Math.cos(angle) * distance,
-      groundHeight,
+      0, // Temporary Y position
       Math.sin(angle) * distance
     );
+    const groundHeight = this.calculateTerrainAwareGroundHeight(
+      demonType,
+      spawnPosition
+    );
+    spawnPosition.y = groundHeight;
 
-    demon.position.copy(position);
+    demon.position.copy(spawnPosition);
     demon.scale.setScalar(config.scale);
 
     const demonInstance: DemonInstance = {
@@ -1320,9 +1324,9 @@ export class DemonSystem implements IDemonSystem {
       mesh: demon,
       state: "idle",
       health: config.health,
-      position: position,
-      targetPosition: position.clone(),
-      patrolCenter: position.clone(),
+      position: spawnPosition,
+      targetPosition: spawnPosition.clone(),
+      patrolCenter: spawnPosition.clone(),
       patrolRadius: 10,
       lastAttackTime: 0,
       lastStateChange: Date.now(),
@@ -1356,9 +1360,9 @@ export class DemonSystem implements IDemonSystem {
     }
 
     console.log(
-      `👹 Spawned ${demonType} at position (${position.x.toFixed(
+      `👹 Spawned ${demonType} at position (${spawnPosition.x.toFixed(
         1
-      )}, ${position.z.toFixed(1)})`
+      )}, ${spawnPosition.z.toFixed(1)})`
     );
   }
 
@@ -1526,6 +1530,99 @@ export class DemonSystem implements IDemonSystem {
       default:
         // Standard humanoid demons: legs extend to -0.4 - 0.4 (leg height/2)
         return 0.8; // 0.4 (leg bottom) + 0.4 (leg height/2) = 0.8
+    }
+  }
+
+  /**
+   * Enhanced ground height calculation with terrain awareness and movement constraints
+   */
+  private calculateTerrainAwareGroundHeight(
+    demonType: DemonType,
+    position: THREE.Vector3,
+    currentHeight?: number
+  ): number {
+    const baseHeight = this.calculateDemonGroundHeight(demonType);
+
+    // Special handling for floating demons
+    if (demonType === "CACODEMON") {
+      // Floating demons can have slight variation but stay near ground
+      const minFloat = 0.3;
+      const maxFloat = 1.2;
+      const targetFloat = baseHeight;
+
+      // If we have current height, smoothly adjust toward target
+      if (currentHeight !== undefined) {
+        const heightDiff = Math.abs(currentHeight - targetFloat);
+        if (heightDiff > 0.1) {
+          // Gradually move toward target height
+          const adjustSpeed = 0.02;
+          if (currentHeight > targetFloat) {
+            return Math.max(targetFloat, currentHeight - adjustSpeed);
+          } else {
+            return Math.min(targetFloat, currentHeight + adjustSpeed);
+          }
+        }
+      }
+
+      return Math.max(minFloat, Math.min(maxFloat, targetFloat));
+    }
+
+    // For ground-based demons, enforce strict ground contact
+    const groundLevel = 0.0; // Scene ground level
+    const minHeight = groundLevel + baseHeight * 0.9; // Allow slight ground penetration tolerance
+    const maxHeight = groundLevel + baseHeight * 1.1; // Prevent excessive floating
+
+    // If we have current height, prevent rapid height changes
+    if (currentHeight !== undefined) {
+      const maxHeightChange = 0.05; // Maximum height change per frame
+      const targetHeight = Math.max(minHeight, Math.min(maxHeight, baseHeight));
+      const heightDiff = targetHeight - currentHeight;
+
+      if (Math.abs(heightDiff) > maxHeightChange) {
+        // Gradually adjust height to prevent jumping
+        return currentHeight + Math.sign(heightDiff) * maxHeightChange;
+      }
+    }
+
+    return Math.max(minHeight, Math.min(maxHeight, baseHeight));
+  }
+
+  /**
+   * Apply ground constraints to demon movement with smooth transitions
+   */
+  private enforceGroundMovement(
+    meshObject: THREE.Object3D,
+    demonType: DemonType,
+    deltaTime: number
+  ): void {
+    const currentHeight = meshObject.position.y;
+    const targetHeight = this.calculateTerrainAwareGroundHeight(
+      demonType,
+      meshObject.position,
+      currentHeight
+    );
+
+    // Smooth height transition to prevent jerky movement
+    const heightDiff = targetHeight - currentHeight;
+    const maxHeightChangePerFrame = 0.03; // Slower, smoother height adjustments
+
+    if (Math.abs(heightDiff) > 0.01) {
+      const adjustment =
+        Math.sign(heightDiff) *
+        Math.min(Math.abs(heightDiff), maxHeightChangePerFrame);
+      meshObject.position.y += adjustment;
+    } else {
+      meshObject.position.y = targetHeight;
+    }
+
+    // Add subtle bobbing animation for ground demons when moving
+    const userData = meshObject.userData;
+    if (userData && userData.isMoving && demonType !== "CACODEMON") {
+      const time = performance.now() * 0.001;
+      const bobbingIntensity = demonType === "BARON" ? 0.02 : 0.03;
+      const bobbingSpeed = userData.walkSpeed ? userData.walkSpeed * 3 : 3;
+      const bobbing = Math.sin(time * bobbingSpeed) * bobbingIntensity;
+      meshObject.position.y += bobbing;
     }
   }
 

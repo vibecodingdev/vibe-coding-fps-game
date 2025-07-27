@@ -167,9 +167,9 @@ export class SceneManager {
   }
 
   private setupCamera(): void {
-    // Camera position for DOOM-style view
-    this.camera.position.set(0, 1.8, 20);
-    this.camera.lookAt(0, 1.8, 0);
+    // Camera position for DOOM-style view - Head level for proper FPS perspective
+    this.camera.position.set(0, 1.6, 20);
+    this.camera.lookAt(0, 1.6, 0);
     this.camera.near = 0.1; // Increased near clip to reduce Z-fighting
     this.camera.far = 3000;
     this.camera.updateProjectionMatrix();

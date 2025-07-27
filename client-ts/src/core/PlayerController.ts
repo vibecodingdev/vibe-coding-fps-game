@@ -195,7 +195,7 @@ export class PlayerController {
     }
 
     // Keep camera above ground with better height management
-    const minHeight = 1.6; // Slightly lower for better ground clearance
+    const minHeight = 1.6; // Camera at head level for proper FPS perspective
     const maxHeight = 200; // Prevent flying too high
     playerPos.y = Math.max(minHeight, Math.min(maxHeight, playerPos.y));
   }
@@ -210,15 +210,16 @@ export class PlayerController {
 
     // 确保camera被正确添加到controls中
     if (this.controls) {
-      // 设置初始位置
-      this.controls.getObject().position.set(0, 1.8, 20);
+      // 设置初始位置 - Head level camera position for proper FPS perspective
+      this.controls.getObject().position.set(0, 1.6, 20);
       // 不要调用lookAt！PointerLockControls会管理摄像头旋转
     }
   }
 
   public reset(): void {
     if (this.controls) {
-      this.controls.getObject().position.set(0, 1.8, 20);
+      // Reset to head level camera position
+      this.controls.getObject().position.set(0, 1.6, 20);
       // 不要调用lookAt！PointerLockControls会管理摄像头旋转
     }
     this.velocity.set(0, 0, 0);

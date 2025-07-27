@@ -960,6 +960,12 @@ export class Game {
 
     console.log(`💀 You were killed by ${killerName} with ${weaponType}`);
 
+    // Release pointer lock immediately when player dies
+    if (document.exitPointerLock) {
+      document.exitPointerLock();
+      console.log("🔓 Released pointer lock on player death");
+    }
+
     // Show death screen with countdown
     this.showDeathScreen(killerName, weaponType);
 
@@ -967,12 +973,13 @@ export class Game {
     setTimeout(() => {
       console.log("🎬 Starting respawn countdown...");
       this.startRespawnCountdown();
-    }, 100);
+    }, 200);
   }
 
   private showDeathScreen(killerName: string, weaponType: string): void {
     if (this.uiManager) {
       this.uiManager.showDeathScreen(killerName, weaponType, () => {
+        console.log("🚪 Quit to main menu button clicked");
         this.quitToMainMenu();
       });
     }
@@ -1058,13 +1065,33 @@ export class Game {
       this.uiManager.hideDeathScreen();
     }
 
+    // Hide pause menu if it's showing and set game state to playing
+    const pauseMenu = document.getElementById("pauseMenu");
+    if (pauseMenu) {
+      pauseMenu.style.display = "none";
+      console.log("✅ Pause menu hidden on respawn");
+    }
+
+    // Set game state to playing
+    this.gameState = "playing";
+
+    // Set body back to game mode to prevent scrolling
+    document.body.className = "game-mode";
+
+    // Show game UI
+    const gameUI = document.getElementById("gameUI");
+    if (gameUI) {
+      gameUI.style.display = "block";
+    }
+
     // Reset player position in the world
     this.playerController.resetPosition();
 
-    // In single-player, ensure game state is set back to playing
-    if (!this.isMultiplayer) {
-      this.gameState = "playing";
-    }
+    // Auto-lock mouse pointer after a small delay
+    setTimeout(() => {
+      this.autoLockPointer();
+      console.log("🔒 Auto-locking pointer for respawn");
+    }, 100);
 
     console.log("🔄 You have respawned!");
   }
