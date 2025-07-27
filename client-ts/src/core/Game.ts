@@ -18,6 +18,9 @@ export class Game {
   private gameState: GameState = "mainMenu";
   private gameInitialized = false;
   private isMultiplayer = false;
+  private isDead = false;
+  private respawnCountdown = 0;
+  private respawnTimer: NodeJS.Timeout | null = null;
 
   // Core systems
   private sceneManager!: SceneManager;
@@ -130,6 +133,7 @@ export class Game {
       this.weaponSystem.setScene(scene);
       this.weaponSystem.setCamera(camera);
       this.weaponSystem.setAudioSystem(this.audioSystem);
+      this.weaponSystem.setNetworkManager(this.networkManager);
       this.demonSystem.setScene(scene);
       this.demonSystem.setSceneManager(this.sceneManager);
       this.demonSystem.setAudioSystem(this.audioSystem);
@@ -686,6 +690,16 @@ export class Game {
       if (hitDemon) {
         this.weaponSystem.removeBullet(bullet.id);
         this.onDemonHit(hitDemon, bullet.damage);
+        return; // Bullet already removed, skip other checks
+      }
+
+      // Check bullet-player collisions in multiplayer mode
+      if (this.isMultiplayer && this.networkManager) {
+        const hitPlayer = this.checkBulletPlayerCollision(bullet);
+        if (hitPlayer) {
+          this.weaponSystem.removeBullet(bullet.id);
+          this.onPlayerHit(hitPlayer, bullet.damage, bullet.weaponType);
+        }
       }
     });
 
@@ -845,6 +859,216 @@ export class Game {
     }
   }
 
+  private checkBulletPlayerCollision(bullet: any): string | null {
+    if (!this.networkManager) return null;
+
+    const bulletPosition = bullet.mesh.position;
+
+    // Check collision with remote players
+    for (const [playerId, playerInfo] of this.networkManager.remotePlayers) {
+      const playerPosition = playerInfo.mesh.position;
+      const distance = bulletPosition.distanceTo(playerPosition);
+
+      // Hit threshold for players (larger than demons since players are bigger)
+      if (distance < 1.5) {
+        return playerId;
+      }
+    }
+
+    return null;
+  }
+
+  private onPlayerHit(
+    playerId: string,
+    damage: number,
+    weaponType: string
+  ): void {
+    console.log(
+      `🎯 Player ${playerId} hit for ${damage} damage with ${weaponType}`
+    );
+
+    // Send damage event to server for synchronization
+    if (this.networkManager) {
+      this.networkManager.sendPlayerDamage(playerId, damage, weaponType);
+    }
+
+    // Create hit effect on the player
+    const playerInfo = this.networkManager.remotePlayers.get(playerId);
+    if (playerInfo) {
+      this.createHitEffect(playerInfo.mesh.position);
+
+      // Add some visual feedback (temporary red tint effect)
+      this.createPlayerHitEffect(playerInfo.mesh);
+    }
+  }
+
+  private createPlayerHitEffect(playerMesh: THREE.Group): void {
+    // Create a temporary red overlay effect
+    const hitEffect = new THREE.SphereGeometry(1.5, 8, 6);
+    const hitMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.3,
+    });
+    const hitSphere = new THREE.Mesh(hitEffect, hitMaterial);
+    hitSphere.position.copy(playerMesh.position);
+
+    const scene = this.sceneManager.getScene();
+    scene.add(hitSphere);
+
+    // Remove effect after short duration
+    setTimeout(() => {
+      scene.remove(hitSphere);
+    }, 200);
+  }
+
+  public takeDamageFromPlayer(
+    damage: number,
+    attackerName: string,
+    weaponType: string
+  ): void {
+    if (!this.playerState.isAlive || this.isDead) return;
+
+    this.playerState.health -= damage;
+    this.playerState.health = Math.max(0, this.playerState.health);
+    this.playerState.lastDamageTime = Date.now();
+
+    console.log(
+      `💥 Took ${damage} damage from ${attackerName} (${this.playerState.health} HP left)`
+    );
+
+    // Show damage effect
+    this.createDamageEffect();
+
+    // Check if player died
+    if (this.playerState.health <= 0) {
+      this.onPlayerDeath(attackerName, weaponType);
+    }
+  }
+
+  private createDamageEffect(): void {
+    // Add screen shake or red flash effect
+    if (this.uiManager) {
+      this.uiManager.showDamageIndicator();
+    }
+  }
+
+  private onPlayerDeath(killerName: string, weaponType: string): void {
+    this.isDead = true;
+    this.playerState.isAlive = false;
+    this.playerState.health = 0;
+
+    console.log(`💀 You were killed by ${killerName} with ${weaponType}`);
+
+    // Show death screen with countdown
+    this.showDeathScreen(killerName, weaponType);
+
+    // Start respawn countdown after a small delay to ensure UI is ready
+    setTimeout(() => {
+      console.log("🎬 Starting respawn countdown...");
+      this.startRespawnCountdown();
+    }, 100);
+  }
+
+  private showDeathScreen(killerName: string, weaponType: string): void {
+    if (this.uiManager) {
+      this.uiManager.showDeathScreen(killerName, weaponType, () => {
+        this.quitToMainMenu();
+      });
+    }
+  }
+
+  private quitToMainMenu(): void {
+    // Clear any running timers
+    if (this.respawnTimer) {
+      clearInterval(this.respawnTimer);
+      this.respawnTimer = null;
+    }
+
+    // Reset death state
+    this.isDead = false;
+    this.respawnCountdown = 0;
+
+    // Hide death screen
+    if (this.uiManager) {
+      this.uiManager.hideDeathScreen();
+    }
+
+    // Return to main menu
+    this.returnToMainMenu();
+
+    console.log("🚪 Returned to main menu from death screen");
+  }
+
+  private startRespawnCountdown(): void {
+    this.respawnCountdown = 5; // 5 seconds
+
+    if (this.respawnTimer) {
+      clearInterval(this.respawnTimer);
+    }
+
+    console.log("🕒 Starting respawn countdown from 5 seconds");
+
+    this.respawnTimer = setInterval(() => {
+      this.respawnCountdown--;
+      console.log(`⏱️ Respawn countdown: ${this.respawnCountdown} seconds`);
+
+      if (this.uiManager) {
+        this.uiManager.updateRespawnCountdown(this.respawnCountdown);
+      }
+
+      if (this.respawnCountdown <= 0) {
+        console.log("✅ Respawn countdown complete - enabling button");
+        this.enableRespawnButton();
+        if (this.respawnTimer) {
+          clearInterval(this.respawnTimer);
+          this.respawnTimer = null;
+        }
+      }
+    }, 1000);
+  }
+
+  private enableRespawnButton(): void {
+    if (this.uiManager) {
+      this.uiManager.enableRespawnButton(() => {
+        this.respawnPlayer();
+      });
+    }
+  }
+
+  public respawnPlayer(): void {
+    if (!this.isDead) return;
+
+    // Reset player state
+    this.isDead = false;
+    this.playerState.isAlive = true;
+    this.playerState.health = 100;
+    this.playerState.position.set(0, 1.8, 0);
+
+    // Reset weapon ammo
+    this.weaponSystem.reset();
+
+    // Send respawn event to server if in multiplayer
+    if (this.isMultiplayer && this.networkManager) {
+      this.networkManager.sendPlayerRespawn();
+    }
+
+    // Hide death screen
+    if (this.uiManager) {
+      this.uiManager.hideDeathScreen();
+    }
+
+    // Reset player position in the world
+    this.playerController.resetPosition();
+
+    // In single-player, ensure game state is set back to playing
+    if (!this.isMultiplayer) {
+      this.gameState = "playing";
+    }
+
+    console.log("🔄 You have respawned!");
+  }
+
   private onDemonHit(demonId: string, damage: number): void {
     // Check if this is a network demon first
     const networkDemon = this.networkDemons.find(
@@ -931,7 +1155,11 @@ export class Game {
 
     if (this.playerState.health <= 0) {
       this.playerState.isAlive = false;
-      this.endGame();
+      this.isDead = true;
+
+      // Show death screen with respawn option instead of ending game
+      this.onPlayerDeath("Demon", demonType);
+      console.log("💀 Player died from demon attack - showing respawn screen");
     }
   }
 
@@ -952,7 +1180,13 @@ export class Game {
 
     if (this.playerState.health <= 0) {
       this.playerState.isAlive = false;
-      this.endGame();
+      this.isDead = true;
+
+      // Show death screen with respawn option instead of ending game
+      this.onPlayerDeath("Archvile", "Demon Fireball");
+      console.log(
+        "💀 Player died from fireball attack - showing respawn screen"
+      );
     }
   }
 

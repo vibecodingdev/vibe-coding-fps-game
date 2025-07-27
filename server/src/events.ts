@@ -45,6 +45,8 @@ export const GAME_EVENTS = {
     RESPAWN: "player:respawn",
     READY: "player:ready",
     NOT_READY: "player:not_ready",
+    WEAPON_SWITCH: "player:weapon_switch",
+    SHOOTING: "player:shooting",
   },
   WEAPON: {
     SHOOT: "weapon:shoot",

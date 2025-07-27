@@ -65,6 +65,11 @@ export class NetworkManager implements NetworkState {
   private onDemonUpdate?: (data: any) => void;
   private onWaveStart?: (data: any) => void;
   private onWaveComplete?: (data: any) => void;
+  private onPlayerShooting?: (data: any) => void;
+  private onPlayerWeaponSwitch?: (data: any) => void;
+  private onPlayerDamage?: (data: any) => void;
+  private onPlayerDeath?: (data: any) => void;
+  private onPlayerRespawn?: (data: any) => void;
 
   private constructor() {
     // Private constructor to prevent direct instantiation
@@ -424,6 +429,42 @@ export class NetworkManager implements NetworkState {
     this.socket.on("player:position", (data) => {
       if (this.onPlayerPosition) {
         this.onPlayerPosition(data);
+      }
+    });
+
+    // Player action synchronization
+    this.socket.on("player:shooting", (data) => {
+      console.log("👤🔫 Player shooting event:", data);
+      if (this.onPlayerShooting) {
+        this.onPlayerShooting(data);
+      }
+    });
+
+    this.socket.on("player:weapon_switch", (data) => {
+      console.log("👤🔧 Player weapon switch event:", data);
+      if (this.onPlayerWeaponSwitch) {
+        this.onPlayerWeaponSwitch(data);
+      }
+    });
+
+    this.socket.on("player:damage", (data) => {
+      console.log("👤💥 Player damage event:", data);
+      if (this.onPlayerDamage) {
+        this.onPlayerDamage(data);
+      }
+    });
+
+    this.socket.on("player:death", (data) => {
+      console.log("👤💀 Player death event:", data);
+      if (this.onPlayerDeath) {
+        this.onPlayerDeath(data);
+      }
+    });
+
+    this.socket.on("player:respawn", (data) => {
+      console.log("👤🔄 Player respawn event:", data);
+      if (this.onPlayerRespawn) {
+        this.onPlayerRespawn(data);
       }
     });
 
@@ -877,6 +918,26 @@ export class NetworkManager implements NetworkState {
     this.onWaveComplete = callback;
   }
 
+  public setOnPlayerShooting(callback: (data: any) => void): void {
+    this.onPlayerShooting = callback;
+  }
+
+  public setOnPlayerWeaponSwitch(callback: (data: any) => void): void {
+    this.onPlayerWeaponSwitch = callback;
+  }
+
+  public setOnPlayerDamage(callback: (data: any) => void): void {
+    this.onPlayerDamage = callback;
+  }
+
+  public setOnPlayerDeath(callback: (data: any) => void): void {
+    this.onPlayerDeath = callback;
+  }
+
+  public setOnPlayerRespawn(callback: (data: any) => void): void {
+    this.onPlayerRespawn = callback;
+  }
+
   // Utility methods
   private updateConnectionStatus(status: string): void {
     if (this.onConnectionStatusUpdate) {
@@ -952,11 +1013,20 @@ export class NetworkManager implements NetworkState {
       // Scale player model to be slightly larger than demons for visibility
       playerMesh.scale.setScalar(1.2);
 
+      // Create and attach initial weapon (default shotgun)
+      const weaponMesh = this.createRemotePlayerWeapon("shotgun");
+      if (weaponMesh) {
+        playerMesh.add(weaponMesh);
+      }
+
       // Store player data
       const playerInfo = {
         mesh: playerMesh,
         data: playerData,
         colorScheme: colorScheme,
+        currentWeapon: "shotgun",
+        weaponMesh: weaponMesh,
+        isDead: false,
       };
 
       this.remotePlayers.set(playerData.id, playerInfo);
@@ -1001,6 +1071,77 @@ export class NetworkManager implements NetworkState {
         `Available remote players:`,
         Array.from(this.remotePlayers.keys())
       );
+    }
+  }
+
+  public updateRemotePlayerWeapon(playerId: string, weaponType: string): void {
+    const player = this.remotePlayers.get(playerId);
+    if (player && player.weaponMesh && player.currentWeapon !== weaponType) {
+      // Remove old weapon
+      player.mesh.remove(player.weaponMesh);
+
+      // Create and attach new weapon
+      const newWeaponMesh = this.createRemotePlayerWeapon(weaponType);
+      if (newWeaponMesh) {
+        player.mesh.add(newWeaponMesh);
+        player.weaponMesh = newWeaponMesh;
+        player.currentWeapon = weaponType;
+
+        console.log(`🔧 Updated ${player.data.name}'s weapon to ${weaponType}`);
+      }
+    }
+  }
+
+  public showRemotePlayerShooting(data: any): void {
+    const player = this.remotePlayers.get(data.playerId);
+    if (player) {
+      // Create a temporary muzzle flash effect
+      const flashGeometry = new THREE.SphereGeometry(0.1, 8, 6);
+      const flashMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        transparent: true,
+        opacity: 0.8,
+      });
+      const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+
+      // Position flash near weapon
+      flash.position.copy(player.mesh.position);
+      flash.position.add(new THREE.Vector3(0.4, 0.5, 0.3));
+
+      // Add to scene temporarily
+      const scene = player.mesh.parent;
+      if (scene) {
+        scene.add(flash);
+
+        // Remove flash after short duration
+        setTimeout(() => {
+          scene.remove(flash);
+        }, 100);
+      }
+
+      console.log(`🔫 ${player.data.name} is shooting with ${data.weaponType}`);
+    }
+  }
+
+  public hideDeadPlayer(playerId: string): void {
+    const player = this.remotePlayers.get(playerId);
+    if (player) {
+      player.mesh.visible = false;
+      player.isDead = true;
+      console.log(`👻 Hidden dead player: ${player.data.name}`);
+    }
+  }
+
+  public showRespawnedPlayer(playerId: string, position: any): void {
+    const player = this.remotePlayers.get(playerId);
+    if (player) {
+      player.mesh.visible = true;
+      player.isDead = false;
+
+      // Update position
+      player.mesh.position.set(position.x, position.y, position.z);
+
+      console.log(`🔄 Showed respawned player: ${player.data.name}`);
     }
   }
 
@@ -1121,6 +1262,123 @@ export class NetworkManager implements NetworkState {
     playerGroup.userData.colorScheme = colorScheme;
 
     return playerGroup;
+  }
+
+  private createRemotePlayerWeapon(weaponType: string): THREE.Group | null {
+    const weaponGroup = new THREE.Group();
+
+    switch (weaponType) {
+      case "shotgun":
+        // Double-barrel shotgun for remote players
+        const shotgunBarrel1 = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6);
+        const shotgunBarrel2 = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6);
+        const shotgunMaterial = new THREE.MeshLambertMaterial({
+          color: 0x2a2a2a,
+        });
+
+        const barrel1 = new THREE.Mesh(shotgunBarrel1, shotgunMaterial);
+        barrel1.rotation.z = Math.PI / 2;
+        barrel1.position.set(0, 0.02, 0);
+        weaponGroup.add(barrel1);
+
+        const barrel2 = new THREE.Mesh(shotgunBarrel2, shotgunMaterial);
+        barrel2.rotation.z = Math.PI / 2;
+        barrel2.position.set(0, -0.02, 0);
+        weaponGroup.add(barrel2);
+
+        // Add stock
+        const stockGeometry = new THREE.BoxGeometry(0.03, 0.06, 0.12);
+        const stockMaterial = new THREE.MeshLambertMaterial({
+          color: 0x8b4513,
+        });
+        const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+        stock.position.set(0, -0.03, -0.2);
+        weaponGroup.add(stock);
+        break;
+
+      case "chaingun":
+        // Multi-barrel chaingun for remote players
+        const chaingunBody = new THREE.BoxGeometry(0.05, 0.04, 0.25);
+        const chaingunMaterial = new THREE.MeshLambertMaterial({
+          color: 0x1a1a1a,
+        });
+        const chaingunMesh = new THREE.Mesh(chaingunBody, chaingunMaterial);
+        weaponGroup.add(chaingunMesh);
+
+        // Add rotating barrels
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const barrelGeom = new THREE.CylinderGeometry(0.006, 0.006, 0.2, 4);
+          const barrelMesh = new THREE.Mesh(
+            barrelGeom,
+            new THREE.MeshLambertMaterial({ color: 0x404040 })
+          );
+          barrelMesh.rotation.z = Math.PI / 2;
+          barrelMesh.position.set(
+            Math.cos(angle) * 0.02,
+            Math.sin(angle) * 0.02,
+            0.05
+          );
+          weaponGroup.add(barrelMesh);
+        }
+        break;
+
+      case "rocket":
+        // Rocket launcher for remote players
+        const rocketTube = new THREE.CylinderGeometry(0.04, 0.04, 0.4, 6);
+        const rocketMaterial = new THREE.MeshLambertMaterial({
+          color: 0x2f4f4f,
+        });
+        const rocketMesh = new THREE.Mesh(rocketTube, rocketMaterial);
+        rocketMesh.rotation.z = Math.PI / 2;
+        weaponGroup.add(rocketMesh);
+
+        // Add rocket inside tube
+        const rocketGeom = new THREE.CylinderGeometry(0.025, 0.02, 0.25, 6);
+        const rocketInsideMaterial = new THREE.MeshLambertMaterial({
+          color: 0x8b0000,
+          emissive: 0x220000,
+        });
+        const rocketInside = new THREE.Mesh(rocketGeom, rocketInsideMaterial);
+        rocketInside.rotation.z = Math.PI / 2;
+        rocketInside.position.set(0, 0, -0.05);
+        weaponGroup.add(rocketInside);
+        break;
+
+      case "plasma":
+        // Plasma rifle for remote players
+        const plasmaBody = new THREE.BoxGeometry(0.04, 0.05, 0.35);
+        const plasmaMaterial = new THREE.MeshLambertMaterial({
+          color: 0x000080,
+          emissive: 0x000020,
+        });
+        const plasmaMesh = new THREE.Mesh(plasmaBody, plasmaMaterial);
+        weaponGroup.add(plasmaMesh);
+
+        // Add plasma chamber
+        const chamberGeom = new THREE.SphereGeometry(0.025, 8, 6);
+        const chamberMaterial = new THREE.MeshLambertMaterial({
+          color: 0x00ffff,
+          emissive: 0x0080ff,
+          emissiveIntensity: 0.3,
+          transparent: true,
+          opacity: 0.8,
+        });
+        const chamber = new THREE.Mesh(chamberGeom, chamberMaterial);
+        chamber.position.set(0, 0.02, -0.1);
+        weaponGroup.add(chamber);
+        break;
+
+      default:
+        return null;
+    }
+
+    // Position weapon in front of player's body, similar to the body-mounted weapon size
+    weaponGroup.position.set(0.4, 0.6, 0.4); // Move to front of player
+    weaponGroup.rotation.set(-0.1, 0.2, 0); // Slight upward angle pointing forward
+    weaponGroup.scale.setScalar(1.2); // Larger size to match body proportions
+
+    return weaponGroup;
   }
 
   private getPlayerColor(index: number): any {
@@ -1461,14 +1719,70 @@ export class NetworkManager implements NetworkState {
     });
   }
 
-  // Weapon and item synchronization
+  // Weapon and shooting synchronization
+  public sendShootingEvent(
+    weaponType: string,
+    position: THREE.Vector3,
+    direction: THREE.Vector3
+  ): void {
+    if (!this.socket || !this.isConnected || !this.isMultiplayer) {
+      return;
+    }
+
+    const playerName = this.getPlayerName();
+    this.socket.emit("player:shooting", {
+      playerId: this.socket.id,
+      playerName: playerName,
+      weaponType: weaponType,
+      position: { x: position.x, y: position.y, z: position.z },
+      direction: { x: direction.x, y: direction.y, z: direction.z },
+      timestamp: Date.now(),
+    });
+  }
+
   public sendWeaponSwitch(weaponType: string): void {
     if (!this.socket || !this.isConnected || !this.isMultiplayer) {
       return;
     }
 
-    this.socket.emit("player:weapon", {
-      weapon: weaponType,
+    const playerName = this.getPlayerName();
+    this.socket.emit("player:weapon_switch", {
+      playerId: this.socket.id,
+      playerName: playerName,
+      weaponType: weaponType,
+      timestamp: Date.now(),
+    });
+  }
+
+  public sendPlayerDamage(
+    targetPlayerId: string,
+    damage: number,
+    weaponType: string
+  ): void {
+    if (!this.socket || !this.isConnected || !this.isMultiplayer) {
+      return;
+    }
+
+    const playerName = this.getPlayerName();
+    this.socket.emit("player:damage", {
+      attackerId: this.socket.id,
+      attackerName: playerName,
+      targetPlayerId: targetPlayerId,
+      damage: damage,
+      weaponType: weaponType,
+      timestamp: Date.now(),
+    });
+  }
+
+  public sendPlayerRespawn(): void {
+    if (!this.socket || !this.isConnected || !this.isMultiplayer) {
+      return;
+    }
+
+    const playerName = this.getPlayerName();
+    this.socket.emit("player:respawn", {
+      playerId: this.socket.id,
+      playerName: playerName,
       timestamp: Date.now(),
     });
   }

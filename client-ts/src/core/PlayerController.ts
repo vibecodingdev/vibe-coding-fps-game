@@ -241,6 +241,15 @@ export class PlayerController {
     return this.controls?.getObject().position.clone() || new THREE.Vector3();
   }
 
+  public resetPosition(): void {
+    if (this.controls) {
+      // Reset player to spawn position
+      this.controls.getObject().position.set(0, 1.8, 0);
+      this.playerState.position.set(0, 1.8, 0);
+      console.log("🔄 Player position reset to spawn");
+    }
+  }
+
   public getDirection(): THREE.Vector3 {
     if (!this.camera) return new THREE.Vector3(0, 0, -1);
 

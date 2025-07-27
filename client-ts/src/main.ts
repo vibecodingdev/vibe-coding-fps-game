@@ -418,6 +418,99 @@ function setupBasicNetworkCallbacks(networkManager: NetworkManager): void {
       console.log(`✅ Completed wave ${waveData.wave}`);
     });
   });
+
+  // Player shooting synchronization
+  networkManager.setOnPlayerShooting((data: any) => {
+    console.log(
+      `🔫 Player ${data.playerName} is shooting with ${data.weaponType}`
+    );
+
+    // Show shooting effect for remote players
+    if (data.playerId !== networkManager.socket?.id) {
+      networkManager.showRemotePlayerShooting(data);
+
+      // Add chat message for shooting activity (optional)
+      if (Math.random() < 0.1) {
+        // Only show 10% of shooting events to avoid spam
+        addChatMessage("system", `🔫 ${data.playerName} is firing!`);
+      }
+    }
+  });
+
+  // Player weapon switching synchronization
+  networkManager.setOnPlayerWeaponSwitch((data: any) => {
+    console.log(`🔧 Player ${data.playerName} switched to ${data.weaponType}`);
+
+    // Update remote player's weapon model
+    if (data.playerId !== networkManager.socket?.id) {
+      networkManager.updateRemotePlayerWeapon(data.playerId, data.weaponType);
+
+      // Add chat message for weapon changes
+      const weaponNames: Record<string, string> = {
+        shotgun: "Shotgun",
+        chaingun: "Chaingun",
+        rocket: "Rocket Launcher",
+        plasma: "Plasma Rifle",
+      };
+
+      addChatMessage(
+        "system",
+        `🔧 ${data.playerName} equipped ${
+          weaponNames[data.weaponType] || data.weaponType
+        }`
+      );
+    }
+  });
+
+  // Player damage, death, and respawn synchronization
+  networkManager.setOnPlayerDamage((data: any) => {
+    console.log(`💥 Player damage event:`, data);
+
+    // If this is damage to the local player
+    if (data.targetPlayerId === networkManager.socket?.id) {
+      const game = window.game;
+      if (game) {
+        game.takeDamageFromPlayer(
+          data.damage,
+          data.attackerName,
+          data.weaponType
+        );
+      }
+    }
+
+    // Show chat message for all damage events
+    addChatMessage(
+      "system",
+      `💥 ${data.attackerName} damaged ${data.targetName} for ${data.damage} HP`
+    );
+  });
+
+  networkManager.setOnPlayerDeath((data: any) => {
+    console.log(`💀 Player death event:`, data);
+
+    // Hide the dead player model
+    if (data.deadPlayerId !== networkManager.socket?.id) {
+      networkManager.hideDeadPlayer(data.deadPlayerId);
+    }
+
+    // Show death message in chat
+    addChatMessage(
+      "system",
+      `💀 ${data.deadPlayerName} was killed by ${data.killerName} with ${data.weaponType}`
+    );
+  });
+
+  networkManager.setOnPlayerRespawn((data: any) => {
+    console.log(`🔄 Player respawn event:`, data);
+
+    // Update remote player position and show them if it's not the local player
+    if (data.playerId !== networkManager.socket?.id) {
+      networkManager.showRespawnedPlayer(data.playerId, data.position);
+    }
+
+    // Show respawn message in chat
+    addChatMessage("system", `🔄 ${data.playerName} respawned`);
+  });
 }
 
 function updateRoomsList(rooms: any[]): void {

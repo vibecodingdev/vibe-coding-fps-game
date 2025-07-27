@@ -39,12 +39,20 @@ export class WeaponSystem implements IWeaponSystem {
   private machineGunModel: THREE.Group | null = null;
   private rocketLauncherModel: THREE.Group | null = null;
   private plasmaRifleModel: THREE.Group | null = null;
-  private gunBasePosition = { x: 0.3, y: -0.5, z: -1.2 };
+  // Position weapon at bottom-right corner with 45-degree angle for better first-person feel
+  private gunBasePosition = { x: 0.6, y: -0.8, z: -1.5 };
+
+  // Network callbacks for multiplayer synchronization
+  private networkManager: any = null;
 
   public async initialize(): Promise<void> {
     this.setupMuzzleFlashLight();
     this.createWeaponModels();
     console.log("🔫 WeaponSystem initialized with enhanced projectile effects");
+  }
+
+  public setNetworkManager(networkManager: any): void {
+    this.networkManager = networkManager;
   }
 
   public setScene(scene: THREE.Scene): void {
@@ -285,6 +293,19 @@ export class WeaponSystem implements IWeaponSystem {
     // Play weapon sound
     if (this.audioSystem) {
       this.audioSystem.playWeaponSound(this.currentWeapon);
+    }
+
+    // Send shooting event to network for multiplayer synchronization
+    if (this.networkManager && this.camera) {
+      const playerPosition = this.camera.position.clone();
+      const shootDirection = new THREE.Vector3();
+      this.camera.getWorldDirection(shootDirection);
+
+      this.networkManager.sendShootingEvent(
+        this.currentWeapon,
+        playerPosition,
+        shootDirection
+      );
     }
 
     console.log(
@@ -865,6 +886,15 @@ export class WeaponSystem implements IWeaponSystem {
     this.currentWeapon = weaponType;
     this.isAutoFiring = false;
     this.mouseHeld = false;
+
+    // Update weapon model visibility
+    this.updateWeaponModelVisibility();
+
+    // Send weapon switch event to network for multiplayer synchronization
+    if (this.networkManager) {
+      this.networkManager.sendWeaponSwitch(weaponType);
+    }
+
     console.log(`Switched to ${this.weapons[weaponType].name}`);
   }
 
@@ -1069,23 +1099,46 @@ export class WeaponSystem implements IWeaponSystem {
   private createShotgunModel(): THREE.Group {
     const group = new THREE.Group();
 
-    // 枪身
-    const barrelGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.8, 8);
-    const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
-    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-    barrel.rotation.z = Math.PI / 2;
-    barrel.position.set(0, 0, -0.4);
-    group.add(barrel);
+    // Double-barrel shotgun design
+    // Main barrel assembly
+    const barrelGeometry1 = new THREE.CylinderGeometry(0.035, 0.035, 1.0, 8);
+    const barrelGeometry2 = new THREE.CylinderGeometry(0.035, 0.035, 1.0, 8);
+    const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
-    // 枪托
-    const stockGeometry = new THREE.BoxGeometry(0.08, 0.15, 0.3);
+    const barrel1 = new THREE.Mesh(barrelGeometry1, barrelMaterial);
+    barrel1.rotation.z = Math.PI / 2;
+    barrel1.position.set(0, 0.04, -0.5);
+    group.add(barrel1);
+
+    const barrel2 = new THREE.Mesh(barrelGeometry2, barrelMaterial);
+    barrel2.rotation.z = Math.PI / 2;
+    barrel2.position.set(0, -0.04, -0.5);
+    group.add(barrel2);
+
+    // Receiver
+    const receiverGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.4);
+    const receiverMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+    const receiver = new THREE.Mesh(receiverGeometry, receiverMaterial);
+    receiver.position.set(0, 0, -0.1);
+    group.add(receiver);
+
+    // Wooden stock
+    const stockGeometry = new THREE.BoxGeometry(0.08, 0.15, 0.35);
     const stockMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
     const stock = new THREE.Mesh(stockGeometry, stockMaterial);
-    stock.position.set(0, -0.1, 0.1);
+    stock.position.set(0, -0.08, 0.15);
     group.add(stock);
 
-    // 扳机护圈
-    const triggerGuardGeometry = new THREE.TorusGeometry(0.04, 0.01, 8, 16);
+    // Wooden forend
+    const forEndGeometry = new THREE.CylinderGeometry(0.06, 0.05, 0.25, 8);
+    const forEndMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+    const forEnd = new THREE.Mesh(forEndGeometry, forEndMaterial);
+    forEnd.rotation.z = Math.PI / 2;
+    forEnd.position.set(0, -0.02, -0.35);
+    group.add(forEnd);
+
+    // Trigger guard
+    const triggerGuardGeometry = new THREE.TorusGeometry(0.05, 0.012, 8, 16);
     const triggerGuardMaterial = new THREE.MeshLambertMaterial({
       color: 0x404040,
     });
@@ -1094,10 +1147,16 @@ export class WeaponSystem implements IWeaponSystem {
       triggerGuardMaterial
     );
     triggerGuard.rotation.x = Math.PI / 2;
-    triggerGuard.position.set(0, -0.05, -0.1);
+    triggerGuard.position.set(0, -0.06, -0.05);
     group.add(triggerGuard);
 
-    // 设置位置和旋转
+    // Sight
+    const sightGeometry = new THREE.BoxGeometry(0.008, 0.03, 0.02);
+    const sightMaterial = new THREE.MeshLambertMaterial({ color: 0x606060 });
+    const sight = new THREE.Mesh(sightGeometry, sightMaterial);
+    sight.position.set(0, 0.08, -0.3);
+    group.add(sight);
+
     this.positionWeaponModel(group);
 
     if (this.scene) {
@@ -1110,27 +1169,75 @@ export class WeaponSystem implements IWeaponSystem {
   private createMachineGunModel(): THREE.Group {
     const group = new THREE.Group();
 
-    // 主枪身
-    const bodyGeometry = new THREE.BoxGeometry(0.06, 0.08, 0.6);
+    // Multi-barrel rotating chaingun design
+    // Main body/receiver
+    const bodyGeometry = new THREE.BoxGeometry(0.12, 0.1, 0.8);
     const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, 0, -0.3);
+    body.position.set(0, 0, -0.4);
     group.add(body);
 
-    // 枪管
-    const barrelGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8);
-    const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
-    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-    barrel.rotation.z = Math.PI / 2;
-    barrel.position.set(0, 0.02, -0.5);
-    group.add(barrel);
+    // Rotating barrel assembly
+    const barrelCount = 6;
+    const barrelRadius = 0.05;
+    for (let i = 0; i < barrelCount; i++) {
+      const angle = (i / barrelCount) * Math.PI * 2;
+      const barrelGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 6);
+      const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
+      const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+      barrel.rotation.z = Math.PI / 2;
+      barrel.position.set(
+        Math.cos(angle) * barrelRadius,
+        Math.sin(angle) * barrelRadius,
+        -0.6
+      );
+      group.add(barrel);
+    }
 
-    // 弹夹
-    const magGeometry = new THREE.BoxGeometry(0.04, 0.12, 0.08);
-    const magMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
-    const mag = new THREE.Mesh(magGeometry, magMaterial);
-    mag.position.set(0, -0.08, -0.1);
-    group.add(mag);
+    // Central barrel housing
+    const housingGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
+    const housingMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+    const housing = new THREE.Mesh(housingGeometry, housingMaterial);
+    housing.rotation.z = Math.PI / 2;
+    housing.position.set(0, 0, -0.6);
+    group.add(housing);
+
+    // Ammunition belt feed
+    const beltGeometry = new THREE.BoxGeometry(0.03, 0.06, 0.15);
+    const beltMaterial = new THREE.MeshLambertMaterial({ color: 0xb8860b });
+    const belt = new THREE.Mesh(beltGeometry, beltMaterial);
+    belt.position.set(-0.08, 0.08, -0.2);
+    belt.rotation.z = -0.3;
+    group.add(belt);
+
+    // Heavy stock
+    const stockGeometry = new THREE.BoxGeometry(0.1, 0.12, 0.3);
+    const stockMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+    stock.position.set(0, -0.06, 0.1);
+    group.add(stock);
+
+    // Trigger assembly
+    const triggerGuardGeometry = new THREE.TorusGeometry(0.04, 0.01, 8, 16);
+    const triggerGuardMaterial = new THREE.MeshLambertMaterial({
+      color: 0x404040,
+    });
+    const triggerGuard = new THREE.Mesh(
+      triggerGuardGeometry,
+      triggerGuardMaterial
+    );
+    triggerGuard.rotation.x = Math.PI / 2;
+    triggerGuard.position.set(0, -0.05, -0.1);
+    group.add(triggerGuard);
+
+    // Heat sink vents
+    for (let i = 0; i < 4; i++) {
+      const ventGeometry = new THREE.BoxGeometry(0.02, 0.01, 0.08);
+      const ventMaterial = new THREE.MeshLambertMaterial({ color: 0x606060 });
+      const vent = new THREE.Mesh(ventGeometry, ventMaterial);
+      vent.position.set(0, 0.06, -0.4 + i * 0.08);
+      group.add(vent);
+    }
 
     this.positionWeaponModel(group);
 
@@ -1144,27 +1251,82 @@ export class WeaponSystem implements IWeaponSystem {
   private createRocketLauncherModel(): THREE.Group {
     const group = new THREE.Group();
 
-    // 主发射管
-    const tubeGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
+    // Large main launcher tube
+    const tubeGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8);
     const tubeMaterial = new THREE.MeshLambertMaterial({ color: 0x2f4f4f });
     const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
     tube.rotation.z = Math.PI / 2;
-    tube.position.set(0, 0, -0.4);
+    tube.position.set(0, 0, -0.6);
     group.add(tube);
 
-    // 瞄准镜
-    const sightGeometry = new THREE.BoxGeometry(0.02, 0.03, 0.06);
-    const sightMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
-    const sight = new THREE.Mesh(sightGeometry, sightMaterial);
-    sight.position.set(0, 0.05, -0.2);
-    group.add(sight);
+    // Muzzle flare
+    const muzzleGeometry = new THREE.ConeGeometry(0.12, 0.15, 8);
+    const muzzleMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
+    const muzzle = new THREE.Mesh(muzzleGeometry, muzzleMaterial);
+    muzzle.rotation.z = -Math.PI / 2;
+    muzzle.position.set(0, 0, -1.2);
+    group.add(muzzle);
 
-    // 握把
-    const gripGeometry = new THREE.BoxGeometry(0.04, 0.12, 0.08);
-    const gripMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+    // Rocket visible in tube
+    const rocketGeometry = new THREE.CylinderGeometry(0.06, 0.04, 0.8, 6);
+    const rocketMaterial = new THREE.MeshLambertMaterial({
+      color: 0x8b0000,
+      emissive: 0x220000,
+    });
+    const rocket = new THREE.Mesh(rocketGeometry, rocketMaterial);
+    rocket.rotation.z = Math.PI / 2;
+    rocket.position.set(0, 0, -0.4);
+    group.add(rocket);
+
+    // Scope/sight system
+    const scopeBodyGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.12, 8);
+    const scopeBodyMaterial = new THREE.MeshLambertMaterial({
+      color: 0x1a1a1a,
+    });
+    const scopeBody = new THREE.Mesh(scopeBodyGeometry, scopeBodyMaterial);
+    scopeBody.rotation.z = Math.PI / 2;
+    scopeBody.position.set(0, 0.12, -0.3);
+    group.add(scopeBody);
+
+    // Scope mounts
+    const mount1Geometry = new THREE.BoxGeometry(0.02, 0.03, 0.02);
+    const mountMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
+    const mount1 = new THREE.Mesh(mount1Geometry, mountMaterial);
+    mount1.position.set(0, 0.09, -0.2);
+    group.add(mount1);
+
+    const mount2 = new THREE.Mesh(mount1Geometry, mountMaterial);
+    mount2.position.set(0, 0.09, -0.4);
+    group.add(mount2);
+
+    // Pistol grip
+    const gripGeometry = new THREE.BoxGeometry(0.06, 0.15, 0.1);
+    const gripMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
     const grip = new THREE.Mesh(gripGeometry, gripMaterial);
-    grip.position.set(0, -0.06, 0);
+    grip.position.set(0, -0.08, 0.1);
     group.add(grip);
+
+    // Trigger guard
+    const triggerGuardGeometry = new THREE.TorusGeometry(0.045, 0.01, 8, 16);
+    const triggerGuardMaterial = new THREE.MeshLambertMaterial({
+      color: 0x404040,
+    });
+    const triggerGuard = new THREE.Mesh(
+      triggerGuardGeometry,
+      triggerGuardMaterial
+    );
+    triggerGuard.rotation.x = Math.PI / 2;
+    triggerGuard.position.set(0, -0.06, 0.05);
+    group.add(triggerGuard);
+
+    // Heat shield/fins
+    for (let i = 0; i < 6; i++) {
+      const finGeometry = new THREE.BoxGeometry(0.02, 0.06, 0.01);
+      const finMaterial = new THREE.MeshLambertMaterial({ color: 0x606060 });
+      const fin = new THREE.Mesh(finGeometry, finMaterial);
+      fin.position.set(0, 0.05, -0.8 + i * 0.1);
+      group.add(fin);
+    }
 
     this.positionWeaponModel(group);
 
@@ -1178,31 +1340,109 @@ export class WeaponSystem implements IWeaponSystem {
   private createPlasmaRifleModel(): THREE.Group {
     const group = new THREE.Group();
 
-    // 主体
-    const bodyGeometry = new THREE.BoxGeometry(0.08, 0.1, 0.7);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x000080 });
+    // Futuristic main body
+    const bodyGeometry = new THREE.BoxGeometry(0.1, 0.12, 0.9);
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: 0x000080,
+      emissive: 0x000020,
+    });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, 0, -0.35);
+    body.position.set(0, 0, -0.45);
     group.add(body);
 
-    // 能量管
-    const energyTubeGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.3, 6);
-    const energyTubeMaterial = new THREE.MeshLambertMaterial({
+    // Plasma containment chamber
+    const chamberGeometry = new THREE.SphereGeometry(0.08, 12, 8);
+    const chamberMaterial = new THREE.MeshLambertMaterial({
       color: 0x00ffff,
-      emissive: 0x004040,
+      emissive: 0x0080ff,
+      emissiveIntensity: 0.3,
+      transparent: true,
+      opacity: 0.8,
     });
-    const energyTube = new THREE.Mesh(energyTubeGeometry, energyTubeMaterial);
-    energyTube.rotation.z = Math.PI / 2;
-    energyTube.position.set(0, 0.02, -0.5);
-    group.add(energyTube);
+    const chamber = new THREE.Mesh(chamberGeometry, chamberMaterial);
+    chamber.position.set(0, 0.02, -0.2);
+    group.add(chamber);
 
-    // 发射口
-    const muzzleGeometry = new THREE.CylinderGeometry(0.04, 0.02, 0.08, 8);
-    const muzzleMaterial = new THREE.MeshLambertMaterial({ color: 0x404040 });
-    const muzzle = new THREE.Mesh(muzzleGeometry, muzzleMaterial);
-    muzzle.rotation.z = Math.PI / 2;
-    muzzle.position.set(0, 0, -0.74);
-    group.add(muzzle);
+    // Energy conduits/tubes (multiple)
+    for (let i = 0; i < 3; i++) {
+      const tubeGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.4, 6);
+      const tubeMaterial = new THREE.MeshLambertMaterial({
+        color: 0x00ffff,
+        emissive: 0x004080,
+        emissiveIntensity: 0.5,
+      });
+      const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+      tube.rotation.z = Math.PI / 2;
+
+      const angle = (i / 3) * Math.PI * 2;
+      const radius = 0.04;
+      tube.position.set(
+        Math.cos(angle) * radius,
+        Math.sin(angle) * radius + 0.02,
+        -0.6
+      );
+      group.add(tube);
+    }
+
+    // Plasma accelerator barrel
+    const barrelGeometry = new THREE.CylinderGeometry(0.05, 0.03, 0.5, 8);
+    const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+    barrel.rotation.z = Math.PI / 2;
+    barrel.position.set(0, 0, -0.75);
+    group.add(barrel);
+
+    // Muzzle energy field
+    const muzzleFieldGeometry = new THREE.RingGeometry(0.02, 0.06, 8);
+    const muzzleFieldMaterial = new THREE.MeshLambertMaterial({
+      color: 0x00ffff,
+      emissive: 0x008fff,
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const muzzleField = new THREE.Mesh(
+      muzzleFieldGeometry,
+      muzzleFieldMaterial
+    );
+    muzzleField.position.set(0, 0, -1.0);
+    group.add(muzzleField);
+
+    // High-tech stock
+    const stockGeometry = new THREE.BoxGeometry(0.08, 0.14, 0.25);
+    const stockMaterial = new THREE.MeshLambertMaterial({
+      color: 0x1a1a40,
+      emissive: 0x000010,
+    });
+    const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+    stock.position.set(0, -0.06, 0.1);
+    group.add(stock);
+
+    // Energy display panels
+    for (let i = 0; i < 3; i++) {
+      const panelGeometry = new THREE.BoxGeometry(0.02, 0.03, 0.06);
+      const panelMaterial = new THREE.MeshLambertMaterial({
+        color: 0x00ff00,
+        emissive: 0x004000,
+        emissiveIntensity: 0.4,
+      });
+      const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+      panel.position.set(-0.06, 0.03, -0.3 + i * 0.15);
+      group.add(panel);
+    }
+
+    // Trigger assembly
+    const triggerGuardGeometry = new THREE.TorusGeometry(0.04, 0.01, 8, 16);
+    const triggerGuardMaterial = new THREE.MeshLambertMaterial({
+      color: 0x404080,
+    });
+    const triggerGuard = new THREE.Mesh(
+      triggerGuardGeometry,
+      triggerGuardMaterial
+    );
+    triggerGuard.rotation.x = Math.PI / 2;
+    triggerGuard.position.set(0, -0.05, -0.1);
+    group.add(triggerGuard);
 
     this.positionWeaponModel(group);
 
@@ -1219,8 +1459,9 @@ export class WeaponSystem implements IWeaponSystem {
       this.gunBasePosition.y,
       this.gunBasePosition.z
     );
-    weaponGroup.rotation.set(0.1, 0, 0); // 轻微向上倾斜
-    weaponGroup.scale.setScalar(0.8);
+    // Position at 45-degree angle for better first-person visibility
+    weaponGroup.rotation.set(0.2, -0.4, 0.1); // Pitch up, yaw left, slight roll
+    weaponGroup.scale.setScalar(0.6); // Smaller scale for better view
   }
 
   private updateWeaponModelVisibility(): void {
@@ -1253,25 +1494,29 @@ export class WeaponSystem implements IWeaponSystem {
     const activeWeapon = this.getActiveWeaponModel();
     if (!activeWeapon) return;
 
-    // 获取摄像头位置和方向
+    // Get camera position and direction
     const cameraPosition = camera.position.clone();
     const cameraDirection = new THREE.Vector3();
     camera.getWorldDirection(cameraDirection);
 
-    // 计算武器位置，包括后坐力偏移
+    // Calculate weapon position with recoil offset
     const weaponOffset = new THREE.Vector3(
       this.gunBasePosition.x,
       this.gunBasePosition.y,
-      this.gunBasePosition.z + this.gunRecoilOffset // 应用后坐力
+      this.gunBasePosition.z + this.gunRecoilOffset // Apply recoil
     );
 
-    // 应用摄像头旋转到偏移量
+    // Apply camera rotation to offset
     weaponOffset.applyQuaternion(camera.quaternion);
 
-    // 设置武器位置相对于摄像头
+    // Set weapon position relative to camera
     activeWeapon.position.copy(cameraPosition).add(weaponOffset);
+
+    // Maintain 45-degree angle positioning for first-person view
     activeWeapon.rotation.copy(camera.rotation);
-    activeWeapon.rotation.x += 0.1; // 轻微向上倾斜
+    activeWeapon.rotation.x += 0.2; // Pitch up
+    activeWeapon.rotation.y += -0.4; // Yaw left for bottom-right positioning
+    activeWeapon.rotation.z += 0.1; // Slight roll
   }
 
   private getActiveWeaponModel(): THREE.Group | null {

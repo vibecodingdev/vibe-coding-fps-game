@@ -829,6 +829,128 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Handle player shooting events for synchronization
+  socket.on(GAME_EVENTS.PLAYER.SHOOTING, (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    // Broadcast shooting event to all other players in the room
+    broadcastToRoom(
+      player.roomId,
+      GAME_EVENTS.PLAYER.SHOOTING,
+      {
+        playerId: socket.id,
+        playerName: player.name,
+        weaponType: payload.weaponType,
+        position: payload.position,
+        direction: payload.direction,
+        timestamp: payload.timestamp,
+      },
+      socket.id // Exclude sender
+    );
+
+    console.log(`🔫 ${player.name} is shooting with ${payload.weaponType}`);
+  });
+
+  // Handle weapon switching events for synchronization
+  socket.on(GAME_EVENTS.PLAYER.WEAPON_SWITCH, (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    // Update player's current weapon on server
+    player.weapon = payload.weaponType;
+
+    // Broadcast weapon switch to all other players in the room
+    broadcastToRoom(
+      player.roomId,
+      GAME_EVENTS.PLAYER.WEAPON_SWITCH,
+      {
+        playerId: socket.id,
+        playerName: player.name,
+        weaponType: payload.weaponType,
+        timestamp: payload.timestamp,
+      },
+      socket.id // Exclude sender
+    );
+
+    console.log(`🔧 ${player.name} switched to ${payload.weaponType}`);
+  });
+
+  // Handle player damage events
+  socket.on("player:damage", (payload) => {
+    const attacker = activePlayers.get(socket.id);
+    const target = activePlayers.get(payload.targetPlayerId);
+
+    if (
+      !attacker ||
+      !target ||
+      !attacker.roomId ||
+      attacker.roomId !== target.roomId
+    ) {
+      return;
+    }
+
+    // Apply damage to target player
+    target.health -= payload.damage;
+    target.health = Math.max(0, target.health); // Don't go below 0
+
+    console.log(
+      `💥 ${attacker.name} damaged ${target.name} for ${payload.damage} (${target.health} HP left)`
+    );
+
+    // Broadcast damage event to all players in room
+    broadcastToRoom(attacker.roomId, "player:damage", {
+      attackerId: attacker.id,
+      attackerName: attacker.name,
+      targetPlayerId: target.id,
+      targetName: target.name,
+      damage: payload.damage,
+      weaponType: payload.weaponType,
+      remainingHealth: target.health,
+      timestamp: payload.timestamp,
+    });
+
+    // Check if player died
+    if (target.health <= 0) {
+      target.deaths++;
+      attacker.kills++;
+      attacker.score += 200; // Bonus points for player kill
+
+      console.log(`💀 ${target.name} was killed by ${attacker.name}`);
+
+      // Broadcast death event
+      broadcastToRoom(attacker.roomId, "player:death", {
+        deadPlayerId: target.id,
+        deadPlayerName: target.name,
+        killerId: attacker.id,
+        killerName: attacker.name,
+        weaponType: payload.weaponType,
+        timestamp: Date.now(),
+      });
+    }
+  });
+
+  // Handle player respawn events
+  socket.on("player:respawn", (payload) => {
+    const player = activePlayers.get(socket.id);
+    if (!player || !player.roomId) return;
+
+    // Reset player health and position
+    player.health = 100;
+    player.position = { x: 0, y: 0, z: 0 }; // Default spawn position
+
+    console.log(`🔄 ${player.name} respawned`);
+
+    // Broadcast respawn event to all players in room
+    broadcastToRoom(player.roomId, "player:respawn", {
+      playerId: player.id,
+      playerName: player.name,
+      position: player.position,
+      health: player.health,
+      timestamp: payload.timestamp,
+    });
+  });
+
   socket.on(GAME_EVENTS.COMBAT.HIT, (payload) => {
     const player = activePlayers.get(socket.id);
     if (!player || !player.roomId) return;

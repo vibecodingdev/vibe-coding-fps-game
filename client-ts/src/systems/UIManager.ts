@@ -1216,4 +1216,129 @@ export class UIManager {
       });
     });
   }
+
+  public showDamageIndicator(): void {
+    // Create a red flash effect on the screen
+    const flashOverlay = document.createElement("div");
+    flashOverlay.style.position = "fixed";
+    flashOverlay.style.top = "0";
+    flashOverlay.style.left = "0";
+    flashOverlay.style.width = "100%";
+    flashOverlay.style.height = "100%";
+    flashOverlay.style.backgroundColor = "rgba(255, 0, 0, 0.3)";
+    flashOverlay.style.pointerEvents = "none";
+    flashOverlay.style.zIndex = "9999";
+    flashOverlay.style.transition = "opacity 0.3s";
+
+    document.body.appendChild(flashOverlay);
+
+    // Fade out and remove
+    setTimeout(() => {
+      flashOverlay.style.opacity = "0";
+      setTimeout(() => {
+        document.body.removeChild(flashOverlay);
+      }, 300);
+    }, 100);
+  }
+
+  public showDeathScreen(
+    killerName: string,
+    weaponType: string,
+    onQuitToMenu?: () => void
+  ): void {
+    const deathScreen = document.createElement("div");
+    deathScreen.id = "deathScreen";
+    deathScreen.innerHTML = `
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        color: #ff0000;
+        font-family: 'Orbitron', monospace;
+        text-align: center;
+      ">
+        <h1 style="font-size: 4em; margin: 0; text-shadow: 0 0 20px #ff0000;">💀 YOU DIED 💀</h1>
+        <p style="font-size: 1.5em; margin: 20px 0;">Killed by <span style="color: #ffaa00;">${killerName}</span></p>
+        <p style="font-size: 1.2em; margin: 10px 0;">Weapon: <span style="color: #ffaa00;">${weaponType}</span></p>
+        <div id="respawnCountdown" style="font-size: 2em; margin: 30px 0; color: #ffff00;">
+          Respawn available in: <span id="countdownNumber">5</span>s
+        </div>
+        <div style="display: flex; gap: 20px; justify-content: center;">
+          <button id="respawnButton" style="
+            font-size: 1.5em;
+            padding: 15px 30px;
+            background: #333;
+            color: #fff;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: not-allowed;
+            opacity: 0.5;
+            font-family: 'Orbitron', monospace;
+          " disabled>RESPAWN</button>
+          <button id="quitToMenuButton" style="
+            font-size: 1.5em;
+            padding: 15px 30px;
+            background: #660000;
+            color: #fff;
+            border: 2px solid #990000;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+          ">QUIT TO MENU</button>
+        </div>
+      </div>
+        `;
+
+    document.body.appendChild(deathScreen);
+
+    // Add event handler for quit button
+    const quitButton = document.getElementById("quitToMenuButton");
+    if (quitButton && onQuitToMenu) {
+      quitButton.onclick = onQuitToMenu;
+    }
+  }
+
+  public updateRespawnCountdown(seconds: number): void {
+    const countdownElement = document.getElementById("countdownNumber");
+    if (countdownElement) {
+      countdownElement.textContent = seconds.toString();
+      console.log(`🔢 Updated countdown display to: ${seconds}`);
+    } else {
+      console.warn("❗ Countdown element not found!");
+    }
+  }
+
+  public enableRespawnButton(onRespawn: () => void): void {
+    const button = document.getElementById(
+      "respawnButton"
+    ) as HTMLButtonElement;
+    const countdown = document.getElementById("respawnCountdown");
+
+    if (button && countdown) {
+      countdown.style.display = "none";
+      button.disabled = false;
+      button.style.opacity = "1";
+      button.style.cursor = "pointer";
+      button.style.background = "#ff4444";
+      button.style.borderColor = "#ff6666";
+      button.textContent = "RESPAWN NOW";
+
+      button.onclick = onRespawn;
+    }
+  }
+
+  public hideDeathScreen(): void {
+    const deathScreen = document.getElementById("deathScreen");
+    if (deathScreen) {
+      document.body.removeChild(deathScreen);
+    }
+  }
 }

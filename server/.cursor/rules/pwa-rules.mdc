@@ -1,0 +1,7 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+0: The server currently needs to accommodate both the single-file version client and the new ts client, so when adding new features, it is necessary to preserve the current event compatibility as much as possible.
