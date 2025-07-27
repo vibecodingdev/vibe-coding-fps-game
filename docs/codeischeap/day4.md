@@ -21,3 +21,6 @@ After dying in single-player mode, the mouse does not automatically unlock and r
 
 🍵
 Currently, demons often pass through the ground model and fly in the air. Please adjust their movement strategy to keep them moving on the ground as much as possible, with only moderate height changes. Additionally, the camera height of the main character should be around head height, not waist height. Furthermore, in multiplayer mode, the coordinates being transmitted should be the current camera coordinates, but when rendering other players, it's possible that the coordinates are the footstep points, resulting in players appearing to float. These issues need to be fixed simultaneously.
+
+🎹
+To enhance the diversity of character models in multiplayer mode, we should consider adding more character models that can be easily integrated into the game in the future. Inspired by images, we can design more player character models with varied details and color schemes while maintaining a human-like structure. Additionally, to facilitate testing, we can add preview interfaces for character models, weapons, monsters, and scenes in the main menu's help section, allowing us to preview all the basic models and scenes available after entering the menu.

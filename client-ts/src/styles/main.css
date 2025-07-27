@@ -30,8 +30,8 @@ body.menu-mode {
   }
 }
 
-/* Main game canvas styles */
-canvas:not(#radarCanvas) {
+/* Main game canvas styles - only apply to game canvas, not preview canvas */
+body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
   display: block;
   position: fixed;
   top: 0;
@@ -1186,4 +1186,250 @@ canvas:not(#radarCanvas) {
 
 #finalStats span {
   color: #ffffff;
+}
+
+/* Preview System Styles */
+.preview-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1rem 0 2rem 0;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+  color: #ff6600;
+  border: 2px solid #ff6600;
+  padding: 0.7rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tab-button:hover {
+  background: linear-gradient(135deg, #ff6600, #ff4400);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, #ff6600, #ff4400);
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.6);
+}
+
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Preview Container Styles */
+.preview-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.preview-info {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.preview-info h3 {
+  color: #ff6600;
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem 0;
+  text-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.preview-info p {
+  color: #cccccc;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.preview-container {
+  width: 100%;
+  max-width: 900px;
+  height: 500px;
+  background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+  border: 3px solid #ff6600;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(255, 102, 0, 0.3);
+  z-index: 10;
+}
+
+.preview-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border-radius: 8px;
+  position: relative !important;
+  z-index: 1 !important;
+  display: block !important;
+}
+
+.preview-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #ff6600;
+}
+
+.preview-loading .loader-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #ff6600;
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem auto;
+}
+
+.preview-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  gap: 1rem;
+}
+
+.preview-nav-btn {
+  background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+  color: #ff6600;
+  border: 2px solid #ff6600;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.preview-nav-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff6600, #ff4400);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.preview-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preview-page-info {
+  color: #cccccc;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+/* Enhanced Instructions Content */
+.instructions-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Responsive Design for Preview System */
+@media (max-width: 768px) {
+  .preview-tabs {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tab-button {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .preview-container {
+    height: 350px;
+  }
+
+  .preview-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .preview-nav-btn {
+    width: 100%;
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .preview-container {
+    height: 250px;
+  }
+
+  .tab-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Character Grid Styles for Preview */
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.character-card {
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  border: 2px solid #ff6600;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.character-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(255, 102, 0, 0.4);
+}
+
+.character-card h4 {
+  color: #ff6600;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.character-card p {
+  color: #cccccc;
+  margin: 0;
+  font-size: 0.8rem;
 }

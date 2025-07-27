@@ -186,6 +186,9 @@ async function initializeGame(): Promise<void> {
     // Setup UI event listeners
     setupUIEventListeners(game, networkManager);
 
+    // Initialize preview system references
+    initializePreviewReferences(game);
+
     console.log("🎮 Game and Network systems ready!");
 
     // Set initial body class to menu mode
@@ -1308,3 +1311,297 @@ function hideVoiceIndicator(): void {
 
 // Start the game when the page loads
 document.addEventListener("DOMContentLoaded", initializeGame);
+
+// Global variables for preview system
+let currentPreviewType: string = "";
+let currentPreviewPage: number = 0;
+let totalPreviewPages: number = 1;
+let uiManager: any = null;
+let networkManager: any = null;
+let weaponSystem: any = null;
+let demonSystem: any = null;
+let sceneManager: any = null;
+
+// Tab switching functions
+function showInstructionTab(tabName: string): void {
+  // Hide all tab contents
+  const tabContents = document.querySelectorAll(".tab-content");
+  tabContents.forEach((content) => {
+    content.classList.remove("active");
+    (content as HTMLElement).style.display = "none";
+  });
+
+  // Remove active class from all buttons
+  const tabButtons = document.querySelectorAll(".tab-button");
+  tabButtons.forEach((button) => {
+    button.classList.remove("active");
+  });
+
+  // Show selected tab content
+  const selectedTab = document.getElementById(`${tabName}Tab`);
+  if (selectedTab) {
+    selectedTab.classList.add("active");
+    selectedTab.style.display = "block";
+  }
+
+  // Activate corresponding button
+  const activeButton = Array.from(tabButtons).find((button) => {
+    const buttonText = button.textContent?.toUpperCase() || "";
+    return (
+      buttonText.includes(tabName.toUpperCase()) ||
+      (tabName === "controls" && buttonText.includes("CONTROLS"))
+    );
+  });
+  if (activeButton) {
+    activeButton.classList.add("active");
+  }
+
+  // Clean up preview if switching away from it
+  if (tabName === "controls" && uiManager) {
+    try {
+      console.log("🧹 Cleaning up preview when returning to controls");
+      uiManager.cleanupPreview();
+    } catch (error) {
+      console.warn("Error cleaning up preview:", error);
+    }
+  }
+}
+
+function showPreviewTab(previewType: string): void {
+  // Hide all tab contents
+  const tabContents = document.querySelectorAll(".tab-content");
+  tabContents.forEach((content) => {
+    content.classList.remove("active");
+    (content as HTMLElement).style.display = "none";
+  });
+
+  // Show preview tab content
+  const previewTab = document.getElementById("previewTab");
+  if (previewTab) {
+    previewTab.classList.add("active");
+    previewTab.style.display = "block";
+  }
+
+  // Update preview content
+  updatePreviewContent(previewType);
+
+  // Activate the correct tab button
+  const tabButtons = document.querySelectorAll(".tab-button");
+  tabButtons.forEach((button) => {
+    button.classList.remove("active");
+  });
+
+  const activeButton = Array.from(tabButtons).find((button) => {
+    const buttonText = button.textContent?.toUpperCase() || "";
+    switch (previewType) {
+      case "characters":
+        return buttonText.includes("CHARACTERS");
+      case "weapons":
+        return buttonText.includes("WEAPONS");
+      case "demons":
+        return buttonText.includes("DEMONS");
+      case "scenes":
+        return buttonText.includes("SCENES");
+      default:
+        return buttonText.includes(previewType.toUpperCase());
+    }
+  });
+  if (activeButton) {
+    activeButton.classList.add("active");
+  }
+}
+
+function updatePreviewContent(previewType: string): void {
+  currentPreviewType = previewType;
+  currentPreviewPage = 0;
+
+  // Update preview title and description
+  const titleElement = document.getElementById("previewTitle");
+  const descriptionElement = document.getElementById("previewDescription");
+
+  switch (previewType) {
+    case "characters":
+      if (titleElement) titleElement.textContent = "🎭 CHARACTER MODELS";
+      if (descriptionElement)
+        descriptionElement.textContent =
+          "Browse all available character models for multiplayer combat";
+      break;
+    case "weapons":
+      if (titleElement) titleElement.textContent = "🔫 WEAPON ARSENAL";
+      if (descriptionElement)
+        descriptionElement.textContent =
+          "Explore the devastating weapons at your disposal";
+      break;
+    case "demons":
+      if (titleElement) titleElement.textContent = "👹 DEMON BESTIARY";
+      if (descriptionElement)
+        descriptionElement.textContent =
+          "Study the hellish creatures you'll face in battle";
+      break;
+    case "scenes":
+      if (titleElement) titleElement.textContent = "🎪 BATTLE ARENAS";
+      if (descriptionElement)
+        descriptionElement.textContent =
+          "Preview the diverse environments for combat";
+      break;
+  }
+
+  // Initialize preview system if needed
+  if (uiManager && !uiManager.previewScene) {
+    try {
+      // Wait a bit for the DOM to update before setting up the preview
+      setTimeout(() => {
+        uiManager.setupPreviewSystem();
+        // Load content after setup
+        loadPreviewContent(previewType);
+      }, 100);
+      return; // Exit early as we'll load content in the timeout
+    } catch (error) {
+      console.warn("Error setting up preview system:", error);
+      return;
+    }
+  }
+
+  // Load preview content
+  loadPreviewContent(previewType);
+}
+
+function loadPreviewContent(previewType: string): void {
+  if (!uiManager) {
+    console.warn("UIManager not available for preview");
+    return;
+  }
+
+  try {
+    switch (previewType) {
+      case "characters":
+        uiManager.previewCharacters(networkManager);
+        break;
+      case "weapons":
+        uiManager.previewWeapons(weaponSystem);
+        break;
+      case "demons":
+        uiManager.previewDemons(demonSystem);
+        break;
+      case "scenes":
+        uiManager.previewScenes(sceneManager);
+        break;
+    }
+  } catch (error) {
+    console.error(`Error loading ${previewType} preview:`, error);
+    showPreviewError(`Failed to load ${previewType} preview`);
+  }
+}
+
+function showPreviewError(message: string): void {
+  const previewContainer = document.getElementById("previewContainer");
+  if (previewContainer) {
+    previewContainer.innerHTML = `
+      <div class="preview-error" style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        color: #ff6600;
+        padding: 2rem;
+      ">
+        <h3 style="margin: 0 0 1rem 0;">🚫 Preview Error</h3>
+        <p style="margin: 0 0 1rem 0;">${message}</p>
+        <button onclick="retryPreview()" class="menu-button">🔄 Retry</button>
+      </div>
+    `;
+  }
+}
+
+function retryPreview(): void {
+  if (currentPreviewType) {
+    updatePreviewContent(currentPreviewType);
+  }
+}
+
+function prevPreviewPage(): void {
+  if (currentPreviewPage > 0) {
+    currentPreviewPage--;
+    loadPreviewContent(currentPreviewType);
+    updatePreviewPagination();
+  }
+}
+
+function nextPreviewPage(): void {
+  if (currentPreviewPage < totalPreviewPages - 1) {
+    currentPreviewPage++;
+    loadPreviewContent(currentPreviewType);
+    updatePreviewPagination();
+  }
+}
+
+function updatePreviewPagination(): void {
+  const pageInfo = document.getElementById("previewPageInfo");
+  const prevBtn = document.getElementById("prevPageBtn") as HTMLButtonElement;
+  const nextBtn = document.getElementById("nextPageBtn") as HTMLButtonElement;
+
+  if (pageInfo) {
+    pageInfo.textContent = `Page ${
+      currentPreviewPage + 1
+    } of ${totalPreviewPages}`;
+  }
+
+  if (prevBtn) {
+    prevBtn.disabled = currentPreviewPage === 0;
+  }
+
+  if (nextBtn) {
+    nextBtn.disabled = currentPreviewPage >= totalPreviewPages - 1;
+  }
+}
+
+// Enhanced showInstructions function
+function showInstructions(): void {
+  hideAllMenus();
+  document.body.className = "menu-mode";
+
+  const instructionsScreen = document.getElementById("instructionsScreen");
+  if (instructionsScreen) {
+    instructionsScreen.style.display = "flex";
+
+    // Show controls tab by default
+    showInstructionTab("controls");
+  }
+}
+
+// Enhanced hideInstructions function
+function hideInstructions(): void {
+  // Clean up preview system when hiding instructions
+  if (uiManager) {
+    try {
+      uiManager.cleanupPreview();
+    } catch (error) {
+      console.warn("Error cleaning up preview on hide:", error);
+    }
+  }
+
+  showMainMenu();
+}
+
+// Set up global references for preview system
+function initializePreviewReferences(game: any): void {
+  uiManager = game.uiManager;
+  networkManager = game.networkManager;
+  weaponSystem = game.weaponSystem;
+  demonSystem = game.demonSystem;
+  sceneManager = game.sceneManager;
+
+  console.log("🎨 Preview system references initialized");
+}
+
+// Make functions available globally
+(window as any).showInstructionTab = showInstructionTab;
+(window as any).showPreviewTab = showPreviewTab;
+(window as any).prevPreviewPage = prevPreviewPage;
+(window as any).nextPreviewPage = nextPreviewPage;
+(window as any).retryPreview = retryPreview;
+(window as any).showInstructions = showInstructions;
+(window as any).hideInstructions = hideInstructions;
+(window as any).initializePreviewReferences = initializePreviewReferences;

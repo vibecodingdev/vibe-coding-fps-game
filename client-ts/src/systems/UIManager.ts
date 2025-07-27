@@ -42,6 +42,14 @@ export class UIManager {
   // Voice chat system
   private voiceChatSystem: VoiceChatSystem | null = null;
 
+  // Preview system for characters, weapons, demons, and scenes
+  private previewScene: THREE.Scene | null = null;
+  private previewCamera: THREE.PerspectiveCamera | null = null;
+  private previewRenderer: THREE.WebGLRenderer | null = null;
+  private previewContainer: HTMLElement | null = null;
+  private previewObjects: THREE.Object3D[] = [];
+  private previewAnimationId: number | null = null;
+
   private constructor() {
     // Private constructor to prevent direct instantiation
   }
@@ -1365,5 +1373,526 @@ export class UIManager {
     if (deathScreen) {
       document.body.removeChild(deathScreen);
     }
+  }
+
+  // Preview system for characters, weapons, demons, and scenes
+  public setupPreviewSystem(): void {
+    console.log("🎨 Setting up 3D preview system");
+
+    // Create preview container if it doesn't exist
+    this.previewContainer = document.getElementById("previewContainer");
+    if (!this.previewContainer) {
+      console.warn("❌ Preview container not found in DOM");
+      return;
+    }
+
+    console.log("📦 Preview container found:", {
+      width: this.previewContainer.clientWidth,
+      height: this.previewContainer.clientHeight,
+      display: window.getComputedStyle(this.previewContainer).display,
+    });
+
+    // Clean up any existing preview system
+    if (this.previewRenderer) {
+      console.log("🧹 Cleaning up existing preview system");
+      this.cleanupPreview();
+    }
+
+    // Initialize Three.js components for preview
+    this.initializePreviewRenderer();
+    this.setupPreviewEventListeners();
+
+    console.log("✅ Preview system ready");
+  }
+
+  private initializePreviewRenderer(): void {
+    if (!this.previewContainer) return;
+
+    // Create scene
+    this.previewScene = new THREE.Scene();
+    this.previewScene.background = new THREE.Color(0x1a1a1a);
+
+    // Create camera
+    this.previewCamera = new THREE.PerspectiveCamera(
+      75,
+      this.previewContainer.clientWidth / this.previewContainer.clientHeight,
+      0.1,
+      1000
+    );
+    this.previewCamera.position.set(0, 2, 5);
+
+    // Create renderer
+    this.previewRenderer = new THREE.WebGLRenderer({ antialias: true });
+    this.previewRenderer.setSize(
+      this.previewContainer.clientWidth,
+      this.previewContainer.clientHeight
+    );
+    this.previewRenderer.shadowMap.enabled = true;
+    this.previewRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Ensure canvas stays within container
+    const canvas = this.previewRenderer.domElement;
+    canvas.className = "preview-canvas";
+    canvas.style.position = "relative";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.maxWidth = "100%";
+    canvas.style.maxHeight = "100%";
+    canvas.style.display = "block";
+    canvas.style.zIndex = "1";
+
+    // Clear loading content and add canvas to container
+    this.previewContainer.innerHTML = "";
+    this.previewContainer.appendChild(canvas);
+
+    // Add lighting
+    this.setupPreviewLighting();
+
+    // Start animation loop
+    this.startPreviewAnimation();
+  }
+
+  private setupPreviewLighting(): void {
+    if (!this.previewScene) return;
+
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    this.previewScene.add(ambientLight);
+
+    // Main directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 5);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    this.previewScene.add(directionalLight);
+
+    // Fill light
+    const fillLight = new THREE.DirectionalLight(0x4040ff, 0.3);
+    fillLight.position.set(-5, 5, -5);
+    this.previewScene.add(fillLight);
+
+    // Add a ground plane
+    const groundGeometry = new THREE.PlaneGeometry(10, 10);
+    const groundMaterial = new THREE.MeshLambertMaterial({
+      color: 0x2a2a2a,
+      transparent: true,
+      opacity: 0.3,
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    ground.receiveShadow = true;
+    this.previewScene.add(ground);
+  }
+
+  private setupPreviewEventListeners(): void {
+    // Handle window resize
+    window.addEventListener("resize", () => {
+      this.handlePreviewResize();
+    });
+
+    // Handle container resize
+    if (this.previewContainer) {
+      const resizeObserver = new ResizeObserver(() => {
+        this.handlePreviewResize();
+      });
+      resizeObserver.observe(this.previewContainer);
+    }
+  }
+
+  private handlePreviewResize(): void {
+    if (!this.previewContainer || !this.previewCamera || !this.previewRenderer)
+      return;
+
+    const width = this.previewContainer.clientWidth;
+    const height = this.previewContainer.clientHeight;
+
+    if (width > 0 && height > 0) {
+      this.previewCamera.aspect = width / height;
+      this.previewCamera.updateProjectionMatrix();
+      this.previewRenderer.setSize(width, height, false); // false = don't update style
+
+      // Ensure canvas stays constrained
+      const canvas = this.previewRenderer.domElement;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+    }
+  }
+
+  private startPreviewAnimation(): void {
+    const animate = () => {
+      this.previewAnimationId = requestAnimationFrame(animate);
+
+      if (this.previewScene && this.previewCamera && this.previewRenderer) {
+        // Rotate preview objects slowly
+        this.previewObjects.forEach((obj, index) => {
+          obj.rotation.y += 0.01 + index * 0.002;
+        });
+
+        this.previewRenderer.render(this.previewScene, this.previewCamera);
+      }
+    };
+    animate();
+  }
+
+  public stopPreviewAnimation(): void {
+    if (this.previewAnimationId) {
+      cancelAnimationFrame(this.previewAnimationId);
+      this.previewAnimationId = null;
+    }
+  }
+
+  public clearPreview(): void {
+    if (!this.previewScene) return;
+
+    // Remove all preview objects
+    this.previewObjects.forEach((obj) => {
+      this.previewScene!.remove(obj);
+    });
+    this.previewObjects = [];
+  }
+
+  public previewCharacters(networkManager?: any): void {
+    this.clearPreview();
+    if (!this.previewScene || !networkManager) return;
+
+    console.log("🎭 Displaying character previews");
+
+    // Get all available character types
+    const characterTypes = this.getAllCharacterTypes(networkManager);
+
+    // Display characters in a grid
+    characterTypes.forEach((colorScheme, index) => {
+      const character = this.createPreviewCharacter(
+        colorScheme,
+        networkManager
+      );
+      if (character) {
+        // Position in grid
+        const row = Math.floor(index / 6);
+        const col = index % 6;
+        character.position.set((col - 2.5) * 2.5, 0, row * 3);
+        character.scale.setScalar(0.8);
+
+        this.previewScene!.add(character);
+        this.previewObjects.push(character);
+      }
+    });
+
+    // Adjust camera to show all characters
+    if (this.previewCamera) {
+      this.previewCamera.position.set(0, 8, 12);
+      this.previewCamera.lookAt(0, 0, 0);
+    }
+  }
+
+  public previewWeapons(weaponSystem?: any): void {
+    this.clearPreview();
+    if (!this.previewScene || !weaponSystem) return;
+
+    console.log("🔫 Displaying weapon previews");
+
+    const weaponTypes = ["shotgun", "chaingun", "rocket", "plasma"];
+
+    weaponTypes.forEach((weaponType, index) => {
+      const weapon = this.createPreviewWeapon(weaponType, weaponSystem);
+      if (weapon) {
+        weapon.position.set((index - 1.5) * 3, 0, 0);
+        weapon.scale.setScalar(2);
+
+        this.previewScene!.add(weapon);
+        this.previewObjects.push(weapon);
+      }
+    });
+
+    // Adjust camera for weapons
+    if (this.previewCamera) {
+      this.previewCamera.position.set(0, 3, 8);
+      this.previewCamera.lookAt(0, 0, 0);
+    }
+  }
+
+  public previewDemons(demonSystem?: any): void {
+    this.clearPreview();
+    if (!this.previewScene || !demonSystem) return;
+
+    console.log("👹 Displaying demon previews");
+
+    const demonTypes = ["IMP", "DEMON", "CACODEMON", "BARON", "ARCHVILE"];
+
+    demonTypes.forEach((demonType, index) => {
+      const demon = this.createPreviewDemon(demonType, demonSystem);
+      if (demon) {
+        demon.position.set((index - 2) * 3, 0, 0);
+        demon.scale.setScalar(0.8);
+
+        this.previewScene!.add(demon);
+        this.previewObjects.push(demon);
+      }
+    });
+
+    // Adjust camera for demons
+    if (this.previewCamera) {
+      this.previewCamera.position.set(0, 4, 10);
+      this.previewCamera.lookAt(0, 0, 0);
+    }
+  }
+
+  public previewScenes(sceneManager?: any): void {
+    this.clearPreview();
+    if (!this.previewScene || !sceneManager) return;
+
+    console.log("🎪 Displaying scene previews");
+
+    // Create simplified scene representations
+    const sceneTypes = [
+      { name: "Hell", color: 0x8b0000 },
+      { name: "Ice", color: 0x4682b4 },
+      { name: "Industrial", color: 0x444444 },
+      { name: "Toxic", color: 0x32cd32 },
+    ];
+
+    sceneTypes.forEach((sceneType, index) => {
+      const scenePreview = this.createScenePreview(sceneType);
+      if (scenePreview) {
+        scenePreview.position.set((index - 1.5) * 4, 0, 0);
+
+        this.previewScene!.add(scenePreview);
+        this.previewObjects.push(scenePreview);
+      }
+    });
+
+    // Adjust camera for scenes
+    if (this.previewCamera) {
+      this.previewCamera.position.set(0, 6, 12);
+      this.previewCamera.lookAt(0, 0, 0);
+    }
+  }
+
+  private getAllCharacterTypes(networkManager: any): any[] {
+    // Call the private getPlayerColor method for each character index
+    const characters = [];
+    for (let i = 0; i < 21; i++) {
+      // We have 21 character types now
+      try {
+        const colorScheme = networkManager.getPlayerColor(i);
+        characters.push(colorScheme);
+      } catch (error) {
+        console.warn(`Could not get character ${i}:`, error);
+      }
+    }
+    return characters;
+  }
+
+  private createPreviewCharacter(
+    colorScheme: any,
+    networkManager: any
+  ): THREE.Group | null {
+    try {
+      // Create a character model using the network manager's method
+      const character = (networkManager as any).createPlayerModel(
+        colorScheme,
+        colorScheme.name
+      );
+
+      // Add a simple name label
+      this.addCharacterLabel(character, colorScheme);
+
+      return character;
+    } catch (error) {
+      console.warn("Could not create preview character:", error);
+      return null;
+    }
+  }
+
+  private createPreviewWeapon(
+    weaponType: string,
+    weaponSystem: any
+  ): THREE.Group | null {
+    try {
+      // Create weapon model using the network manager's weapon creation method
+      const weapon =
+        (weaponSystem as any).createRemotePlayerWeapon?.(weaponType) ||
+        this.createSimpleWeaponPreview(weaponType);
+
+      if (weapon) {
+        // Add weapon label
+        this.addWeaponLabel(weapon, weaponType);
+      }
+
+      return weapon;
+    } catch (error) {
+      console.warn("Could not create preview weapon:", error);
+      return this.createSimpleWeaponPreview(weaponType);
+    }
+  }
+
+  private createPreviewDemon(
+    demonType: string,
+    demonSystem: any
+  ): THREE.Group | null {
+    try {
+      // Create demon model using the demon system
+      const demon =
+        demonSystem.createDemonModel?.(demonType as any) ||
+        this.createSimpleDemonPreview(demonType);
+
+      if (demon) {
+        // Add demon label
+        this.addDemonLabel(demon, demonType);
+      }
+
+      return demon;
+    } catch (error) {
+      console.warn("Could not create preview demon:", error);
+      return this.createSimpleDemonPreview(demonType);
+    }
+  }
+
+  private createScenePreview(sceneType: any): THREE.Group {
+    const group = new THREE.Group();
+
+    // Create a simple scene representation
+    const baseGeometry = new THREE.BoxGeometry(2, 0.2, 2);
+    const baseMaterial = new THREE.MeshLambertMaterial({
+      color: sceneType.color,
+    });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    group.add(base);
+
+    // Add some decorative elements
+    for (let i = 0; i < 3; i++) {
+      const decorGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
+      const decorMaterial = new THREE.MeshLambertMaterial({
+        color: new THREE.Color(sceneType.color).multiplyScalar(1.5),
+      });
+      const decor = new THREE.Mesh(decorGeometry, decorMaterial);
+      decor.position.set(
+        (Math.random() - 0.5) * 1.5,
+        0.6,
+        (Math.random() - 0.5) * 1.5
+      );
+      group.add(decor);
+    }
+
+    // Add scene label
+    this.addSceneLabel(group, sceneType.name);
+
+    return group;
+  }
+
+  private createSimpleWeaponPreview(weaponType: string): THREE.Group {
+    const group = new THREE.Group();
+
+    // Create a simple weapon representation
+    const weaponGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+    const weaponMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+    const weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
+    group.add(weapon);
+
+    return group;
+  }
+
+  private createSimpleDemonPreview(demonType: string): THREE.Group {
+    const group = new THREE.Group();
+
+    // Create a simple demon representation
+    const bodyGeometry = new THREE.SphereGeometry(0.5, 8, 6);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x8b0000 });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    group.add(body);
+
+    return group;
+  }
+
+  private addCharacterLabel(character: THREE.Group, colorScheme: any): void {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    canvas.width = 256;
+    canvas.height = 64;
+
+    // Background
+    context.fillStyle = `#${colorScheme.body.toString(16).padStart(6, "0")}`;
+    context.globalAlpha = 0.8;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Text
+    context.globalAlpha = 1.0;
+    context.fillStyle = "#ffffff";
+    context.font = "16px Arial";
+    context.textAlign = "center";
+    context.fillText(`${colorScheme.emoji} ${colorScheme.name}`, 128, 40);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.position.set(0, 2.5, 0);
+    sprite.scale.set(2, 0.5, 1);
+    character.add(sprite);
+  }
+
+  private addWeaponLabel(weapon: THREE.Group, weaponType: string): void {
+    // Similar label creation for weapons
+    this.addSimpleLabel(weapon, weaponType.toUpperCase(), 0xff6600);
+  }
+
+  private addDemonLabel(demon: THREE.Group, demonType: string): void {
+    // Similar label creation for demons
+    this.addSimpleLabel(demon, demonType, 0xff0000);
+  }
+
+  private addSceneLabel(scene: THREE.Group, sceneName: string): void {
+    // Similar label creation for scenes
+    this.addSimpleLabel(scene, sceneName, 0x00ff00);
+  }
+
+  private addSimpleLabel(
+    object: THREE.Group,
+    text: string,
+    color: number
+  ): void {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    canvas.width = 256;
+    canvas.height = 64;
+
+    // Background
+    context.fillStyle = `#${color.toString(16).padStart(6, "0")}`;
+    context.globalAlpha = 0.8;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Text
+    context.globalAlpha = 1.0;
+    context.fillStyle = "#ffffff";
+    context.font = "bold 18px Arial";
+    context.textAlign = "center";
+    context.fillText(text, 128, 40);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.position.set(0, 2, 0);
+    sprite.scale.set(2, 0.5, 1);
+    object.add(sprite);
+  }
+
+  public cleanupPreview(): void {
+    this.stopPreviewAnimation();
+    this.clearPreview();
+
+    if (this.previewRenderer && this.previewContainer) {
+      this.previewContainer.removeChild(this.previewRenderer.domElement);
+      this.previewRenderer.dispose();
+      this.previewRenderer = null;
+    }
+
+    this.previewScene = null;
+    this.previewCamera = null;
+    this.previewContainer = null;
   }
 }

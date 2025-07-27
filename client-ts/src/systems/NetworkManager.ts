@@ -1169,8 +1169,108 @@ export class NetworkManager implements NetworkState {
     }
   }
 
-  private createPlayerModel(colorScheme: any, playerName: string): THREE.Group {
+  public createPlayerModel(colorScheme: any, playerName: string): THREE.Group {
     const playerGroup = new THREE.Group();
+
+    // Create model based on type with enhanced features
+    this.createPlayerBodyByType(playerGroup, colorScheme);
+
+    // Add universal features that all players have
+    this.addPlayerIdentificationFeatures(playerGroup, colorScheme);
+    this.addPlayerNameTag(playerGroup, colorScheme, playerName);
+
+    // Enable shadows
+    playerGroup.traverse(function (child) {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    // Store player info in the model
+    playerGroup.userData.isPlayer = true;
+    playerGroup.userData.playerName = playerName;
+    playerGroup.userData.colorScheme = colorScheme;
+
+    return playerGroup;
+  }
+
+  private createPlayerBodyByType(
+    playerGroup: THREE.Group,
+    colorScheme: any
+  ): void {
+    const modelType = colorScheme.modelType || "warrior";
+    const pattern = colorScheme.pattern || "solid";
+
+    switch (modelType) {
+      case "pudding":
+        this.createPuddingModel(playerGroup, colorScheme);
+        break;
+      case "dragon":
+        this.createDragonModel(playerGroup, colorScheme);
+        break;
+      case "spirit":
+        this.createSpiritModel(playerGroup, colorScheme);
+        break;
+      case "electric":
+        this.createElectricModel(playerGroup, colorScheme);
+        break;
+      case "ice":
+        this.createIceModel(playerGroup, colorScheme);
+        break;
+      case "golem":
+        this.createGolemModel(playerGroup, colorScheme);
+        break;
+      case "ninja":
+        this.createNinjaModel(playerGroup, colorScheme);
+        break;
+      case "mage":
+        this.createMageModel(playerGroup, colorScheme);
+        break;
+      case "clockwork":
+        this.createClockworkModel(playerGroup, colorScheme);
+        break;
+      case "cyber":
+        this.createCyberModel(playerGroup, colorScheme);
+        break;
+      case "marine":
+        this.createMarineModel(playerGroup, colorScheme);
+        break;
+      case "cosmic":
+        this.createCosmicModel(playerGroup, colorScheme);
+        break;
+      case "crystal":
+        this.createCrystalModel(playerGroup, colorScheme);
+        break;
+      case "giant":
+        this.createGiantModel(playerGroup, colorScheme);
+        break;
+      case "oracle":
+        this.createOracleModel(playerGroup, colorScheme);
+        break;
+      case "solar":
+        this.createSolarModel(playerGroup, colorScheme);
+        break;
+      case "void":
+        this.createVoidModel(playerGroup, colorScheme);
+        break;
+      case "knight":
+        this.createKnightModel(playerGroup, colorScheme);
+        break;
+      case "dancer":
+        this.createDancerModel(playerGroup, colorScheme);
+        break;
+      default:
+        this.createStandardModel(playerGroup, colorScheme);
+        break;
+    }
+  }
+
+  private createStandardModel(
+    playerGroup: THREE.Group,
+    colorScheme: any
+  ): void {
+    // Standard humanoid model (warriors, sentinels, guardians, etc.)
 
     // Body (main torso)
     const bodyGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.4);
@@ -1190,7 +1290,178 @@ export class NetworkManager implements NetworkState {
     head.position.y = 1.4;
     playerGroup.add(head);
 
-    // Eyes (glowing to make players distinct from demons)
+    // Eyes
+    this.addPlayerEyes(playerGroup, colorScheme, head);
+
+    // Arms and legs
+    this.addStandardLimbs(playerGroup, colorScheme);
+  }
+
+  private createPuddingModel(playerGroup: THREE.Group, colorScheme: any): void {
+    // Soft, rounded character inspired by slime-like creatures
+
+    // Body - more rounded and soft
+    const bodyGeometry = new THREE.SphereGeometry(0.6, 12, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.body,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.6;
+    body.scale.set(1, 1.5, 1); // Stretch vertically
+    playerGroup.add(body);
+
+    // Head - smaller, cuter
+    const headGeometry = new THREE.SphereGeometry(0.25, 10, 8);
+    const headMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.head,
+      transparent: true,
+      opacity: 0.95,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.3;
+    playerGroup.add(head);
+
+    // Large cute eyes
+    this.addCuteEyes(playerGroup, colorScheme, head);
+
+    // Stub arms (more blob-like)
+    this.addBlobLimbs(playerGroup, colorScheme);
+  }
+
+  private createDragonModel(playerGroup: THREE.Group, colorScheme: any): void {
+    // Dragon-inspired character with elongated features
+
+    // Body - more elongated and scaled
+    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.4, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.body,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.7;
+    playerGroup.add(body);
+
+    // Dragon head - more angular
+    const headGeometry = new THREE.ConeGeometry(0.3, 0.5, 6);
+    const headMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.head,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.5;
+    head.rotation.x = Math.PI; // Point forward
+    playerGroup.add(head);
+
+    // Dragon eyes
+    this.addDragonEyes(playerGroup, colorScheme, head);
+
+    // Wings (decorative)
+    this.addDragonWings(playerGroup, colorScheme);
+
+    // Standard limbs but more angular
+    this.addAngularLimbs(playerGroup, colorScheme);
+  }
+
+  private createNinjaModel(playerGroup: THREE.Group, colorScheme: any): void {
+    // Stealthy, sleek ninja character
+
+    // Slim, agile body
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 1.3, 0.3);
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.body,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.65;
+    playerGroup.add(body);
+
+    // Masked head
+    const headGeometry = new THREE.BoxGeometry(0.35, 0.35, 0.35);
+    const headMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.head,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.4;
+    playerGroup.add(head);
+
+    // Ninja mask details
+    this.addNinjaMask(playerGroup, colorScheme, head);
+
+    // Agile limbs
+    this.addSlenderLimbs(playerGroup, colorScheme);
+  }
+
+  private createMageModel(playerGroup: THREE.Group, colorScheme: any): void {
+    // Mystical mage with flowing robes
+
+    // Robe-like body (wider at bottom)
+    const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.7, 1.2, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.body,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.6;
+    playerGroup.add(body);
+
+    // Wizard hat head
+    const headGeometry = new THREE.ConeGeometry(0.2, 0.8, 8);
+    const headMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.head,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.8;
+    playerGroup.add(head);
+
+    // Mystical eyes
+    this.addMysticalEyes(playerGroup, colorScheme, head);
+
+    // Add magical orb
+    this.addMagicalOrb(playerGroup, colorScheme);
+
+    // Flowing robe arms
+    this.addRobeArms(playerGroup, colorScheme);
+  }
+
+  private createCyberModel(playerGroup: THREE.Group, colorScheme: any): void {
+    // Futuristic cyber character with digital effects
+
+    // Segmented cyber body
+    const bodyGeometry = new THREE.BoxGeometry(0.7, 1.1, 0.35);
+    const bodyMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.body,
+      emissive: new THREE.Color(colorScheme.body),
+      emissiveIntensity: 0.1,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.55;
+    playerGroup.add(body);
+
+    // Cyber helmet
+    const headGeometry = new THREE.BoxGeometry(0.45, 0.4, 0.4);
+    const headMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.head,
+      emissive: new THREE.Color(colorScheme.head),
+      emissiveIntensity: 0.2,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.35;
+    playerGroup.add(head);
+
+    // Cyber visor eyes
+    this.addCyberEyes(playerGroup, colorScheme, head);
+
+    // Cyber limbs with joints
+    this.addCyberLimbs(playerGroup, colorScheme);
+
+    // Add antenna array
+    this.addCyberAntenna(playerGroup, colorScheme);
+  }
+
+  // Helper methods for adding features
+  private addPlayerEyes(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    head: THREE.Mesh
+  ): void {
     const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
     const eyeMaterial = new THREE.MeshBasicMaterial({
       color: colorScheme.eyes,
@@ -1203,49 +1474,151 @@ export class NetworkManager implements NetworkState {
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     rightEye.position.set(0.08, 1.45, 0.15);
     head.add(rightEye);
+  }
 
-    // Arms
+  private addCuteEyes(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    head: THREE.Mesh
+  ): void {
+    // Larger, more expressive eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const eyeMaterial = new THREE.MeshBasicMaterial({
+      color: colorScheme.eyes,
+    });
+
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.1, 1.32, 0.2);
+    head.add(leftEye);
+
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.1, 1.32, 0.2);
+    head.add(rightEye);
+
+    // Add sparkle effect
+    const sparkleGeometry = new THREE.SphereGeometry(0.03, 6, 6);
+    const sparkleMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+    });
+
+    const leftSparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+    leftSparkle.position.set(-0.08, 1.35, 0.22);
+    head.add(leftSparkle);
+
+    const rightSparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+    rightSparkle.position.set(0.12, 1.35, 0.22);
+    head.add(rightSparkle);
+  }
+
+  private addDragonEyes(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    head: THREE.Mesh
+  ): void {
+    // Elongated dragon eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const eyeMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.eyes,
+      emissive: new THREE.Color(colorScheme.eyes),
+      emissiveIntensity: 0.3,
+    });
+
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.12, 1.52, 0.25);
+    leftEye.scale.set(1.5, 0.8, 1);
+    head.add(leftEye);
+
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.12, 1.52, 0.25);
+    rightEye.scale.set(1.5, 0.8, 1);
+    head.add(rightEye);
+  }
+
+  private addCyberEyes(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    head: THREE.Mesh
+  ): void {
+    // Cyber visor spanning across face
+    const visorGeometry = new THREE.BoxGeometry(0.4, 0.08, 0.05);
+    const visorMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.eyes,
+      emissive: new THREE.Color(colorScheme.eyes),
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    const visor = new THREE.Mesh(visorGeometry, visorMaterial);
+    visor.position.set(0, 1.38, 0.18);
+    head.add(visor);
+  }
+
+  private addStandardLimbs(playerGroup: THREE.Group, colorScheme: any): void {
+    // Standard arms and legs
     const armGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
-    const armMaterial = new THREE.MeshLambertMaterial({
+    const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+    const limbMaterial = new THREE.MeshLambertMaterial({
       color: colorScheme.body,
     });
 
-    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    // Arms
+    const leftArm = new THREE.Mesh(armGeometry, limbMaterial);
     leftArm.position.set(-0.5, 0.8, 0);
     playerGroup.add(leftArm);
 
-    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    const rightArm = new THREE.Mesh(armGeometry, limbMaterial);
     rightArm.position.set(0.5, 0.8, 0);
     playerGroup.add(rightArm);
 
     // Legs
-    const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
-    const legMaterial = new THREE.MeshLambertMaterial({
-      color: colorScheme.body,
-    });
-
-    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    const leftLeg = new THREE.Mesh(legGeometry, limbMaterial);
     leftLeg.position.set(-0.15, -0.4, 0);
     playerGroup.add(leftLeg);
 
-    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    const rightLeg = new THREE.Mesh(legGeometry, limbMaterial);
     rightLeg.position.set(0.15, -0.4, 0);
     playerGroup.add(rightLeg);
+  }
 
-    // Player identification features
-    // Add a weapon to distinguish from demons
-    const weaponGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.8);
-    const weaponMaterial = new THREE.MeshLambertMaterial({
-      color: colorScheme.weapon,
-      emissive: colorScheme.weapon,
-      emissiveIntensity: 0.2,
+  private addBlobLimbs(playerGroup: THREE.Group, colorScheme: any): void {
+    // Soft, blob-like appendages
+    const armGeometry = new THREE.SphereGeometry(0.12, 8, 6);
+    const legGeometry = new THREE.SphereGeometry(0.15, 8, 6);
+    const limbMaterial = new THREE.MeshLambertMaterial({
+      color: colorScheme.body,
+      transparent: true,
+      opacity: 0.8,
     });
-    const weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
-    weapon.position.set(0.5, 0.7, -0.4);
-    weapon.rotation.x = -0.2;
-    playerGroup.add(weapon);
 
-    // Add a helmet/headgear to make players more distinct
+    // Stub arms
+    const leftArm = new THREE.Mesh(armGeometry, limbMaterial);
+    leftArm.position.set(-0.4, 0.7, 0);
+    leftArm.scale.set(1, 0.6, 1);
+    playerGroup.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeometry, limbMaterial);
+    rightArm.position.set(0.4, 0.7, 0);
+    rightArm.scale.set(1, 0.6, 1);
+    playerGroup.add(rightArm);
+
+    // Blob feet
+    const leftFoot = new THREE.Mesh(legGeometry, limbMaterial);
+    leftFoot.position.set(-0.2, -0.1, 0);
+    leftFoot.scale.set(1, 0.4, 1.2);
+    playerGroup.add(leftFoot);
+
+    const rightFoot = new THREE.Mesh(legGeometry, limbMaterial);
+    rightFoot.position.set(0.2, -0.1, 0);
+    rightFoot.scale.set(1, 0.4, 1.2);
+    playerGroup.add(rightFoot);
+  }
+
+  private addPlayerIdentificationFeatures(
+    playerGroup: THREE.Group,
+    colorScheme: any
+  ): void {
+    // Add helmet/headgear to make players more distinct
     const helmetGeometry = new THREE.BoxGeometry(0.45, 0.15, 0.45);
     const helmetMaterial = new THREE.MeshLambertMaterial({
       color: colorScheme.weapon,
@@ -1262,22 +1635,95 @@ export class NetworkManager implements NetworkState {
     const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
     antenna.position.y = 1.9;
     playerGroup.add(antenna);
-
-    // Enable shadows
-    playerGroup.traverse(function (child) {
-      if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-
-    // Store player info in the model
-    playerGroup.userData.isPlayer = true;
-    playerGroup.userData.playerName = playerName;
-    playerGroup.userData.colorScheme = colorScheme;
-
-    return playerGroup;
   }
+
+  private addPlayerNameTag(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    playerName: string
+  ): void {
+    // This will be handled in the createRemotePlayer method as before
+    // Just a placeholder for future enhancements
+  }
+
+  // Placeholder methods for additional character types - these can be implemented later
+  private createSpiritModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createElectricModel(
+    playerGroup: THREE.Group,
+    colorScheme: any
+  ): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createIceModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createGolemModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createClockworkModel(
+    playerGroup: THREE.Group,
+    colorScheme: any
+  ): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createMarineModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createCosmicModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createCrystalModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createGiantModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createOracleModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createSolarModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createVoidModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createKnightModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+  private createDancerModel(playerGroup: THREE.Group, colorScheme: any): void {
+    this.createStandardModel(playerGroup, colorScheme);
+  }
+
+  // Placeholder methods for additional features
+  private addDragonWings(playerGroup: THREE.Group, colorScheme: any): void {}
+  private addAngularLimbs(playerGroup: THREE.Group, colorScheme: any): void {
+    this.addStandardLimbs(playerGroup, colorScheme);
+  }
+  private addNinjaMask(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    head: THREE.Mesh
+  ): void {}
+  private addSlenderLimbs(playerGroup: THREE.Group, colorScheme: any): void {
+    this.addStandardLimbs(playerGroup, colorScheme);
+  }
+  private addMysticalEyes(
+    playerGroup: THREE.Group,
+    colorScheme: any,
+    head: THREE.Mesh
+  ): void {
+    this.addPlayerEyes(playerGroup, colorScheme, head);
+  }
+  private addMagicalOrb(playerGroup: THREE.Group, colorScheme: any): void {}
+  private addRobeArms(playerGroup: THREE.Group, colorScheme: any): void {
+    this.addStandardLimbs(playerGroup, colorScheme);
+  }
+  private addCyberLimbs(playerGroup: THREE.Group, colorScheme: any): void {
+    this.addStandardLimbs(playerGroup, colorScheme);
+  }
+  private addCyberAntenna(playerGroup: THREE.Group, colorScheme: any): void {}
 
   private createRemotePlayerWeapon(weaponType: string): THREE.Group | null {
     const weaponGroup = new THREE.Group();
@@ -1396,8 +1842,9 @@ export class NetworkManager implements NetworkState {
     return weaponGroup;
   }
 
-  private getPlayerColor(index: number): any {
+  public getPlayerColor(index: number): any {
     const playerColors = [
+      // Original Warriors
       {
         name: "Crimson Warrior",
         emoji: "🔥",
@@ -1405,6 +1852,8 @@ export class NetworkManager implements NetworkState {
         head: 0xa52a2a,
         eyes: 0xff0000,
         weapon: 0x4a4a4a,
+        modelType: "warrior",
+        pattern: "solid",
       },
       {
         name: "Azure Sentinel",
@@ -1413,6 +1862,8 @@ export class NetworkManager implements NetworkState {
         head: 0x4169e1,
         eyes: 0x00bfff,
         weapon: 0x2f4f4f,
+        modelType: "sentinel",
+        pattern: "solid",
       },
       {
         name: "Emerald Guardian",
@@ -1421,6 +1872,8 @@ export class NetworkManager implements NetworkState {
         head: 0x228b22,
         eyes: 0x00ff00,
         weapon: 0x556b2f,
+        modelType: "guardian",
+        pattern: "solid",
       },
       {
         name: "Golden Crusader",
@@ -1429,6 +1882,8 @@ export class NetworkManager implements NetworkState {
         head: 0xffd700,
         eyes: 0xffff00,
         weapon: 0x8b7355,
+        modelType: "crusader",
+        pattern: "solid",
       },
       {
         name: "Violet Phantom",
@@ -1437,6 +1892,8 @@ export class NetworkManager implements NetworkState {
         head: 0x8a2be2,
         eyes: 0x9400d3,
         weapon: 0x483d8b,
+        modelType: "phantom",
+        pattern: "solid",
       },
       {
         name: "Orange Berserker",
@@ -1445,6 +1902,219 @@ export class NetworkManager implements NetworkState {
         head: 0xffa500,
         eyes: 0xff6347,
         weapon: 0x8b4513,
+        modelType: "berserker",
+        pattern: "solid",
+      },
+      // New Diverse Characters - Cute/Colorful Style
+      {
+        name: "Pink Pudding",
+        emoji: "🌸",
+        body: 0xff69b4,
+        head: 0xffb6c1,
+        eyes: 0xff1493,
+        weapon: 0xc71585,
+        modelType: "pudding",
+        pattern: "soft",
+      },
+      {
+        name: "Sky Dragon",
+        emoji: "🐉",
+        body: 0x87ceeb,
+        head: 0x4169e1,
+        eyes: 0x00bfff,
+        weapon: 0x1e90ff,
+        modelType: "dragon",
+        pattern: "scales",
+      },
+      {
+        name: "Forest Spirit",
+        emoji: "🍃",
+        body: 0x32cd32,
+        head: 0x90ee90,
+        eyes: 0x00ff7f,
+        weapon: 0x228b22,
+        modelType: "spirit",
+        pattern: "leaf",
+      },
+      {
+        name: "Lightning Bolt",
+        emoji: "⚡",
+        body: 0xffff00,
+        head: 0xffd700,
+        eyes: 0xffffff,
+        weapon: 0xdaa520,
+        modelType: "electric",
+        pattern: "zigzag",
+      },
+      {
+        name: "Ice Crystal",
+        emoji: "❄️",
+        body: 0xb0e0e6,
+        head: 0xe0ffff,
+        eyes: 0x00ffff,
+        weapon: 0x4682b4,
+        modelType: "ice",
+        pattern: "crystal",
+      },
+      {
+        name: "Lava Golem",
+        emoji: "🌋",
+        body: 0x8b0000,
+        head: 0xff4500,
+        eyes: 0xff6347,
+        weapon: 0x654321,
+        modelType: "golem",
+        pattern: "rocky",
+      },
+      {
+        name: "Shadow Ninja",
+        emoji: "🥷",
+        body: 0x2f2f2f,
+        head: 0x404040,
+        eyes: 0x8b0000,
+        weapon: 0x000000,
+        modelType: "ninja",
+        pattern: "stealth",
+      },
+      {
+        name: "Rainbow Mage",
+        emoji: "🌈",
+        body: 0x9370db,
+        head: 0xdda0dd,
+        eyes: 0x7b68ee,
+        weapon: 0x483d8b,
+        modelType: "mage",
+        pattern: "magical",
+      },
+      {
+        name: "Copper Clockwork",
+        emoji: "⚙️",
+        body: 0xb87333,
+        head: 0xcd853f,
+        eyes: 0xffa500,
+        weapon: 0x8b4513,
+        modelType: "clockwork",
+        pattern: "mechanical",
+      },
+      {
+        name: "Neon Cyber",
+        emoji: "🤖",
+        body: 0x00ff41,
+        head: 0x39ff14,
+        eyes: 0x00ffff,
+        weapon: 0x008080,
+        modelType: "cyber",
+        pattern: "digital",
+      },
+      {
+        name: "Coral Marine",
+        emoji: "🐠",
+        body: 0xff7f50,
+        head: 0xffa07a,
+        eyes: 0x40e0d0,
+        weapon: 0x2e8b57,
+        modelType: "marine",
+        pattern: "aquatic",
+      },
+      {
+        name: "Starlight Cosmic",
+        emoji: "⭐",
+        body: 0x191970,
+        head: 0x4b0082,
+        eyes: 0x9400d3,
+        weapon: 0x663399,
+        modelType: "cosmic",
+        pattern: "starry",
+      },
+      {
+        name: "Autumn Leaf",
+        emoji: "🍂",
+        body: 0xd2691e,
+        head: 0xdaa520,
+        eyes: 0xff8c00,
+        weapon: 0x8b4513,
+        modelType: "nature",
+        pattern: "organic",
+      },
+      {
+        name: "Crystal Guardian",
+        emoji: "💎",
+        body: 0x9acd32,
+        head: 0x7fff00,
+        eyes: 0x32cd32,
+        weapon: 0x556b2f,
+        modelType: "crystal",
+        pattern: "geometric",
+      },
+      {
+        name: "Desert Mirage",
+        emoji: "🏜️",
+        body: 0xf4a460,
+        head: 0xdeb887,
+        eyes: 0xffd700,
+        weapon: 0xcd853f,
+        modelType: "desert",
+        pattern: "sandy",
+      },
+      {
+        name: "Frost Giant",
+        emoji: "🧊",
+        body: 0x4682b4,
+        head: 0x87ceeb,
+        eyes: 0xb0e0e6,
+        weapon: 0x708090,
+        modelType: "giant",
+        pattern: "icy",
+      },
+      {
+        name: "Mystic Oracle",
+        emoji: "🔮",
+        body: 0x8a2be2,
+        head: 0x9932cc,
+        eyes: 0xda70d6,
+        weapon: 0x663399,
+        modelType: "oracle",
+        pattern: "mystical",
+      },
+      {
+        name: "Solar Flare",
+        emoji: "☀️",
+        body: 0xffa500,
+        head: 0xffd700,
+        eyes: 0xffff00,
+        weapon: 0xff8c00,
+        modelType: "solar",
+        pattern: "radiant",
+      },
+      {
+        name: "Void Walker",
+        emoji: "🌌",
+        body: 0x301934,
+        head: 0x483d8b,
+        eyes: 0x8a2be2,
+        weapon: 0x2f2f2f,
+        modelType: "void",
+        pattern: "ethereal",
+      },
+      {
+        name: "Emerald Knight",
+        emoji: "🛡️",
+        body: 0x50c878,
+        head: 0x00fa9a,
+        eyes: 0x32cd32,
+        weapon: 0x2e8b57,
+        modelType: "knight",
+        pattern: "armored",
+      },
+      {
+        name: "Prism Dancer",
+        emoji: "💃",
+        body: 0xf0e68c,
+        head: 0xffefd5,
+        eyes: 0xffc0cb,
+        weapon: 0xdda0dd,
+        modelType: "dancer",
+        pattern: "prismatic",
       },
     ];
 

@@ -164,60 +164,112 @@
       <!-- Instructions Screen -->
       <div id="instructionsScreen" class="menu-screen" style="display: none;">
         <h1>🎯 COMBAT MANUAL 🎯</h1>
-        <div class="instructions-content">
-          <div class="control-section">
-            <h3>🎮 CONTROLS</h3>
-            <div class="controls-grid">
-              <div class="control-item">
-                <strong>W/A/S/D</strong>
-                <span>Move around the hellish arena</span>
+        
+        <!-- Preview Tabs -->
+        <div class="preview-tabs">
+          <button class="tab-button active" onclick="showInstructionTab('controls')">
+            🎮 CONTROLS
+          </button>
+          <button class="tab-button" onclick="showPreviewTab('characters')">
+            👤 CHARACTERS
+          </button>
+          <button class="tab-button" onclick="showPreviewTab('weapons')">
+            🔫 WEAPONS
+          </button>
+          <button class="tab-button" onclick="showPreviewTab('demons')">
+            👹 DEMONS
+          </button>
+          <button class="tab-button" onclick="showPreviewTab('scenes')">
+            🎪 SCENES
+          </button>
+        </div>
+
+        <!-- Controls Tab Content -->
+        <div id="controlsTab" class="tab-content active">
+          <div class="instructions-content">
+            <div class="control-section">
+              <h3>🎮 CONTROLS</h3>
+              <div class="controls-grid">
+                <div class="control-item">
+                  <strong>W/A/S/D</strong>
+                  <span>Move around the hellish arena</span>
+                </div>
+                <div class="control-item">
+                  <strong>Mouse</strong>
+                  <span>Look around and aim at demons</span>
+                </div>
+                <div class="control-item">
+                  <strong>Left Click / Space</strong>
+                  <span>Fire your weapon</span>
+                </div>
+                <div class="control-item">
+                  <strong>R</strong>
+                  <span>Reload weapon</span>
+                </div>
+                <div class="control-item">
+                  <strong>1-4 Number Keys</strong>
+                  <span>Switch weapons (1-Shotgun, 2-Chaingun, 3-Rocket Launcher, 4-Plasma Rifle)</span>
+                </div>
+                <div class="control-item">
+                  <strong>ESC</strong>
+                  <span>Pause game / Settings</span>
+                </div>
               </div>
-              <div class="control-item">
-                <strong>Mouse</strong>
-                <span>Look around and aim at demons</span>
-              </div>
-              <div class="control-item">
-                <strong>Left Click / Space</strong>
-                <span>Fire your weapon</span>
-              </div>
-              <div class="control-item">
-                <strong>R</strong>
-                <span>Reload weapon</span>
-              </div>
-              <div class="control-item">
-                <strong>1-4 Number Keys</strong>
-                <span>Switch weapons (1-Shotgun, 2-Chaingun, 3-Rocket Launcher, 4-Plasma Rifle)</span>
-              </div>
-              <div class="control-item">
-                <strong>ESC</strong>
-                <span>Pause game / Settings</span>
+            </div>
+            
+            <div class="weapons-section">
+              <h3>🔫 WEAPONS ARSENAL</h3>
+              <div class="weapons-grid">
+                <div class="weapon-item">
+                  <span class="weapon-emoji">🔫</span>
+                  <strong>Shotgun</strong>
+                  <p>Close-range devastation with spread damage</p>
+                </div>
+                <div class="weapon-item">
+                  <span class="weapon-emoji">⚡</span>
+                  <strong>Chaingun</strong>
+                  <p>Rapid-fire automatic destruction</p>
+                </div>
+                <div class="weapon-item">
+                  <span class="weapon-emoji">🚀</span>
+                  <strong>Rocket Launcher</strong>
+                  <p>Explosive area damage for crowd control</p>
+                </div>
+                <div class="weapon-item">
+                  <span class="weapon-emoji">🔥</span>
+                  <strong>Plasma Rifle</strong>
+                  <p>High-energy projectiles with precision</p>
+                </div>
               </div>
             </div>
           </div>
-          
-          <div class="weapons-section">
-            <h3>🔫 WEAPONS ARSENAL</h3>
-            <div class="weapons-grid">
-              <div class="weapon-item">
-                <span class="weapon-emoji">🔫</span>
-                <strong>Shotgun</strong>
-                <p>Close-range devastation with spread damage</p>
+        </div>
+
+        <!-- Preview Tab Content -->
+        <div id="previewTab" class="tab-content" style="display: none;">
+          <div class="preview-section">
+            <div class="preview-info">
+              <h3 id="previewTitle">🎭 CHARACTER MODELS</h3>
+              <p id="previewDescription">Browse all available character models for multiplayer combat</p>
+            </div>
+            
+            <!-- 3D Preview Container -->
+            <div id="previewContainer" class="preview-container">
+              <div class="preview-loading">
+                <div class="loader-spinner"></div>
+                <p>Loading 3D models...</p>
               </div>
-              <div class="weapon-item">
-                <span class="weapon-emoji">⚡</span>
-                <strong>Chaingun</strong>
-                <p>Rapid-fire automatic destruction</p>
-              </div>
-              <div class="weapon-item">
-                <span class="weapon-emoji">🚀</span>
-                <strong>Rocket Launcher</strong>
-                <p>Explosive area damage for crowd control</p>
-              </div>
-              <div class="weapon-item">
-                <span class="weapon-emoji">🔥</span>
-                <strong>Plasma Rifle</strong>
-                <p>High-energy projectiles with precision</p>
-              </div>
+            </div>
+            
+            <!-- Preview Controls -->
+            <div class="preview-controls">
+              <button id="prevPageBtn" class="preview-nav-btn" onclick="prevPreviewPage()" disabled>
+                ← PREVIOUS
+              </button>
+              <span id="previewPageInfo" class="preview-page-info">Page 1 of 1</span>
+              <button id="nextPageBtn" class="preview-nav-btn" onclick="nextPreviewPage()" disabled>
+                NEXT →
+              </button>
             </div>
           </div>
         </div>
