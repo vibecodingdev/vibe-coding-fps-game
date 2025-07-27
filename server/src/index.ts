@@ -12,9 +12,10 @@ const server = http.createServer(app);
 const allowedOrigins =
   process.env.NODE_ENV === "production"
     ? [
-        "http://localhost:5173",
-        "http://localhost:8080",
-        "http://localhost:3000",
+        // Add your production domain here
+        process.env.CLIENT_URL || "http://localhost:5173",
+        // Allow any origin for now (can be restricted later)
+        "*",
       ]
     : true; // Allow all origins in development for LAN access
 

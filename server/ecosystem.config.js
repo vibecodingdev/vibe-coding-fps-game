@@ -10,14 +10,19 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
+        HOST: "0.0.0.0",
+        CLIENT_URL: process.env.CLIENT_URL || "*",
       },
       env_development: {
         NODE_ENV: "development",
         PORT: 3001,
+        HOST: "0.0.0.0",
       },
       env_production: {
         NODE_ENV: "production",
         PORT: 3001,
+        HOST: "0.0.0.0",
+        CLIENT_URL: process.env.CLIENT_URL || "*",
       },
       log_file: "./logs/combined.log",
       out_file: "./logs/out.log",
