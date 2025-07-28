@@ -19,6 +19,20 @@ body.game-mode {
 
 body.menu-mode {
   overflow: auto;
+  height: 100%;
+}
+
+/* Ensure all menu containers are scrollable */
+.menu-screen {
+  max-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Force scroll when content overflows */
+.menu-screen.scrollable {
+  height: 100vh;
+  overflow-y: scroll;
 }
 
 @keyframes hellGrid {
@@ -57,14 +71,36 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
   );
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   color: #ff6600;
   z-index: 1000;
   text-align: center;
   overflow-y: auto;
-  padding: 2rem 0;
+  overflow-x: hidden;
+  padding: 2rem 1rem;
   box-sizing: border-box;
+}
+
+/* For shorter content, center it vertically */
+.menu-screen:not(#mapSelectionMenu):not(#instructionsScreen):not(
+    #multiplayerLobby
+  ):not(#partyRoom) {
+  justify-content: center;
+}
+
+/* Ensure complex menus start from top */
+#instructionsScreen,
+#multiplayerLobby,
+#partyRoom {
+  justify-content: flex-start !important;
+  padding-top: 1rem;
+  padding-bottom: 3rem;
+}
+
+/* Ensure content container doesn't get cut off */
+.menu-screen > * {
+  flex-shrink: 0;
 }
 
 .menu-screen h1 {
@@ -119,6 +155,11 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
   min-width: 300px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  touch-action: manipulation;
+  user-select: none;
+  margin: 0.5rem 0;
+  position: relative;
+  z-index: 10;
 }
 
 .menu-button:hover {
@@ -1435,4 +1476,318 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
   color: #cccccc;
   margin: 0;
   font-size: 0.8rem;
+}
+
+/* Map Selection Menu Styles */
+#mapSelectionMenu {
+  justify-content: flex-start !important;
+  padding-top: 1rem;
+  padding-bottom: 3rem;
+}
+
+.map-selection-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  width: 100%;
+}
+
+.map-category {
+  margin-bottom: 3rem;
+}
+
+.map-category h3 {
+  color: #ff6600;
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+  border-bottom: 2px solid #ff6600;
+  padding-bottom: 0.5rem;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  justify-items: center;
+}
+
+.map-card {
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  border: 2px solid #444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 300px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-card:hover {
+  transform: translateY(-8px);
+  border-color: #ff6600;
+  box-shadow: 0 12px 30px rgba(255, 102, 0, 0.3);
+}
+
+.map-card.selected {
+  border-color: #00ff00;
+  background: linear-gradient(135deg, #003300, #001a00);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+}
+
+.map-preview {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #555;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Theme-specific preview backgrounds */
+.hell-preview {
+  background: linear-gradient(45deg, #8b0000, #ff4500, #8b0000);
+  background-size: 200% 200%;
+  animation: hellGlow 3s ease-in-out infinite;
+}
+
+.ice-preview {
+  background: linear-gradient(45deg, #4682b4, #b0e0e6, #4682b4);
+  background-size: 200% 200%;
+  animation: iceGlow 3s ease-in-out infinite;
+}
+
+.toxic-preview {
+  background: linear-gradient(45deg, #32cd32, #98fb98, #32cd32);
+  background-size: 200% 200%;
+  animation: toxicGlow 3s ease-in-out infinite;
+}
+
+.industrial-preview {
+  background: linear-gradient(45deg, #444444, #888888, #444444);
+  background-size: 200% 200%;
+  animation: industrialGlow 3s ease-in-out infinite;
+}
+
+.doom-preview {
+  background: linear-gradient(45deg, #696969, #a0a0a0, #696969);
+  background-size: 200% 200%;
+  animation: doomGlow 3s ease-in-out infinite;
+}
+
+.bsp-preview {
+  background: linear-gradient(45deg, #654321, #d2b48c, #654321);
+  background-size: 200% 200%;
+  animation: bspGlow 3s ease-in-out infinite;
+}
+
+.dust2-preview {
+  background: linear-gradient(45deg, #daa520, #f4a460, #daa520);
+}
+
+.quake-preview {
+  background: linear-gradient(45deg, #2f4f4f, #708090, #2f4f4f);
+}
+
+.random-preview {
+  background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
+  background-size: 400% 400%;
+  animation: randomGlow 2s ease-in-out infinite;
+}
+
+/* Preview animations */
+@keyframes hellGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes iceGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes toxicGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes industrialGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes doomGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes bspGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes randomGlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 0% 100%;
+  }
+  75% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Map info styles */
+.map-info {
+  text-align: center;
+}
+
+.map-info h4 {
+  color: #ffffff;
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.map-info p {
+  color: #cccccc;
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.map-difficulty {
+  color: #ffaa00;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Map selection buttons */
+.map-selection-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem 2rem;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.map-selection-buttons .menu-button {
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+/* Selected map info */
+.selected-map-info {
+  background: linear-gradient(135deg, #003300, #001a00);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem auto 0;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.selected-map-info h3 {
+  color: #00ff00;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+}
+
+.selected-map-info p {
+  color: #cccccc;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+/* Responsive design for map selection */
+@media (max-width: 768px) {
+  #mapSelectionMenu {
+    padding: 1rem 0.5rem 2rem;
+  }
+
+  .map-selection-grid {
+    padding: 0.5rem;
+  }
+
+  .map-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .map-card {
+    max-width: none;
+    margin: 0 auto;
+  }
+
+  .map-selection-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .map-selection-buttons .menu-button {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .menu-screen h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .menu-screen h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
 }

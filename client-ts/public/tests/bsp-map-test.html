@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSP Map Loading Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .test-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .log-output {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #444;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .info {
+            color: #2196F3;
+        }
+        #gameCanvas {
+            border: 2px solid #444;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🗺️ BSP Map Loading Test</h1>
+        <p>This test verifies that BSP maps are loading correctly with visible geometry.</p>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="testBSPMapLoading('maps/bsp/de_dust2.bsp')">
+                Test de_dust2.bsp
+            </button>
+            <button class="test-button" onclick="testBSPMapLoading('maps/bsp/quake_start.bsp')">
+                Test quake_start.bsp
+            </button>
+            <button class="test-button" onclick="testFallbackGeometry()">
+                Test Fallback Geometry
+            </button>
+            <button class="test-button" onclick="clearLog()">
+                Clear Log
+            </button>
+        </div>
+
+        <div id="logOutput" class="log-output">
+            <div class="info">BSP Map Test Console - Click a test button to begin</div>
+        </div>
+
+        <div id="gameContainer">
+            <!-- Game will be rendered here -->
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from '/node_modules/three/build/three.module.js';
+        import { BSPMapTheme } from '../src/themes/BSPMapTheme.js';
+
+        let scene, camera, renderer, bspTheme;
+        let testRunning = false;
+
+        // Initialize basic Three.js scene for testing
+        function initTestScene() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            
+            renderer.setSize(800, 600);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            const gameContainer = document.getElementById('gameContainer');
+            gameContainer.innerHTML = '';
+            gameContainer.appendChild(renderer.domElement);
+            
+            // Set camera position
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+            
+            // Add basic controls for camera movement
+            let mouseX = 0, mouseY = 0;
+            document.addEventListener('mousemove', (event) => {
+                if (testRunning) {
+                    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+                    mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+                    camera.position.x = mouseX * 20;
+                    camera.position.z = mouseY * 20 + 10;
+                    camera.lookAt(0, 0, 0);
+                }
+            });
+            
+            log('Test scene initialized', 'info');
+        }
+
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${timestamp}] ${message}`;
+            logOutput.appendChild(div);
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(`[BSP Test] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('logOutput').innerHTML = 
+                '<div class="info">BSP Map Test Console - Click a test button to begin</div>';
+        }
+
+        async function testBSPMapLoading(mapPath) {
+            if (testRunning) {
+                log('Test already running, please wait...', 'error');
+                return;
+            }
+            
+            testRunning = true;
+            log(`Starting BSP map test: ${mapPath}`, 'info');
+            
+            try {
+                // Initialize test scene
+                initTestScene();
+                
+                // Create BSP theme
+                bspTheme = new BSPMapTheme(scene);
+                log('BSPMapTheme created', 'success');
+                
+                // Test map loading
+                log(`Loading BSP map: ${mapPath}`, 'info');
+                await bspTheme.loadBSPMap(mapPath);
+                
+                // Check if map was loaded
+                if (bspTheme.hasMapLoaded()) {
+                    log('✅ BSP map loaded successfully!', 'success');
+                    log(bspTheme.getMapInfo(), 'info');
+                } else {
+                    log('❌ BSP map failed to load, using fallback', 'error');
+                }
+                
+                // Initialize theme components
+                bspTheme.createAtmosphere();
+                bspTheme.addLighting();
+                bspTheme.addEnvironmentObjects();
+                
+                // Start render loop
+                function animate() {
+                    if (testRunning) {
+                        requestAnimationFrame(animate);
+                        renderer.render(scene, camera);
+                    }
+                }
+                animate();
+                
+                log('Rendering started - move mouse to look around', 'info');
+                log('Scene objects: ' + scene.children.length, 'info');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'error');
+                console.error('BSP Test Error:', error);
+            } finally {
+                // Don't set testRunning to false here, let it continue rendering
+            }
+        }
+
+        async function testFallbackGeometry() {
+            if (testRunning) {
+                log('Test already running, please wait...', 'error');
+                return;
+            }
+            
+            testRunning = true;
+            log('Testing fallback geometry (simulating BSP load failure)', 'info');
+            
+            try {
+                initTestScene();
+                bspTheme = new BSPMapTheme(scene);
+                
+                // Directly test the fallback geometry by calling it
+                // (simulate BSP loading failure)
+                log('Simulating BSP load failure to test fallback...', 'info');
+                await bspTheme.loadBSPMap('nonexistent-map.bsp');
+                
+                bspTheme.createAtmosphere();
+                bspTheme.addLighting();
+                bspTheme.addEnvironmentObjects();
+                
+                function animate() {
+                    if (testRunning) {
+                        requestAnimationFrame(animate);
+                        renderer.render(scene, camera);
+                    }
+                }
+                animate();
+                
+                log('✅ Fallback geometry test complete!', 'success');
+                log('Scene objects: ' + scene.children.length, 'info');
+                
+            } catch (error) {
+                log(`❌ Fallback test failed: ${error.message}`, 'error');
+                console.error('Fallback Test Error:', error);
+            }
+        }
+
+        // Global functions for button clicks
+        window.testBSPMapLoading = testBSPMapLoading;
+        window.testFallbackGeometry = testFallbackGeometry;
+        window.clearLog = clearLog;
+
+        // Initialize on page load
+        log('BSP Map Test Page Loaded', 'success');
+        log('Click a test button to begin testing', 'info');
+    </script>
+</body>
+</html> 

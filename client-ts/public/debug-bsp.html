@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSP Debug Tool</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .button.danger {
+            background: #f44336;
+        }
+        .debug-console {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            white-space: pre-wrap;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+        .warning { color: #ff9800; }
+        #renderer {
+            border: 2px solid #444;
+            margin: 20px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 BSP Debug Tool</h1>
+        <p>Direct BSP map loading test with detailed debugging information</p>
+        
+        <div class="controls">
+            <button class="button" onclick="testBSPLoad('maps/bsp/de_dust2.bsp')">Test de_dust2.bsp</button>
+            <button class="button" onclick="testBSPLoad('maps/bsp/quake_start.bsp')">Test quake_start.bsp</button>
+            <button class="button" onclick="testFallback()">Test Fallback</button>
+            <button class="button danger" onclick="clearDebug()">Clear Log</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div>BSP Version</div>
+                <div class="stat-value" id="bspVersion">-</div>
+            </div>
+            <div class="stat-card">
+                <div>Vertices</div>
+                <div class="stat-value" id="vertexCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div>Faces</div>
+                <div class="stat-value" id="faceCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div>File Size</div>
+                <div class="stat-value" id="fileSize">-</div>
+            </div>
+            <div class="stat-card">
+                <div>Triangles</div>
+                <div class="stat-value" id="triangleCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div>Scene Objects</div>
+                <div class="stat-value" id="sceneObjects">-</div>
+            </div>
+        </div>
+
+        <div id="debugConsole" class="debug-console">
+            Ready for BSP testing...
+        </div>
+
+        <div id="rendererContainer">
+            <!-- Three.js renderer will be inserted here -->
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        let scene, camera, renderer, bspTheme;
+        let originalConsoleLog, originalConsoleError, originalConsoleWarn;
+
+        // Capture console output
+        function setupConsoleCapture() {
+            const debugConsole = document.getElementById('debugConsole');
+            
+            originalConsoleLog = console.log;
+            originalConsoleError = console.error;
+            originalConsoleWarn = console.warn;
+
+            function addToDebug(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const line = document.createElement('div');
+                line.className = type;
+                line.textContent = `[${timestamp}] ${message}`;
+                debugConsole.appendChild(line);
+                debugConsole.scrollTop = debugConsole.scrollHeight;
+            }
+
+            console.log = function(...args) {
+                const message = args.join(' ');
+                addToDebug(message, 'info');
+                originalConsoleLog.apply(console, args);
+            };
+
+            console.error = function(...args) {
+                const message = args.join(' ');
+                addToDebug(message, 'error');
+                originalConsoleError.apply(console, args);
+            };
+
+            console.warn = function(...args) {
+                const message = args.join(' ');
+                addToDebug(message, 'warning');
+                originalConsoleWarn.apply(console, args);
+            };
+        }
+
+        function clearDebug() {
+            document.getElementById('debugConsole').textContent = 'Debug console cleared...';
+            // Reset stats
+            document.getElementById('bspVersion').textContent = '-';
+            document.getElementById('vertexCount').textContent = '-';
+            document.getElementById('faceCount').textContent = '-';
+            document.getElementById('fileSize').textContent = '-';
+            document.getElementById('triangleCount').textContent = '-';
+            document.getElementById('sceneObjects').textContent = '-';
+        }
+
+        function updateStats(stats) {
+            if (stats.version) document.getElementById('bspVersion').textContent = stats.version;
+            if (stats.vertices) document.getElementById('vertexCount').textContent = stats.vertices;
+            if (stats.faces) document.getElementById('faceCount').textContent = stats.faces;
+            if (stats.fileSize) document.getElementById('fileSize').textContent = stats.fileSize;
+            if (stats.triangles) document.getElementById('triangleCount').textContent = stats.triangles;
+            if (stats.sceneObjects) document.getElementById('sceneObjects').textContent = stats.sceneObjects;
+        }
+
+        async function initializeThreeJS() {
+            if (scene) return; // Already initialized
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            
+            renderer.setSize(800, 600);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setClearColor(0x87ceeb); // Sky blue
+            
+            const container = document.getElementById('rendererContainer');
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            
+            // Set camera position
+            camera.position.set(0, 10, 20);
+            camera.lookAt(0, 0, 0);
+            
+            console.log('✅ Three.js initialized');
+        }
+
+        async function testBSPLoad(mapPath) {
+            try {
+                console.log(`🔧 Starting BSP debug test: ${mapPath}`);
+                
+                await initializeThreeJS();
+                
+                // Clear scene
+                while(scene.children.length > 0) {
+                    scene.remove(scene.children[0]);
+                }
+
+                // Import and create BSP theme
+                const { BSPMapTheme } = await import('./src/themes/BSPMapTheme.js');
+                bspTheme = new BSPMapTheme(scene);
+                
+                console.log('✅ BSPMapTheme created');
+                
+                // Load the BSP map
+                await bspTheme.loadBSPMap(mapPath);
+                
+                // Check if map loaded
+                if (bspTheme.hasMapLoaded()) {
+                    console.log('✅ BSP map loaded successfully');
+                    const mapInfo = bspTheme.getMapInfo();
+                    console.log(`📊 Map info: ${mapInfo}`);
+                    
+                    // Parse info for stats
+                    const lines = mapInfo.split('\n');
+                    const verticesLine = lines.find(l => l.includes('Vertices:'));
+                    const facesLine = lines.find(l => l.includes('Faces:'));
+                    
+                    updateStats({
+                        vertices: verticesLine ? verticesLine.split(':')[1].trim() : '0',
+                        faces: facesLine ? facesLine.split(':')[1].trim() : '0'
+                    });
+                } else {
+                    console.log('⚠️ BSP map failed to load, fallback used');
+                    updateStats({
+                        vertices: 'Fallback',
+                        faces: 'Fallback'
+                    });
+                }
+                
+                // Initialize theme components
+                bspTheme.createAtmosphere();
+                bspTheme.addLighting();
+                bspTheme.addEnvironmentObjects();
+                
+                // Update scene object count
+                updateStats({
+                    sceneObjects: scene.children.length
+                });
+                
+                // Start render loop
+                function animate() {
+                    requestAnimationFrame(animate);
+                    
+                    // Slowly rotate camera around the scene
+                    const time = Date.now() * 0.0005;
+                    camera.position.x = Math.cos(time) * 30;
+                    camera.position.z = Math.sin(time) * 30;
+                    camera.lookAt(0, 0, 0);
+                    
+                    renderer.render(scene, camera);
+                }
+                animate();
+                
+                console.log('✅ BSP debug test complete - rendering started');
+                
+            } catch (error) {
+                console.error(`❌ BSP debug test failed: ${error.message}`);
+                console.error('Error details:', error);
+            }
+        }
+
+        async function testFallback() {
+            try {
+                console.log('🔧 Testing fallback geometry...');
+                
+                await initializeThreeJS();
+                
+                // Clear scene
+                while(scene.children.length > 0) {
+                    scene.remove(scene.children[0]);
+                }
+
+                // Import and create BSP theme
+                const { BSPMapTheme } = await import('./src/themes/BSPMapTheme.js');
+                bspTheme = new BSPMapTheme(scene);
+                
+                // Try to load non-existent map to trigger fallback
+                await bspTheme.loadBSPMap('nonexistent-map.bsp');
+                
+                bspTheme.createAtmosphere();
+                bspTheme.addLighting();
+                bspTheme.addEnvironmentObjects();
+                
+                updateStats({
+                    vertices: 'Fallback',
+                    faces: 'Fallback',
+                    sceneObjects: scene.children.length
+                });
+                
+                // Start render loop
+                function animate() {
+                    requestAnimationFrame(animate);
+                    
+                    const time = Date.now() * 0.0005;
+                    camera.position.x = Math.cos(time) * 50;
+                    camera.position.z = Math.sin(time) * 50;
+                    camera.position.y = 15;
+                    camera.lookAt(0, 0, 0);
+                    
+                    renderer.render(scene, camera);
+                }
+                animate();
+                
+                console.log('✅ Fallback test complete');
+                
+            } catch (error) {
+                console.error(`❌ Fallback test failed: ${error.message}`);
+            }
+        }
+
+        // Make functions global
+        window.testBSPLoad = testBSPLoad;
+        window.testFallback = testFallback;
+        window.clearDebug = clearDebug;
+
+        // Initialize console capture
+        setupConsoleCapture();
+        
+        console.log('🔧 BSP Debug Tool ready');
+    </script>
+</body>
+</html> 

@@ -13,7 +13,7 @@ export class PlayerController {
   private lastEscapeTime = 0; // Prevent frequent escapes
   private readonly ESCAPE_COOLDOWN = 500; // 0.5 second cooldown between escapes (reduced for better responsiveness)
   private readonly MOVE_SPEED = 25; // Reduced speed to prevent collision tunneling
-  
+
   // Jump physics properties
   private verticalVelocity = 0;
   private isOnGround = true;
@@ -305,7 +305,7 @@ export class PlayerController {
 
     // Apply vertical movement and handle ground collision
     const newY = playerPos.y + this.verticalVelocity * delta;
-    
+
     // Ground collision detection
     if (newY <= this.GROUND_HEIGHT) {
       playerPos.y = this.GROUND_HEIGHT;
@@ -544,16 +544,48 @@ export class PlayerController {
 
     // 确保camera被正确添加到controls中
     if (this.controls) {
+      // Get safe spawn position from scene manager if available
+      let spawnPosition = new THREE.Vector3(0, 1.6, 20); // Default position
+
+      if (this.sceneManager) {
+        const safeSpawn = this.sceneManager.getSafeSpawnPosition();
+        spawnPosition = safeSpawn.clone();
+        // Adjust to head level (camera height)
+        spawnPosition.y += 1.6; // Camera is at head level
+
+        console.log(
+          `🎯 Using safe spawn position: (${spawnPosition.x.toFixed(
+            1
+          )}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`
+        );
+      }
+
       // 设置初始位置 - Head level camera position for proper FPS perspective
-      this.controls.getObject().position.set(0, 1.6, 20);
+      this.controls.getObject().position.copy(spawnPosition);
       // 不要调用lookAt！PointerLockControls会管理摄像头旋转
     }
   }
 
   public reset(): void {
     if (this.controls) {
+      // Get safe spawn position from scene manager if available
+      let spawnPosition = new THREE.Vector3(0, 1.6, 20); // Default position
+
+      if (this.sceneManager) {
+        const safeSpawn = this.sceneManager.getSafeSpawnPosition();
+        spawnPosition = safeSpawn.clone();
+        // Adjust to head level (camera height)
+        spawnPosition.y += 1.6; // Camera is at head level
+
+        console.log(
+          `🔄 Resetting to safe spawn position: (${spawnPosition.x.toFixed(
+            1
+          )}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`
+        );
+      }
+
       // Reset to head level camera position
-      this.controls.getObject().position.set(0, 1.6, 20);
+      this.controls.getObject().position.copy(spawnPosition);
       // 不要调用lookAt！PointerLockControls会管理摄像头旋转
     }
     this.velocity.set(0, 0, 0);
@@ -580,9 +612,25 @@ export class PlayerController {
 
   public resetPosition(): void {
     if (this.controls) {
+      // Get safe spawn position from scene manager if available
+      let spawnPosition = new THREE.Vector3(0, 1.8, 0); // Default position
+
+      if (this.sceneManager) {
+        const safeSpawn = this.sceneManager.getSafeSpawnPosition();
+        spawnPosition = safeSpawn.clone();
+        // Adjust to head level (camera height)
+        spawnPosition.y += 1.6; // Camera is at head level
+
+        console.log(
+          `🔄 Reset position to safe spawn: (${spawnPosition.x.toFixed(
+            1
+          )}, ${spawnPosition.y.toFixed(1)}, ${spawnPosition.z.toFixed(1)})`
+        );
+      }
+
       // Reset player to spawn position
-      this.controls.getObject().position.set(0, 1.8, 0);
-      this.playerState.position.set(0, 1.8, 0);
+      this.controls.getObject().position.copy(spawnPosition);
+      this.playerState.position.copy(spawnPosition);
       console.log("🔄 Player position reset to spawn");
     }
   }

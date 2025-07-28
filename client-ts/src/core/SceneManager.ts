@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { SCENE_THEMES, type SceneThemeName, BaseSceneTheme } from "../themes";
+import { BSPMapTheme } from "../themes/BSPMapTheme";
 import { CollisionSystem } from "../systems/CollisionSystem";
 
 export class SceneManager {
@@ -45,6 +46,7 @@ export class SceneManager {
     });
 
     this.collisionSystem = CollisionSystem.getInstance();
+    this.attachCollisionSystemToScene();
     this.setupRenderer();
     this.setupCamera();
   }
@@ -56,7 +58,10 @@ export class SceneManager {
     return SceneManager.instance;
   }
 
-  public async initialize(themeName?: SceneThemeName): Promise<void> {
+  public async initialize(
+    themeName?: SceneThemeName,
+    bspMapUrl?: string
+  ): Promise<void> {
     // Clear any existing theme
     this.clearCurrentScene();
 
@@ -68,6 +73,16 @@ export class SceneManager {
     const ThemeClass = SCENE_THEMES[selectedTheme];
     this.currentTheme = new ThemeClass(this.scene);
 
+    // Special handling for BSP maps
+    if (
+      selectedTheme === "bspMap" &&
+      this.currentTheme instanceof BSPMapTheme
+    ) {
+      const defaultBspMap = bspMapUrl || "maps/bsp/de_dust2.bsp";
+      console.log(`🗺️ Loading BSP map: ${defaultBspMap}`);
+      await this.currentTheme.loadBSPMap(defaultBspMap);
+    }
+
     // Initialize scene using theme
     this.currentTheme.createAtmosphere();
     this.ground = this.currentTheme.createGround();
@@ -77,7 +92,12 @@ export class SceneManager {
     this.scene.add(this.sky);
 
     this.currentTheme.addLighting();
-    this.createBoundaryWalls();
+
+    // For BSP maps, don't create boundary walls as the map provides its own geometry
+    if (selectedTheme !== "bspMap") {
+      this.createBoundaryWalls();
+    }
+
     this.currentTheme.addEnvironmentObjects();
 
     if (this.groundTexturesEnabled) {
@@ -135,6 +155,21 @@ export class SceneManager {
 
   public switchTheme(themeName: SceneThemeName): Promise<void> {
     return this.initialize(themeName);
+  }
+
+  /**
+   * Load a specific BSP map
+   */
+  public async loadBSPMap(mapUrl: string): Promise<void> {
+    console.log(`🎮 Loading BSP map: ${mapUrl}`);
+    await this.initialize("bspMap", mapUrl);
+  }
+
+  /**
+   * Get available BSP maps
+   */
+  public getAvailableBSPMaps(): string[] {
+    return ["maps/bsp/de_dust2.bsp", "maps/bsp/quake_start.bsp"];
   }
 
   public getCurrentTheme(): BaseSceneTheme | null {
@@ -495,9 +530,40 @@ export class SceneManager {
   }
 
   /**
+   * Make collision system available to scene via userData for theme access
+   */
+  private attachCollisionSystemToScene(): void {
+    this.scene.userData = this.scene.userData || {};
+    this.scene.userData.collisionSystem = this.collisionSystem;
+  }
+
+  /**
    * Get all collidable objects from current theme
    */
   public getCollidableObjects(): any[] {
     return this.currentTheme ? this.currentTheme.getCollidableObjects() : [];
+  }
+
+  /**
+   * Get safe spawn position from current theme
+   */
+  public getSafeSpawnPosition(): THREE.Vector3 {
+    if (
+      this.currentTheme &&
+      "calculateSafeSpawnPosition" in this.currentTheme
+    ) {
+      // BSP maps have special spawn position calculation
+      return (this.currentTheme as any).calculateSafeSpawnPosition();
+    }
+
+    // Default spawn position for other themes
+    return new THREE.Vector3(0, 1.8, 0);
+  }
+
+  /**
+   * Check if current theme is BSP map
+   */
+  public isBSPMap(): boolean {
+    return this.currentTheme?.constructor.name === "BSPMapTheme";
   }
 }

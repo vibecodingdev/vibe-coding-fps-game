@@ -161,6 +161,119 @@
         </div>
       </div>
 
+      <!-- Single Player Map Selection Screen -->
+      <div id="mapSelectionMenu" class="menu-screen" style="display: none;">
+        <h1>🗺️ SELECT BATTLEFIELD 🗺️</h1>
+        <h2>CHOOSE YOUR HELLISH ARENA</h2>
+        <p class="subtitle">Select the environment for your training session</p>
+        
+        <div class="map-selection-grid">
+          <!-- Theme-based Maps -->
+          <div class="map-category">
+            <h3>🎨 GENERATED ENVIRONMENTS</h3>
+            <div class="map-grid">
+              <div class="map-card" data-theme="hell" data-type="theme">
+                <div class="map-preview hell-preview"></div>
+                <div class="map-info">
+                  <h4>🔥 Hell Theme</h4>
+                  <p>Classic infernal landscape with lava and demons</p>
+                  <div class="map-difficulty">Difficulty: ★★★☆☆</div>
+                </div>
+              </div>
+              
+              <div class="map-card" data-theme="ice" data-type="theme">
+                <div class="map-preview ice-preview"></div>
+                <div class="map-info">
+                  <h4>❄️ Ice Theme</h4>
+                  <p>Frozen wasteland with ice caverns</p>
+                  <div class="map-difficulty">Difficulty: ★★☆☆☆</div>
+                </div>
+              </div>
+              
+              <div class="map-card" data-theme="toxic" data-type="theme">
+                <div class="map-preview toxic-preview"></div>
+                <div class="map-info">
+                  <h4>☢️ Toxic Theme</h4>
+                  <p>Contaminated industrial wasteland</p>
+                  <div class="map-difficulty">Difficulty: ★★★★☆</div>
+                </div>
+              </div>
+              
+              <div class="map-card" data-theme="industrial" data-type="theme">
+                <div class="map-preview industrial-preview"></div>
+                <div class="map-info">
+                  <h4>🏭 Industrial Theme</h4>
+                  <p>High-tech mechanical facility</p>
+                  <div class="map-difficulty">Difficulty: ★★★☆☆</div>
+                </div>
+              </div>
+              
+              <div class="map-card" data-theme="doomMap" data-type="theme">
+                <div class="map-preview doom-preview"></div>
+                <div class="map-info">
+                  <h4>🏛️ Doom Map</h4>
+                  <p>Classic E1M1 maze recreation</p>
+                  <div class="map-difficulty">Difficulty: ★★★★☆</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- BSP Maps -->
+          <div class="map-category">
+            <h3>🗺️ CLASSIC BSP MAPS</h3>
+            <div class="map-grid">
+              <div class="map-card" data-theme="bspMap" data-type="bsp" data-map="maps/bsp/de_dust2.bsp">
+                <div class="map-preview bsp-preview dust2-preview"></div>
+                <div class="map-info">
+                  <h4>🏜️ de_dust2</h4>
+                  <p>Counter-Strike's most iconic map</p>
+                  <div class="map-difficulty">Difficulty: ★★★★★</div>
+                </div>
+              </div>
+              
+              <div class="map-card" data-theme="bspMap" data-type="bsp" data-map="maps/bsp/quake_start.bsp">
+                <div class="map-preview bsp-preview quake-preview"></div>
+                <div class="map-info">
+                  <h4>⚡ quake_start</h4>
+                  <p>Classic Quake starting level</p>
+                  <div class="map-difficulty">Difficulty: ★★★☆☆</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Random Option -->
+          <div class="map-category">
+            <h3>🎲 RANDOM SELECTION</h3>
+            <div class="map-grid">
+              <div class="map-card" data-theme="random" data-type="random">
+                <div class="map-preview random-preview"></div>
+                <div class="map-info">
+                  <h4>🎲 Random Map</h4>
+                  <p>Let fate decide your battleground</p>
+                  <div class="map-difficulty">Difficulty: ★★★☆☆</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="map-selection-buttons">
+          <button id="backToMainBtn" class="menu-button">
+            ← BACK TO MAIN MENU
+          </button>
+          <button id="startSelectedMapBtn" class="menu-button success" disabled>
+            🎮 BEGIN TRAINING
+          </button>
+        </div>
+        
+        <div id="selectedMapInfo" class="selected-map-info" style="display: none;">
+          <h3>Selected: <span id="selectedMapName"></span></h3>
+          <p id="selectedMapDescription"></p>
+        </div>
+      </div>
+
       <!-- Instructions Screen -->
       <div id="instructionsScreen" class="menu-screen" style="display: none;">
         <h1>🎯 COMBAT MANUAL 🎯</h1>
@@ -344,8 +457,9 @@
                 <option value="hell">🔥 Hell Theme - Classic infernal landscape</option>
                 <option value="ice">❄️ Ice Theme - Frozen wasteland</option>
                 <option value="toxic">☢️ Toxic Theme - Contaminated industrial zone</option>
-                <option value="industrial">🏭 Industrial Theme - Mechanical facility</option>
-                <option value="doomMap" selected>🏛️ Doom Map - Classic E1M1 recreation</option>
+                <option value="industrial" selected>🏭 Industrial Theme - Mechanical facility</option>
+                <option value="doomMap">🏛️ Doom Map - Classic E1M1 recreation</option>
+                <option value="bspMap">🗺️ BSP Map - Classic FPS maps</option>
               </select>
               <button class="menu-button success" id="createRoomBtn">
                 🔥 CREATE CHAMBER

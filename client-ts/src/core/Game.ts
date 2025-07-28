@@ -99,12 +99,15 @@ export class Game {
     this.collectibleSystem = new CollectibleSystem();
   }
 
-  public async initialize(themeName?: SceneThemeName): Promise<void> {
+  public async initialize(
+    themeName?: SceneThemeName,
+    bspMapUrl?: string
+  ): Promise<void> {
     if (this.gameInitialized) return;
 
     try {
-      // Initialize all systems with optional theme
-      await this.sceneManager.initialize(themeName);
+      // Initialize all systems with optional theme and BSP map
+      await this.sceneManager.initialize(themeName, bspMapUrl);
 
       // Get scene and camera first
       const scene = this.sceneManager.getScene();
@@ -283,6 +286,9 @@ export class Game {
       await this.sceneManager.switchTheme(themeName);
       console.log(`🎮 Started game with ${themeName} theme`);
     }
+
+    // Show controls hint, especially useful for BSP maps
+    this.uiManager.showControlsHint();
 
     this.startGameLoop();
 
@@ -1354,6 +1360,13 @@ export class Game {
       case "KeyR":
         this.weaponSystem.reload();
         break;
+      case "KeyT":
+        // Reset player position to safe spawn (useful for BSP maps)
+        if (this.playerController) {
+          console.log("🔄 Resetting player position to safe spawn...");
+          this.playerController.resetPosition();
+        }
+        break;
       case "Digit1":
         this.weaponSystem.switchWeapon("shotgun");
         break;
@@ -1982,6 +1995,25 @@ export class Game {
     } catch (error) {
       console.error(`Failed to switch to ${themeName} theme:`, error);
     }
+  }
+
+  /**
+   * Load a BSP map
+   */
+  public async loadBSPMap(mapUrl: string): Promise<void> {
+    try {
+      await this.sceneManager.loadBSPMap(mapUrl);
+      console.log(`🗺️ Loaded BSP map: ${mapUrl}`);
+    } catch (error) {
+      console.error(`Failed to load BSP map ${mapUrl}:`, error);
+    }
+  }
+
+  /**
+   * Get available BSP maps
+   */
+  public getAvailableBSPMaps(): string[] {
+    return this.sceneManager.getAvailableBSPMaps();
   }
 
   /**

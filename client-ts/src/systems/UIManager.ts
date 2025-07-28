@@ -20,6 +20,7 @@ export class UIManager {
       toxic: "☢️ Toxic",
       industrial: "🏭 Industrial",
       doomMap: "🏛️ Doom Map",
+      bspMap: "🗺️ BSP Map",
     };
     return themeNames[themeName] || themeName;
   }
@@ -906,6 +907,7 @@ export class UIManager {
     const mainMenu = document.getElementById("mainMenu");
     if (mainMenu) {
       mainMenu.style.display = "flex";
+      mainMenu.scrollTop = 0;
       console.log("✅ Main menu display set to flex");
     } else {
       console.error(
@@ -921,6 +923,10 @@ export class UIManager {
     const multiplayerLobby = document.getElementById("multiplayerLobby");
     if (multiplayerLobby) {
       multiplayerLobby.style.display = "flex";
+      multiplayerLobby.classList.add("scrollable");
+      setTimeout(() => {
+        multiplayerLobby.scrollTop = 0;
+      }, 100);
     }
   }
 
@@ -931,6 +937,10 @@ export class UIManager {
     const partyRoom = document.getElementById("partyRoom");
     if (partyRoom) {
       partyRoom.style.display = "flex";
+      partyRoom.classList.add("scrollable");
+      setTimeout(() => {
+        partyRoom.scrollTop = 0;
+      }, 100);
     }
   }
 
@@ -941,6 +951,10 @@ export class UIManager {
     const instructions = document.getElementById("instructionsScreen");
     if (instructions) {
       instructions.style.display = "flex";
+      instructions.classList.add("scrollable");
+      setTimeout(() => {
+        instructions.scrollTop = 0;
+      }, 100);
     }
   }
 
@@ -1895,5 +1909,50 @@ export class UIManager {
     this.previewScene = null;
     this.previewCamera = null;
     this.previewContainer = null;
+  }
+
+  public showControlsHint(): void {
+    const controlsHint = document.createElement("div");
+    controlsHint.id = "controls-hint";
+    controlsHint.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-family: 'Orbitron', monospace;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 5px;
+      z-index: 1000;
+      max-width: 300px;
+      line-height: 1.4;
+      border: 1px solid #00ffff;
+    `;
+
+    controlsHint.innerHTML = `
+      <div style="color: #00ffff; font-weight: bold; margin-bottom: 10px;">CONTROLS</div>
+      <div>WASD / Arrows: Move</div>
+      <div>Mouse: Look around</div>
+      <div>Click: Shoot</div>
+      <div>Space: Jump</div>
+      <div>R: Reload</div>
+      <div style="color: #ffff00;">T: Reset position (if stuck)</div>
+      <div>1-4: Switch weapons</div>
+      <div>ESC: Pause</div>
+    `;
+
+    document.body.appendChild(controlsHint);
+
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+      if (controlsHint.parentNode) {
+        controlsHint.style.opacity = "0";
+        controlsHint.style.transition = "opacity 1s";
+        setTimeout(() => {
+          controlsHint.remove();
+        }, 1000);
+      }
+    }, 8000);
   }
 }

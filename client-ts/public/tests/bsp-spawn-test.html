@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSP Spawn Position Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .test-button.danger {
+            background: #f44336;
+        }
+        .test-button.danger:hover {
+            background: #da190b;
+        }
+        .log-output {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #444;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .info {
+            color: #2196F3;
+        }
+        .warning {
+            color: #ff9800;
+        }
+        #gameCanvas {
+            border: 2px solid #444;
+            margin: 20px 0;
+        }
+        .stats-panel {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .stat-item {
+            background: #444;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .coordinate {
+            font-family: monospace;
+            background: #555;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎯 BSP Map Spawn Position Test</h1>
+        <p>This test verifies that BSP maps calculate correct spawn positions and players don't get stuck inside geometry.</p>
+        
+        <div class="test-controls">
+            <button class="test-button" onclick="testBSPSpawn('maps/bsp/de_dust2.bsp')">
+                Test de_dust2 Spawn
+            </button>
+            <button class="test-button" onclick="testBSPSpawn('maps/bsp/quake_start.bsp')">
+                Test quake_start Spawn
+            </button>
+            <button class="test-button" onclick="testFallbackSpawn()">
+                Test Fallback Spawn
+            </button>
+            <button class="test-button danger" onclick="testPlayerMovement()">
+                Test Player Movement
+            </button>
+            <button class="test-button" onclick="clearLog()">
+                Clear Log
+            </button>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-item">
+                <h3>Player Position</h3>
+                <div>X: <span class="coordinate" id="playerX">0.0</span></div>
+                <div>Y: <span class="coordinate" id="playerY">0.0</span></div>
+                <div>Z: <span class="coordinate" id="playerZ">0.0</span></div>
+            </div>
+            <div class="stat-item">
+                <h3>Map Info</h3>
+                <div>Theme: <span id="mapTheme">None</span></div>
+                <div>Vertices: <span id="mapVertices">0</span></div>
+                <div>Bounds: <span id="mapBounds">Unknown</span></div>
+            </div>
+        </div>
+
+        <div id="logOutput" class="log-output">
+            <div class="info">BSP Spawn Test Console - Click a test button to begin</div>
+        </div>
+
+        <div id="gameContainer">
+            <!-- Game will be rendered here -->
+        </div>
+    </div>
+
+    <script type="module">
+        let game, sceneManager, playerController;
+        let testRunning = false;
+        let positionUpdateInterval;
+
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${timestamp}] ${message}`;
+            logOutput.appendChild(div);
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(`[BSP Spawn Test] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('logOutput').innerHTML = 
+                '<div class="info">BSP Spawn Test Console - Click a test button to begin</div>';
+        }
+
+        function updatePlayerPosition() {
+            if (game && playerController) {
+                const position = game.getPlayerPosition();
+                document.getElementById('playerX').textContent = position.x.toFixed(2);
+                document.getElementById('playerY').textContent = position.y.toFixed(2);
+                document.getElementById('playerZ').textContent = position.z.toFixed(2);
+            }
+        }
+
+        function updateMapInfo(theme, vertices, bounds) {
+            document.getElementById('mapTheme').textContent = theme || 'None';
+            document.getElementById('mapVertices').textContent = vertices || '0';
+            document.getElementById('mapBounds').textContent = bounds || 'Unknown';
+        }
+
+        async function initializeGame() {
+            try {
+                // Import game modules
+                const { Game } = await import('../src/core/Game.js');
+                const { SceneManager } = await import('../src/core/SceneManager.js');
+                
+                // Initialize game
+                game = new Game();
+                sceneManager = game.getSceneManager();
+                playerController = game.getPlayerController();
+                
+                // Setup game container
+                const gameContainer = document.getElementById('gameContainer');
+                gameContainer.innerHTML = '';
+                const renderer = sceneManager.getRenderer();
+                renderer.setSize(800, 600);
+                gameContainer.appendChild(renderer.domElement);
+                
+                log('Game modules initialized', 'success');
+                return true;
+            } catch (error) {
+                log(`Failed to initialize game: ${error.message}`, 'error');
+                console.error('Game initialization error:', error);
+                return false;
+            }
+        }
+
+        async function testBSPSpawn(mapPath) {
+            if (testRunning) {
+                log('Test already running, please wait...', 'error');
+                return;
+            }
+            
+            testRunning = true;
+            log(`Testing BSP spawn with: ${mapPath}`, 'info');
+            
+            try {
+                // Initialize game if needed
+                if (!game) {
+                    const success = await initializeGame();
+                    if (!success) return;
+                }
+                
+                // Initialize with BSP map
+                log(`Initializing BSP theme with map: ${mapPath}`, 'info');
+                await game.initialize('bspMap', mapPath);
+                
+                // Get spawn position info
+                const safeSpawn = sceneManager.getSafeSpawnPosition();
+                log(`Safe spawn calculated: (${safeSpawn.x.toFixed(2)}, ${safeSpawn.y.toFixed(2)}, ${safeSpawn.z.toFixed(2)})`, 'success');
+                
+                // Check if it's a BSP map
+                const isBSP = sceneManager.isBSPMap();
+                log(`Is BSP map: ${isBSP}`, 'info');
+                
+                // Get current theme and check if it has map info
+                const theme = sceneManager.getCurrentTheme();
+                if (theme && typeof theme.getMapInfo === 'function') {
+                    const mapInfo = theme.getMapInfo();
+                    log(`Map info: ${mapInfo}`, 'info');
+                    
+                    // Update UI with map info
+                    const lines = mapInfo.split('\n');
+                    const verticesLine = lines.find(l => l.includes('Vertices:'));
+                    const vertices = verticesLine ? verticesLine.split(':')[1].trim() : '0';
+                    updateMapInfo('BSP Map', vertices, 'See log');
+                }
+                
+                // Start the game
+                log('Starting game...', 'info');
+                await game.startGame(false, 'bspMap');
+                
+                // Get final player position
+                const playerPos = game.getPlayerPosition();
+                log(`Player spawned at: (${playerPos.x.toFixed(2)}, ${playerPos.y.toFixed(2)}, ${playerPos.z.toFixed(2)})`, 'success');
+                
+                // Start position monitoring
+                positionUpdateInterval = setInterval(updatePlayerPosition, 100);
+                
+                // Start render loop
+                function animate() {
+                    if (testRunning) {
+                        requestAnimationFrame(animate);
+                        game.update();
+                    }
+                }
+                animate();
+                
+                log('✅ BSP spawn test complete! Use WASD to move around.', 'success');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'error');
+                console.error('BSP Spawn Test Error:', error);
+                testRunning = false;
+            }
+        }
+
+        async function testFallbackSpawn() {
+            if (testRunning) {
+                log('Test already running, please wait...', 'error');
+                return;
+            }
+            
+            testRunning = true;
+            log('Testing fallback spawn (simulating BSP load failure)', 'info');
+            
+            try {
+                if (!game) {
+                    const success = await initializeGame();
+                    if (!success) return;
+                }
+                
+                // Try to load a non-existent BSP to trigger fallback
+                await game.initialize('bspMap', 'nonexistent-map.bsp');
+                
+                const safeSpawn = sceneManager.getSafeSpawnPosition();
+                log(`Fallback spawn: (${safeSpawn.x.toFixed(2)}, ${safeSpawn.y.toFixed(2)}, ${safeSpawn.z.toFixed(2)})`, 'success');
+                
+                await game.startGame(false, 'bspMap');
+                
+                const playerPos = game.getPlayerPosition();
+                log(`Player spawned at: (${playerPos.x.toFixed(2)}, ${playerPos.y.toFixed(2)}, ${playerPos.z.toFixed(2)})`, 'success');
+                
+                updateMapInfo('Fallback BSP', 'N/A', 'Generated');
+                positionUpdateInterval = setInterval(updatePlayerPosition, 100);
+                
+                function animate() {
+                    if (testRunning) {
+                        requestAnimationFrame(animate);
+                        game.update();
+                    }
+                }
+                animate();
+                
+                log('✅ Fallback spawn test complete!', 'success');
+                
+            } catch (error) {
+                log(`❌ Fallback test failed: ${error.message}`, 'error');
+                console.error('Fallback Test Error:', error);
+                testRunning = false;
+            }
+        }
+
+        function testPlayerMovement() {
+            if (!testRunning || !game) {
+                log('Start a spawn test first!', 'warning');
+                return;
+            }
+            
+            log('Testing player movement...', 'info');
+            
+            // Test reset position
+            playerController.resetPosition();
+            const resetPos = game.getPlayerPosition();
+            log(`Reset position: (${resetPos.x.toFixed(2)}, ${resetPos.y.toFixed(2)}, ${resetPos.z.toFixed(2)})`, 'info');
+            
+            // Test a few programmatic movements
+            setTimeout(() => {
+                const currentPos = game.getPlayerPosition();
+                currentPos.x += 5;
+                playerController.getControls().getObject().position.copy(currentPos);
+                log('Moved +5 in X direction', 'info');
+            }, 1000);
+            
+            setTimeout(() => {
+                const currentPos = game.getPlayerPosition();
+                currentPos.z += 5;
+                playerController.getControls().getObject().position.copy(currentPos);
+                log('Moved +5 in Z direction', 'info');
+            }, 2000);
+            
+            log('Movement test initiated. Check position updates in stats panel.', 'success');
+        }
+
+        // Global functions for button clicks
+        window.testBSPSpawn = testBSPSpawn;
+        window.testFallbackSpawn = testFallbackSpawn;
+        window.testPlayerMovement = testPlayerMovement;
+        window.clearLog = clearLog;
+
+        // Initialize on page load
+        log('BSP Spawn Test Page Loaded', 'success');
+        log('Click a test button to begin testing', 'info');
+    </script>
+</body>
+</html> 

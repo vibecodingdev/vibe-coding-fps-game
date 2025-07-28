@@ -29,327 +29,322 @@ export class DoomMapTheme extends BaseSceneTheme {
   private mapScale = 2.5; // Scale factor for converting 2D map to 3D
   private wallHeight = 8;
   private doorHeight = 6;
-  private doorWidth = 3;
+  private doorWidth = 5; // Increased door width
+  private minCorridorWidth = 8; // Minimum corridor width to prevent getting stuck
 
   constructor(scene: THREE.Scene) {
     const config: SceneThemeConfig = {
-      name: "Doom Map",
-      primaryColor: 0x4a4a4a, // Brighter gray concrete
-      secondaryColor: 0x6a6a6a, // Lighter gray for walls
-      fogColor: 0x2a2a2a, // Lighter fog
-      ambientLightColor: 0x606060, // Brighter ambient
-      directionalLightColor: 0xa0a0a0, // Brighter directional
-      fillLightColor: 0x808080, // Brighter fill
-      groundColor: 0x4a4a4a, // Brighter concrete floor
-      skyColor: 0x1a1a1a, // Lighter sky
-      glowColor: 0x00ff00, // Green for computer terminals
-      accentColor: 0xff4400, // Orange/red for danger areas
+      name: "Doom Maze",
+      primaryColor: 0x707070, // Brighter gray like Industrial theme
+      secondaryColor: 0x808080, // Lighter walls
+      fogColor: 0x606060, // Much lighter fog
+      ambientLightColor: 0x888888, // Brighter ambient
+      directionalLightColor: 0xffffff, // White directional light
+      fillLightColor: 0xcccccc, // Bright fill light
+      groundColor: 0x666666, // Brighter floor
+      skyColor: 0x404040, // Lighter sky
+      glowColor: 0x00ccff, // Industrial blue glow
+      accentColor: 0xff6600, // Orange accents
     };
     super(scene, config);
-    this.initializeMapLayout();
+    this.initializeSimplifiedMazeLayout();
   }
 
-  private initializeMapLayout(): void {
-    // Redesigned based on the exact Doom E1M1 schematic with proper angles and connections
-    // Scale: Each unit represents ~3 meters for proper navigation
-    
-    // Starting room (bottom-right in schematic)
+  private initializeSimplifiedMazeLayout(): void {
+    // Simplified maze-like layout with wider paths and clearer structure
+    // Grid-based design for easier navigation
+
+    // Starting area (entrance)
     this.rooms.set("start", {
       id: "start",
-      position: new THREE.Vector3(40, 0, -40),
-      size: new THREE.Vector3(16, this.wallHeight, 12),
+      position: new THREE.Vector3(0, 0, -40),
+      size: new THREE.Vector3(16, this.wallHeight, 16),
       type: "start",
-      connections: ["main_hall"],
+      connections: ["north_corridor"],
       elevation: 0,
-      lighting: { color: 0x4040ff, intensity: 1.2 }
+      lighting: { color: 0x4080ff, intensity: 2.0 },
     });
 
-    // Main hallway connecting start to central area
-    this.rooms.set("main_hall", {
-      id: "main_hall",
-      position: new THREE.Vector3(20, 0, -40),
-      size: new THREE.Vector3(20, this.wallHeight, 8),
-      type: "normal",
-      connections: ["start", "central_hub", "east_branch"],
-      elevation: 0,
-      lighting: { color: 0x808080, intensity: 1.0 }
-    });
-
-    // Central hub area (middle of schematic)
-    this.rooms.set("central_hub", {
-      id: "central_hub",
-      position: new THREE.Vector3(0, 0, -20),
-      size: new THREE.Vector3(24, this.wallHeight, 20),
-      type: "normal",
-      connections: ["main_hall", "north_wing", "west_corridor", "south_branch"],
-      elevation: 0,
-      lighting: { color: 0x606060, intensity: 1.1 }
-    });
-
-    // North wing (upper part of schematic)
-    this.rooms.set("north_wing", {
-      id: "north_wing",
-      position: new THREE.Vector3(0, 0, 20),
-      size: new THREE.Vector3(32, this.wallHeight, 16),
-      type: "normal",
-      connections: ["central_hub", "northeast_rooms", "northwest_area"],
-      elevation: 0,
-      lighting: { color: 0xff6040, intensity: 1.0 }
-    });
-
-    // Northeast rooms complex
-    this.rooms.set("northeast_rooms", {
-      id: "northeast_rooms",
-      position: new THREE.Vector3(25, 0, 35),
-      size: new THREE.Vector3(18, this.wallHeight, 14),
-      type: "normal",
-      connections: ["north_wing", "curved_passage"],
-      elevation: 0,
-      lighting: { color: 0x40ff40, intensity: 1.1 }
-    });
-
-    // Curved passage (the distinctive zigzag in upper right)
-    this.rooms.set("curved_passage", {
-      id: "curved_passage",
-      position: new THREE.Vector3(45, 0, 20),
+    // Main north corridor
+    this.rooms.set("north_corridor", {
+      id: "north_corridor",
+      position: new THREE.Vector3(0, 0, -15),
       size: new THREE.Vector3(12, this.wallHeight, 30),
       type: "normal",
-      connections: ["northeast_rooms"],
+      connections: ["start", "central_hub"],
       elevation: 0,
-      lighting: { color: 0x8040ff, intensity: 0.9 }
+      lighting: { color: 0xffffff, intensity: 2.0 },
     });
 
-    // Northwest area
-    this.rooms.set("northwest_area", {
-      id: "northwest_area",
-      position: new THREE.Vector3(-25, 0, 35),
-      size: new THREE.Vector3(20, this.wallHeight, 14),
+    // Central hub (main junction)
+    this.rooms.set("central_hub", {
+      id: "central_hub",
+      position: new THREE.Vector3(0, 0, 10),
+      size: new THREE.Vector3(20, this.wallHeight, 20),
       type: "normal",
-      connections: ["north_wing", "west_complex"],
+      connections: [
+        "north_corridor",
+        "east_wing",
+        "west_wing",
+        "south_passage",
+      ],
       elevation: 0,
-      lighting: { color: 0x40ffff, intensity: 1.0 }
+      lighting: { color: 0xffffff, intensity: 2.5 },
     });
 
-    // West corridor (left side connection)
-    this.rooms.set("west_corridor", {
-      id: "west_corridor",
-      position: new THREE.Vector3(-30, 0, -10),
-      size: new THREE.Vector3(16, this.wallHeight, 24),
+    // East wing
+    this.rooms.set("east_wing", {
+      id: "east_wing",
+      position: new THREE.Vector3(30, 0, 10),
+      size: new THREE.Vector3(16, this.wallHeight, 16),
       type: "normal",
-      connections: ["central_hub", "west_complex", "boss_chamber"],
+      connections: ["central_hub", "east_corridor"],
       elevation: 0,
-      lighting: { color: 0xffff40, intensity: 1.0 }
+      lighting: { color: 0xffffff, intensity: 2.0 },
     });
 
-    // West complex (far left area)
-    this.rooms.set("west_complex", {
-      id: "west_complex",
-      position: new THREE.Vector3(-50, 0, 15),
-      size: new THREE.Vector3(16, this.wallHeight, 30),
+    // East corridor leading to boss
+    this.rooms.set("east_corridor", {
+      id: "east_corridor",
+      position: new THREE.Vector3(50, 0, 10),
+      size: new THREE.Vector3(12, this.wallHeight, 25),
       type: "normal",
-      connections: ["west_corridor", "northwest_area", "exit_area"],
+      connections: ["east_wing", "boss_chamber"],
       elevation: 0,
-      lighting: { color: 0xff8040, intensity: 0.9 }
+      lighting: { color: 0xffffff, intensity: 2.0 },
     });
 
-    // Boss chamber (distinctive large room)
+    // Boss chamber
     this.rooms.set("boss_chamber", {
       id: "boss_chamber",
-      position: new THREE.Vector3(-45, 2, -30),
-      size: new THREE.Vector3(20, this.wallHeight + 4, 18),
+      position: new THREE.Vector3(65, 1, 10),
+      size: new THREE.Vector3(18, this.wallHeight + 2, 18),
       type: "boss",
+      connections: ["east_corridor"],
+      elevation: 1,
+      lighting: { color: 0xff4040, intensity: 2.5 },
+    });
+
+    // West wing
+    this.rooms.set("west_wing", {
+      id: "west_wing",
+      position: new THREE.Vector3(-30, 0, 10),
+      size: new THREE.Vector3(16, this.wallHeight, 16),
+      type: "normal",
+      connections: ["central_hub", "west_corridor"],
+      elevation: 0,
+      lighting: { color: 0xffffff, intensity: 2.0 },
+    });
+
+    // West corridor
+    this.rooms.set("west_corridor", {
+      id: "west_corridor",
+      position: new THREE.Vector3(-50, 0, 10),
+      size: new THREE.Vector3(12, this.wallHeight, 25),
+      type: "normal",
+      connections: ["west_wing", "secret_area"],
+      elevation: 0,
+      lighting: { color: 0xffffff, intensity: 2.0 },
+    });
+
+    // Secret area
+    this.rooms.set("secret_area", {
+      id: "secret_area",
+      position: new THREE.Vector3(-65, 0, 10),
+      size: new THREE.Vector3(14, this.wallHeight, 14),
+      type: "secret",
       connections: ["west_corridor"],
-      elevation: 2,
-      lighting: { color: 0xff0040, intensity: 1.8 }
+      elevation: 0,
+      lighting: { color: 0x40ff80, intensity: 2.2 },
+    });
+
+    // South passage
+    this.rooms.set("south_passage", {
+      id: "south_passage",
+      position: new THREE.Vector3(0, 0, 35),
+      size: new THREE.Vector3(12, this.wallHeight, 25),
+      type: "normal",
+      connections: ["central_hub", "south_area"],
+      elevation: 0,
+      lighting: { color: 0xffffff, intensity: 2.0 },
+    });
+
+    // South area with exit
+    this.rooms.set("south_area", {
+      id: "south_area",
+      position: new THREE.Vector3(0, 0, 60),
+      size: new THREE.Vector3(20, this.wallHeight, 16),
+      type: "normal",
+      connections: ["south_passage", "exit_area"],
+      elevation: 0,
+      lighting: { color: 0xffffff, intensity: 2.0 },
     });
 
     // Exit area
     this.rooms.set("exit_area", {
       id: "exit_area",
-      position: new THREE.Vector3(-65, 1, 40),
-      size: new THREE.Vector3(12, this.wallHeight, 12),
+      position: new THREE.Vector3(0, 1, 80),
+      size: new THREE.Vector3(16, this.wallHeight, 12),
       type: "exit",
-      connections: ["west_complex"],
+      connections: ["south_area"],
       elevation: 1,
-      lighting: { color: 0x4080ff, intensity: 1.4 }
+      lighting: { color: 0x80c0ff, intensity: 2.5 },
     });
 
-    // East branch (right side extension)
-    this.rooms.set("east_branch", {
-      id: "east_branch",
-      position: new THREE.Vector3(30, 0, -60),
-      size: new THREE.Vector3(14, this.wallHeight, 10),
+    // Additional side rooms for maze complexity
+    this.rooms.set("east_side_room", {
+      id: "east_side_room",
+      position: new THREE.Vector3(30, 0, 40),
+      size: new THREE.Vector3(14, this.wallHeight, 12),
       type: "normal",
-      connections: ["main_hall"],
+      connections: ["east_wing"],
       elevation: 0,
-      lighting: { color: 0xff4080, intensity: 1.0 }
+      lighting: { color: 0xffffff, intensity: 2.0 },
     });
 
-    // South branch (bottom extension)
-    this.rooms.set("south_branch", {
-      id: "south_branch",
-      position: new THREE.Vector3(-10, 0, -50),
-      size: new THREE.Vector3(12, this.wallHeight, 16),
+    this.rooms.set("west_side_room", {
+      id: "west_side_room",
+      position: new THREE.Vector3(-30, 0, 40),
+      size: new THREE.Vector3(14, this.wallHeight, 12),
       type: "normal",
-      connections: ["central_hub"],
+      connections: ["west_wing"],
       elevation: 0,
-      lighting: { color: 0x80ff40, intensity: 1.0 }
+      lighting: { color: 0xffffff, intensity: 2.0 },
     });
 
-    // Secret areas (hidden connections)
-    this.rooms.set("secret_1", {
-      id: "secret_1",
-      position: new THREE.Vector3(15, -1, 0),
-      size: new THREE.Vector3(10, this.wallHeight - 2, 8),
-      type: "secret",
-      connections: ["central_hub"],
-      elevation: -1,
-      lighting: { color: 0x00ff80, intensity: 1.5 }
-    });
-
-    // Initialize hallways with proper connections
-    this.initializeHallways();
+    // Initialize simplified hallways
+    this.initializeSimplifiedHallways();
   }
 
-  private initializeHallways(): void {
-    // Redesigned hallways with proper connections and wider passages
+  private initializeSimplifiedHallways(): void {
+    // Wider hallways to prevent getting stuck
     this.hallways = [
-      // Start to main hall (wide entrance)
+      // Start to north corridor
       {
-        id: "start_to_main",
-        start: new THREE.Vector3(32, 0, -40),
-        end: new THREE.Vector3(28, 0, -40),
-        width: 6,
+        id: "start_to_north",
+        start: new THREE.Vector3(0, 0, -32),
+        end: new THREE.Vector3(0, 0, -30),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // Main hall to central hub
+      // North corridor to central hub
       {
-        id: "main_to_central",
-        start: new THREE.Vector3(12, 0, -35),
-        end: new THREE.Vector3(12, 0, -30),
-        width: 6,
+        id: "north_to_central",
+        start: new THREE.Vector3(0, 0, 0),
+        end: new THREE.Vector3(0, 0, 0),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // Central hub to north wing
+      // Central hub to east wing
       {
-        id: "central_to_north",
-        start: new THREE.Vector3(0, 0, -10),
-        end: new THREE.Vector3(0, 0, 12),
-        width: 8,
+        id: "central_to_east",
+        start: new THREE.Vector3(10, 0, 10),
+        end: new THREE.Vector3(22, 0, 10),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // North wing to northeast rooms
+      // East wing to east corridor
       {
-        id: "north_to_northeast",
-        start: new THREE.Vector3(16, 0, 28),
-        end: new THREE.Vector3(16, 0, 35),
-        width: 6,
+        id: "east_to_corridor",
+        start: new THREE.Vector3(38, 0, 10),
+        end: new THREE.Vector3(44, 0, 10),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // Northeast to curved passage
+      // East corridor to boss
       {
-        id: "northeast_to_curved",
-        start: new THREE.Vector3(34, 0, 35),
-        end: new THREE.Vector3(39, 0, 35),
-        width: 5,
+        id: "corridor_to_boss",
+        start: new THREE.Vector3(56, 0, 10),
+        end: new THREE.Vector3(56, 1, 10),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: true,
       },
-      // North wing to northwest area
-      {
-        id: "north_to_northwest",
-        start: new THREE.Vector3(-16, 0, 28),
-        end: new THREE.Vector3(-16, 0, 35),
-        width: 6,
-        height: this.wallHeight,
-        doors: false
-      },
-      // Central hub to west corridor
+      // Central hub to west wing
       {
         id: "central_to_west",
-        start: new THREE.Vector3(-12, 0, -15),
-        end: new THREE.Vector3(-22, 0, -15),
-        width: 6,
+        start: new THREE.Vector3(-10, 0, 10),
+        end: new THREE.Vector3(-22, 0, 10),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // West corridor to west complex
+      // West wing to west corridor
       {
-        id: "west_to_complex",
-        start: new THREE.Vector3(-38, 0, 2),
-        end: new THREE.Vector3(-42, 0, 8),
-        width: 5,
+        id: "west_to_corridor",
+        start: new THREE.Vector3(-38, 0, 10),
+        end: new THREE.Vector3(-44, 0, 10),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // West corridor to boss chamber
+      // West corridor to secret
       {
-        id: "west_to_boss",
-        start: new THREE.Vector3(-35, 0, -22),
-        end: new THREE.Vector3(-40, 1, -25),
-        width: 5,
+        id: "corridor_to_secret",
+        start: new THREE.Vector3(-56, 0, 10),
+        end: new THREE.Vector3(-58, 0, 10),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: true
+        doors: true,
       },
-      // Northwest to west complex
-      {
-        id: "northwest_to_complex",
-        start: new THREE.Vector3(-35, 0, 30),
-        end: new THREE.Vector3(-42, 0, 25),
-        width: 5,
-        height: this.wallHeight,
-        doors: false
-      },
-      // West complex to exit
-      {
-        id: "complex_to_exit",
-        start: new THREE.Vector3(-58, 0, 30),
-        end: new THREE.Vector3(-59, 1, 34),
-        width: 4,
-        height: this.wallHeight,
-        doors: true
-      },
-      // Main hall to east branch
-      {
-        id: "main_to_east",
-        start: new THREE.Vector3(25, 0, -48),
-        end: new THREE.Vector3(25, 0, -55),
-        width: 5,
-        height: this.wallHeight,
-        doors: false
-      },
-      // Central hub to south branch
+      // Central hub to south passage
       {
         id: "central_to_south",
-        start: new THREE.Vector3(-5, 0, -30),
-        end: new THREE.Vector3(-8, 0, -42),
-        width: 5,
+        start: new THREE.Vector3(0, 0, 20),
+        end: new THREE.Vector3(0, 0, 22),
+        width: this.minCorridorWidth,
         height: this.wallHeight,
-        doors: false
+        doors: false,
       },
-      // Secret connection to central hub (hidden)
+      // South passage to south area
       {
-        id: "secret_connection",
-        start: new THREE.Vector3(12, -1, -8),
-        end: new THREE.Vector3(12, -1, -12),
-        width: 3,
-        height: this.wallHeight - 2,
-        doors: false
-      }
+        id: "south_to_area",
+        start: new THREE.Vector3(0, 0, 47),
+        end: new THREE.Vector3(0, 0, 52),
+        width: this.minCorridorWidth,
+        height: this.wallHeight,
+        doors: false,
+      },
+      // South area to exit
+      {
+        id: "area_to_exit",
+        start: new THREE.Vector3(0, 0, 68),
+        end: new THREE.Vector3(0, 1, 74),
+        width: this.minCorridorWidth,
+        height: this.wallHeight,
+        doors: true,
+      },
+      // Side room connections
+      {
+        id: "east_to_side",
+        start: new THREE.Vector3(30, 0, 18),
+        end: new THREE.Vector3(30, 0, 34),
+        width: 6,
+        height: this.wallHeight,
+        doors: false,
+      },
+      {
+        id: "west_to_side",
+        start: new THREE.Vector3(-30, 0, 18),
+        end: new THREE.Vector3(-30, 0, 34),
+        width: 6,
+        height: this.wallHeight,
+        doors: false,
+      },
     ];
   }
 
   createAtmosphere(): void {
-    // Lighter fog for better visibility
-    const fog = new THREE.Fog(this.config.fogColor, 80, 400);
+    // Much lighter fog for better visibility
+    const fog = new THREE.Fog(this.config.fogColor, 100, 300);
     this.scene.fog = fog;
 
-    // Add subtle atmospheric particles
-    const particleSystem = this.createParticleSystem(50, 0x888888, 1, 0.2);
+    // Add subtle atmospheric particles with brighter color
+    const particleSystem = this.createParticleSystem(30, 0xcccccc, 1, 0.3);
     this.scene.add(particleSystem);
   }
 
@@ -361,7 +356,10 @@ export class DoomMapTheme extends BaseSceneTheme {
     this.rooms.forEach((room) => {
       const floorGeometry = new THREE.PlaneGeometry(room.size.x, room.size.z);
       const floorMaterial = new THREE.MeshLambertMaterial({
-        color: this.adjustColorForElevation(this.config.groundColor, room.elevation),
+        color: this.adjustColorForElevation(
+          this.config.groundColor,
+          room.elevation
+        ),
         transparent: room.type === "secret",
         opacity: room.type === "secret" ? 0.9 : 1.0,
       });
@@ -383,14 +381,19 @@ export class DoomMapTheme extends BaseSceneTheme {
 
       const floor = new THREE.Mesh(floorGeometry, floorMaterial);
       floor.rotation.x = -Math.PI / 2;
-      
+
       // Position and orient the hallway floor
-      const midPoint = new THREE.Vector3().addVectors(hallway.start, hallway.end).multiplyScalar(0.5);
+      const midPoint = new THREE.Vector3()
+        .addVectors(hallway.start, hallway.end)
+        .multiplyScalar(0.5);
       floor.position.copy(midPoint);
-      
-      const direction = new THREE.Vector3().subVectors(hallway.end, hallway.start);
+
+      const direction = new THREE.Vector3().subVectors(
+        hallway.end,
+        hallway.start
+      );
       floor.rotation.y = Math.atan2(direction.x, direction.z);
-      
+
       floor.receiveShadow = true;
       groundGroup.add(floor);
     });
@@ -417,90 +420,149 @@ export class DoomMapTheme extends BaseSceneTheme {
   }
 
   addLighting(): void {
-    // Brighter ambient lighting for better visibility
-    const ambientLight = new THREE.AmbientLight(this.config.ambientLightColor, 1.2);
+    // Much brighter ambient lighting like Industrial theme
+    const ambientLight = new THREE.AmbientLight(
+      this.config.ambientLightColor,
+      1.8
+    );
     this.scene.add(ambientLight);
 
-    // Stronger main directional light
-    const directionalLight = new THREE.DirectionalLight(this.config.directionalLightColor, 1.5);
-    directionalLight.position.set(50, 100, 50);
+    // Bright white main directional light
+    const directionalLight = new THREE.DirectionalLight(
+      this.config.directionalLightColor,
+      2.0
+    );
+    directionalLight.position.set(50, 120, 50);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 500;
-    directionalLight.shadow.camera.left = -100;
-    directionalLight.shadow.camera.right = 100;
-    directionalLight.shadow.camera.top = 100;
-    directionalLight.shadow.camera.bottom = -100;
+    directionalLight.shadow.camera.left = -150;
+    directionalLight.shadow.camera.right = 150;
+    directionalLight.shadow.camera.top = 150;
+    directionalLight.shadow.camera.bottom = -150;
     this.scene.add(directionalLight);
 
-    // Add additional general lighting for better visibility
-    const fillLight = new THREE.DirectionalLight(0x606060, 0.8);
-    fillLight.position.set(-50, 80, -50);
+    // Bright fill light for even coverage
+    const fillLight = new THREE.DirectionalLight(
+      this.config.fillLightColor,
+      1.2
+    );
+    fillLight.position.set(-50, 100, -50);
     this.scene.add(fillLight);
 
-    // Add sector-based lighting for each room with corrected positioning
+    // Additional hemisphere light for clean atmosphere
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.6);
+    this.scene.add(hemisphereLight);
+
+    // Bright room lighting for each room
     this.rooms.forEach((room) => {
-      const sectorLight = new THREE.PointLight(
+      // Main room light - much brighter
+      const roomLight = new THREE.PointLight(
         room.lighting.color,
-        room.lighting.intensity * 2, // Double the intensity
-        room.size.x * 2 // Increase range
+        room.lighting.intensity * 2.5, // Even brighter
+        room.size.x * 2.5 // Larger range
       );
-      sectorLight.position.set(
+      roomLight.position.set(
         room.position.x,
-        room.elevation + this.wallHeight * 0.6, // Fix positioning
+        room.elevation + this.wallHeight * 0.7,
         room.position.z
       );
-      this.scene.add(sectorLight);
+      this.scene.add(roomLight);
 
-      // Add additional room lighting for better coverage
-      const roomFillLight = new THREE.PointLight(0x888888, 1.0, room.size.x);
-      roomFillLight.position.set(
-        room.position.x,
-        room.elevation + 3,
-        room.position.z
-      );
-      this.scene.add(roomFillLight);
+      // Additional corner lights for full coverage
+      const cornerPositions = [
+        {
+          x: room.position.x + room.size.x * 0.3,
+          z: room.position.z + room.size.z * 0.3,
+        },
+        {
+          x: room.position.x - room.size.x * 0.3,
+          z: room.position.z + room.size.z * 0.3,
+        },
+        {
+          x: room.position.x + room.size.x * 0.3,
+          z: room.position.z - room.size.z * 0.3,
+        },
+        {
+          x: room.position.x - room.size.x * 0.3,
+          z: room.position.z - room.size.z * 0.3,
+        },
+      ];
+
+      cornerPositions.forEach((pos) => {
+        const cornerLight = new THREE.PointLight(0xffffff, 1.5, room.size.x);
+        cornerLight.position.set(pos.x, room.elevation + 5, pos.z);
+        this.scene.add(cornerLight);
+      });
     });
 
-    // Add flickering lights in hallways with better positioning
-    this.hallways.forEach((hallway, index) => {
-      const midPoint = new THREE.Vector3().addVectors(hallway.start, hallway.end).multiplyScalar(0.5);
-      const flickerLight = this.createFlickeringLight(
-        new THREE.Vector3(midPoint.x, 4, midPoint.z), // Lower height
-        0xffaa44,
-        2.0, // Brighter hallway lights
-        hallway.width * 3 // More range
+    // Bright hallway lighting - no flickering for better visibility
+    this.hallways.forEach((hallway) => {
+      const midPoint = new THREE.Vector3()
+        .addVectors(hallway.start, hallway.end)
+        .multiplyScalar(0.5);
+
+      // Main hallway light
+      const hallwayLight = new THREE.PointLight(
+        0xffffff,
+        3.0,
+        hallway.width * 4
       );
-      this.scene.add(flickerLight);
+      hallwayLight.position.set(midPoint.x, 6, midPoint.z);
+      this.scene.add(hallwayLight);
+
+      // Additional lights along the hallway for full coverage
+      const direction = new THREE.Vector3().subVectors(
+        hallway.end,
+        hallway.start
+      );
+      const length = direction.length();
+      const segments = Math.max(2, Math.floor(length / 8));
+
+      for (let i = 1; i < segments; i++) {
+        const segmentPos = new THREE.Vector3()
+          .copy(hallway.start)
+          .add(direction.clone().multiplyScalar(i / segments));
+
+        const segmentLight = new THREE.PointLight(
+          0xffffff,
+          2.0,
+          hallway.width * 2
+        );
+        segmentLight.position.set(segmentPos.x, 5, segmentPos.z);
+        this.scene.add(segmentLight);
+      }
     });
 
-    // Add emergency lighting grid for guaranteed visibility
-    for (let x = -60; x <= 60; x += 30) {
-      for (let z = -60; z <= 60; z += 30) {
-        const emergencyLight = new THREE.PointLight(0x888888, 0.8, 25);
-        emergencyLight.position.set(x, 8, z);
-        this.scene.add(emergencyLight);
+    // Comprehensive lighting grid for guaranteed visibility
+    for (let x = -80; x <= 80; x += 20) {
+      for (let z = -50; z <= 90; z += 20) {
+        const gridLight = new THREE.PointLight(0xcccccc, 1.2, 30);
+        gridLight.position.set(x, 10, z);
+        this.scene.add(gridLight);
       }
     }
 
-    console.log("🏛️ Doom Map lighting system initialized with enhanced visibility");
+    console.log(
+      "🏛️ Doom Maze lighting system initialized with industrial-grade visibility"
+    );
   }
 
   addEnvironmentObjects(): void {
     this.createRoomWalls();
     this.createHallwayWalls();
     this.createDoors();
-    this.createRoomDetails();
-    this.createDoomDecorations();
+    this.createSimplifiedRoomDetails();
+    this.createMinimalDecorations();
     this.setupMinimap();
   }
 
   private createRoomWalls(): void {
     this.rooms.forEach((room) => {
       const wallGroup = new THREE.Group();
-      
+
       // Create four walls for each room
       const wallThickness = 0.5;
       const wallMaterial = new THREE.MeshLambertMaterial({
@@ -509,32 +571,56 @@ export class DoomMapTheme extends BaseSceneTheme {
 
       // North wall
       const northWall = this.createWall(
-        room.size.x, room.size.y, wallThickness,
-        new THREE.Vector3(room.position.x, room.position.y + room.size.y/2, room.position.z + room.size.z/2),
+        room.size.x,
+        room.size.y,
+        wallThickness,
+        new THREE.Vector3(
+          room.position.x,
+          room.position.y + room.size.y / 2,
+          room.position.z + room.size.z / 2
+        ),
         wallMaterial
       );
       wallGroup.add(northWall);
 
       // South wall
       const southWall = this.createWall(
-        room.size.x, room.size.y, wallThickness,
-        new THREE.Vector3(room.position.x, room.position.y + room.size.y/2, room.position.z - room.size.z/2),
+        room.size.x,
+        room.size.y,
+        wallThickness,
+        new THREE.Vector3(
+          room.position.x,
+          room.position.y + room.size.y / 2,
+          room.position.z - room.size.z / 2
+        ),
         wallMaterial
       );
       wallGroup.add(southWall);
 
       // East wall
       const eastWall = this.createWall(
-        wallThickness, room.size.y, room.size.z,
-        new THREE.Vector3(room.position.x + room.size.x/2, room.position.y + room.size.y/2, room.position.z),
+        wallThickness,
+        room.size.y,
+        room.size.z,
+        new THREE.Vector3(
+          room.position.x + room.size.x / 2,
+          room.position.y + room.size.y / 2,
+          room.position.z
+        ),
         wallMaterial
       );
       wallGroup.add(eastWall);
 
       // West wall
       const westWall = this.createWall(
-        wallThickness, room.size.y, room.size.z,
-        new THREE.Vector3(room.position.x - room.size.x/2, room.position.y + room.size.y/2, room.position.z),
+        wallThickness,
+        room.size.y,
+        room.size.z,
+        new THREE.Vector3(
+          room.position.x - room.size.x / 2,
+          room.position.y + room.size.y / 2,
+          room.position.z
+        ),
         wallMaterial
       );
       wallGroup.add(westWall);
@@ -547,18 +633,24 @@ export class DoomMapTheme extends BaseSceneTheme {
   private createHallwayWalls(): void {
     this.hallways.forEach((hallway) => {
       const length = hallway.start.distanceTo(hallway.end);
-      const direction = new THREE.Vector3().subVectors(hallway.end, hallway.start).normalize();
+      const direction = new THREE.Vector3()
+        .subVectors(hallway.end, hallway.start)
+        .normalize();
       const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x);
-      
+
       const wallMaterial = new THREE.MeshLambertMaterial({
         color: this.config.secondaryColor,
       });
 
       // Create two parallel walls for the hallway
       const wallThickness = 0.3;
-      
+
       // Left wall
-      const leftWallGeometry = new THREE.BoxGeometry(wallThickness, hallway.height, length);
+      const leftWallGeometry = new THREE.BoxGeometry(
+        wallThickness,
+        hallway.height,
+        length
+      );
       const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
       const leftPosition = new THREE.Vector3()
         .addVectors(hallway.start, hallway.end)
@@ -572,7 +664,11 @@ export class DoomMapTheme extends BaseSceneTheme {
       this.addCollidableObject(leftWall, "static");
 
       // Right wall
-      const rightWallGeometry = new THREE.BoxGeometry(wallThickness, hallway.height, length);
+      const rightWallGeometry = new THREE.BoxGeometry(
+        wallThickness,
+        hallway.height,
+        length
+      );
       const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
       const rightPosition = new THREE.Vector3()
         .addVectors(hallway.start, hallway.end)
@@ -589,88 +685,79 @@ export class DoomMapTheme extends BaseSceneTheme {
 
   private createDoors(): void {
     // Create doors for hallways that have them
-    this.hallways.filter(h => h.doors).forEach((hallway) => {
-      const midPoint = new THREE.Vector3().addVectors(hallway.start, hallway.end).multiplyScalar(0.5);
-      const direction = new THREE.Vector3().subVectors(hallway.end, hallway.start).normalize();
-      
-      const doorFrameGeometry = new THREE.BoxGeometry(this.doorWidth, this.doorHeight, 0.2);
-      const doorFrameMaterial = new THREE.MeshLambertMaterial({
-        color: 0x4a4a4a,
+    this.hallways
+      .filter((h) => h.doors)
+      .forEach((hallway) => {
+        const midPoint = new THREE.Vector3()
+          .addVectors(hallway.start, hallway.end)
+          .multiplyScalar(0.5);
+        const direction = new THREE.Vector3()
+          .subVectors(hallway.end, hallway.start)
+          .normalize();
+
+        const doorFrameGeometry = new THREE.BoxGeometry(
+          this.doorWidth,
+          this.doorHeight,
+          0.2
+        );
+        const doorFrameMaterial = new THREE.MeshLambertMaterial({
+          color: 0x4a4a4a,
+        });
+
+        const doorFrame = new THREE.Mesh(doorFrameGeometry, doorFrameMaterial);
+        doorFrame.position.copy(midPoint);
+        doorFrame.position.y = this.doorHeight / 2;
+        doorFrame.rotation.y = Math.atan2(direction.x, direction.z);
+        doorFrame.castShadow = true;
+        doorFrame.receiveShadow = true;
+
+        // Add door frame as interactive object
+        this.addCollidableObject(doorFrame, "interactive");
       });
-      
-      const doorFrame = new THREE.Mesh(doorFrameGeometry, doorFrameMaterial);
-      doorFrame.position.copy(midPoint);
-      doorFrame.position.y = this.doorHeight / 2;
-      doorFrame.rotation.y = Math.atan2(direction.x, direction.z);
-      doorFrame.castShadow = true;
-      doorFrame.receiveShadow = true;
-      
-      // Add door frame as interactive object
-      this.addCollidableObject(doorFrame, "interactive");
-    });
   }
 
-  private createRoomDetails(): void {
+  private createSimplifiedRoomDetails(): void {
     this.rooms.forEach((room) => {
-      // Add room-specific details based on type
+      // Simplified room details for better navigation
       switch (room.type) {
         case "boss":
-          this.createBossRoomDetails(room);
+          this.createSimplifiedBossRoom(room);
           break;
         case "secret":
-          this.createSecretRoomDetails(room);
+          this.createSimplifiedSecretRoom(room);
           break;
         case "start":
-          this.createStartRoomDetails(room);
+          this.createSimplifiedStartRoom(room);
           break;
         case "exit":
-          this.createExitRoomDetails(room);
+          this.createSimplifiedExitRoom(room);
           break;
         default:
-          this.createNormalRoomDetails(room);
+          this.createSimplifiedNormalRoom(room);
       }
     });
   }
 
-  private createBossRoomDetails(room: RoomData): void {
-    // Elevated platform in center
-    const platformGeometry = new THREE.CylinderGeometry(3, 4, 1, 8);
+  private createSimplifiedBossRoom(room: RoomData): void {
+    // Simple elevated platform
+    const platformGeometry = new THREE.CylinderGeometry(2, 2.5, 0.5, 8);
     const platformMaterial = new THREE.MeshLambertMaterial({
-      color: 0x660000,
+      color: 0x888888,
     });
     const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-    platform.position.set(room.position.x, room.elevation + 0.5, room.position.z);
+    platform.position.set(
+      room.position.x,
+      room.elevation + 0.25,
+      room.position.z
+    );
     platform.castShadow = true;
     platform.receiveShadow = true;
     this.addCollidableObject(platform, "static");
-
-    // Add dramatic lighting
-    const bossLight = new THREE.PointLight(0xff0000, 2.0, 20);
-    bossLight.position.set(room.position.x, room.position.y + room.size.y, room.position.z);
-    this.scene.add(bossLight);
-
-    // Add pillars around the room
-    for (let i = 0; i < 4; i++) {
-      const angle = (i / 4) * Math.PI * 2;
-      const pillarRadius = Math.min(room.size.x, room.size.z) * 0.3;
-      const pillarX = room.position.x + Math.cos(angle) * pillarRadius;
-      const pillarZ = room.position.z + Math.sin(angle) * pillarRadius;
-      
-      const pillarGeometry = new THREE.CylinderGeometry(0.8, 1.0, room.size.y, 8);
-      const pillarMaterial = new THREE.MeshLambertMaterial({
-        color: 0x330000,
-      });
-      const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
-      pillar.position.set(pillarX, room.elevation + room.size.y / 2, pillarZ);
-      pillar.castShadow = true;
-      pillar.receiveShadow = true;
-      this.addCollidableObject(pillar, "static");
-    }
   }
 
-  private createSecretRoomDetails(room: RoomData): void {
-    // Add treasure/powerup indicators
-    const treasureGeometry = new THREE.BoxGeometry(1, 1, 1);
+  private createSimplifiedSecretRoom(room: RoomData): void {
+    // Simple glowing indicator
+    const treasureGeometry = new THREE.SphereGeometry(0.5, 8, 6);
     const treasureMaterial = new THREE.MeshBasicMaterial({
       color: this.config.glowColor,
       transparent: true,
@@ -679,65 +766,52 @@ export class DoomMapTheme extends BaseSceneTheme {
     const treasure = new THREE.Mesh(treasureGeometry, treasureMaterial);
     treasure.position.set(room.position.x, room.elevation + 1, room.position.z);
     this.scene.add(treasure);
-
-    // Add glowing light
-    const secretLight = new THREE.PointLight(this.config.glowColor, 1.5, 15);
-    secretLight.position.set(room.position.x, room.elevation + 3, room.position.z);
-    this.scene.add(secretLight);
   }
 
-  private createStartRoomDetails(room: RoomData): void {
-    // Add spawn point indicator
-    const spawnGeometry = new THREE.CylinderGeometry(1, 1, 0.2, 16);
+  private createSimplifiedStartRoom(room: RoomData): void {
+    // Simple spawn marker
+    const spawnGeometry = new THREE.CircleGeometry(1, 16);
     const spawnMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0088ff,
+      color: 0x4080ff,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.5,
     });
     const spawn = new THREE.Mesh(spawnGeometry, spawnMaterial);
-    spawn.position.set(room.position.x, room.elevation + 0.1, room.position.z);
+    spawn.rotation.x = -Math.PI / 2;
+    spawn.position.set(room.position.x, room.elevation + 0.01, room.position.z);
     this.scene.add(spawn);
   }
 
-  private createExitRoomDetails(room: RoomData): void {
-    // Add exit portal
-    const portalGeometry = new THREE.RingGeometry(2, 3, 16);
+  private createSimplifiedExitRoom(room: RoomData): void {
+    // Simple exit marker
+    const portalGeometry = new THREE.CircleGeometry(1.5, 16);
     const portalMaterial = new THREE.MeshBasicMaterial({
-      color: 0x4080ff,
+      color: 0x80c0ff,
       transparent: true,
-      opacity: 0.8,
-      side: THREE.DoubleSide,
+      opacity: 0.6,
     });
     const portal = new THREE.Mesh(portalGeometry, portalMaterial);
-    portal.position.set(room.position.x, room.elevation + 3, room.position.z);
-    portal.rotation.x = Math.PI / 2;
+    portal.rotation.x = -Math.PI / 2;
+    portal.position.set(
+      room.position.x,
+      room.elevation + 0.01,
+      room.position.z
+    );
     this.scene.add(portal);
-
-    const exitLight = new THREE.PointLight(0x4080ff, 2.0, 25);
-    exitLight.position.set(room.position.x, room.elevation + 5, room.position.z);
-    this.scene.add(exitLight);
   }
 
-  private createNormalRoomDetails(room: RoomData): void {
-    // Add basic furniture/decorations
-    const numObjects = Math.floor(Math.random() * 3) + 1;
-    
-    for (let i = 0; i < numObjects; i++) {
-      const objectGeometry = new THREE.BoxGeometry(
-        1 + Math.random(),
-        0.5 + Math.random() * 1.5,
-        1 + Math.random()
-      );
+  private createSimplifiedNormalRoom(room: RoomData): void {
+    // Minimal decoration - just one simple object if any
+    if (Math.random() > 0.7) {
+      const objectGeometry = new THREE.BoxGeometry(1, 1, 1);
       const objectMaterial = new THREE.MeshLambertMaterial({
-        color: [0x4a4a4a, 0x666666, 0x333333][Math.floor(Math.random() * 3)],
+        color: 0x888888,
       });
       const object = new THREE.Mesh(objectGeometry, objectMaterial);
-      
-      // Position randomly within room bounds
       object.position.set(
-        room.position.x + (Math.random() - 0.5) * room.size.x * 0.6,
-        room.elevation + object.geometry.parameters.height / 2,
-        room.position.z + (Math.random() - 0.5) * room.size.z * 0.6
+        room.position.x + (Math.random() - 0.5) * room.size.x * 0.3,
+        room.elevation + 0.5,
+        room.position.z + (Math.random() - 0.5) * room.size.z * 0.3
       );
       object.castShadow = true;
       object.receiveShadow = true;
@@ -745,194 +819,65 @@ export class DoomMapTheme extends BaseSceneTheme {
     }
   }
 
-  private createDoomDecorations(): void {
-    // Add classic Doom-style decorations throughout the map
-    this.addComputerTerminals();
-    this.addBarrels();
-    this.addTechPanels();
+  private createMinimalDecorations(): void {
+    // Add only essential decorations to avoid clutter
+    this.addSimpleWaypoints();
   }
 
-  private addComputerTerminals(): void {
-    // Add computer terminals in various rooms
-    const terminalRooms = ["courtyard", "north_rooms", "west_complex"];
-    
-    terminalRooms.forEach(roomId => {
-      const room = this.rooms.get(roomId);
-      if (!room) return;
+  private addSimpleWaypoints(): void {
+    // Add minimal waypoint markers for navigation
+    this.hallways.forEach((hallway, index) => {
+      if (index % 2 === 0) return; // Only add to every other hallway
 
-      const terminalGeometry = new THREE.BoxGeometry(0.8, 1.5, 0.3);
-      const terminalMaterial = new THREE.MeshLambertMaterial({
-        color: 0x2a2a2a,
-      });
-      const terminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
-      
-      // Position against a wall
-      terminal.position.set(
-        room.position.x + room.size.x * 0.4,
-        room.elevation + 0.75,
-        room.position.z + room.size.z * 0.4
-      );
-      terminal.castShadow = true;
-      terminal.receiveShadow = true;
-      this.addCollidableObject(terminal, "interactive");
+      const midPoint = new THREE.Vector3()
+        .addVectors(hallway.start, hallway.end)
+        .multiplyScalar(0.5);
 
-      // Add screen glow
-      const screenGeometry = new THREE.PlaneGeometry(0.6, 0.4);
-      const screenMaterial = new THREE.MeshBasicMaterial({
+      const markerGeometry = new THREE.SphereGeometry(0.2, 8, 6);
+      const markerMaterial = new THREE.MeshBasicMaterial({
         color: this.config.glowColor,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.6,
       });
-      const screen = new THREE.Mesh(screenGeometry, screenMaterial);
-      screen.position.set(0, 0.3, 0.16);
-      terminal.add(screen);
-    });
-  }
 
-  private addBarrels(): void {
-    // Add explosive barrels throughout the map
-    for (let i = 0; i < 8; i++) {
-      const barrelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 8);
-      const barrelMaterial = new THREE.MeshLambertMaterial({
-        color: 0x8b4513,
-      });
-      const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-      
-      // Position randomly in hallways and rooms
-      const roomsArray = Array.from(this.rooms.values());
-      const randomRoom = roomsArray[Math.floor(Math.random() * roomsArray.length)];
-      if (randomRoom) {
-        barrel.position.set(
-          randomRoom.position.x + (Math.random() - 0.5) * randomRoom.size.x * 0.5,
-          randomRoom.elevation + 0.6,
-          randomRoom.position.z + (Math.random() - 0.5) * randomRoom.size.z * 0.5
-        );
-      }
-      barrel.castShadow = true;
-      barrel.receiveShadow = true;
-      this.addCollidableObject(barrel, "interactive");
-    }
-  }
-
-  private addTechPanels(): void {
-    // Add wall-mounted tech panels
-    this.rooms.forEach((room) => {
-      if (Math.random() > 0.6) return; // Not every room gets panels
-      
-      const panelGeometry = new THREE.BoxGeometry(1.5, 1, 0.1);
-      const panelMaterial = new THREE.MeshLambertMaterial({
-        color: 0x4a4a4a,
-      });
-      const panel = new THREE.Mesh(panelGeometry, panelMaterial);
-      
-      // Mount on wall
-      panel.position.set(
-        room.position.x - room.size.x * 0.45,
-        room.elevation + 2,
-        room.position.z
-      );
-      panel.castShadow = true;
-      panel.receiveShadow = true;
-      this.scene.add(panel);
-
-      // Add blinking lights
-      for (let i = 0; i < 3; i++) {
-        const lightGeometry = new THREE.SphereGeometry(0.05, 8, 6);
-        const lightMaterial = new THREE.MeshBasicMaterial({
-          color: [0xff0000, 0x00ff00, 0x0000ff][i],
-        });
-        const light = new THREE.Mesh(lightGeometry, lightMaterial);
-        light.position.set((i - 1) * 0.4, 0.2, 0.06);
-        panel.add(light);
-      }
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.set(midPoint.x, 2, midPoint.z);
+      this.scene.add(marker);
     });
   }
 
   addGroundDetails(): void {
-    this.addFloorTextures();
-    this.addScuffMarks();
-    this.addGrateAreas();
+    this.addSimpleFloorTextures();
   }
 
-  private addFloorTextures(): void {
-    // Add texture variations to different floor sectors
+  private addSimpleFloorTextures(): void {
+    // Minimal floor textures for visual interest without clutter
     this.rooms.forEach((room) => {
-      if (Math.random() > 0.7) return; // Not all rooms get extra textures
-      
-      const textureGeometry = new THREE.PlaneGeometry(
-        room.size.x * 0.8,
-        room.size.z * 0.8
-      );
-      const textureColors = [0x2a2a2a, 0x3a3a3a, 0x1a1a1a];
-      const textureMaterial = new THREE.MeshLambertMaterial({
-        color: textureColors[Math.floor(Math.random() * textureColors.length)],
-        transparent: true,
-        opacity: 0.7,
-      });
-      
-      const texture = new THREE.Mesh(textureGeometry, textureMaterial);
-      texture.rotation.x = -Math.PI / 2;
-      texture.position.set(
-        room.position.x,
-        room.elevation + 0.01,
-        room.position.z
-      );
-      texture.receiveShadow = true;
-      this.addGroundTextureObject(texture);
-    });
-  }
-
-  private addScuffMarks(): void {
-    // Add battle damage and scuff marks
-    for (let i = 0; i < 15; i++) {
-      const scuffGeometry = new THREE.CircleGeometry(Math.random() * 2 + 0.5, 8);
-      const scuffMaterial = new THREE.MeshBasicMaterial({
-        color: 0x1a1a1a,
-        transparent: true,
-        opacity: 0.4,
-      });
-      
-      const scuff = new THREE.Mesh(scuffGeometry, scuffMaterial);
-      scuff.rotation.x = -Math.PI / 2;
-      
-      // Position randomly throughout the map
-      const roomsArray = Array.from(this.rooms.values());
-      const randomRoom = roomsArray[Math.floor(Math.random() * roomsArray.length)];
-      if (randomRoom) {
-        scuff.position.set(
-          randomRoom.position.x + (Math.random() - 0.5) * randomRoom.size.x,
-          randomRoom.elevation + 0.02,
-          randomRoom.position.z + (Math.random() - 0.5) * randomRoom.size.z
+      if (
+        room.type === "start" ||
+        room.type === "exit" ||
+        room.type === "boss"
+      ) {
+        const textureGeometry = new THREE.PlaneGeometry(
+          room.size.x * 0.6,
+          room.size.z * 0.6
         );
-      }
-      this.addGroundTextureObject(scuff);
-    }
-  }
+        const textureMaterial = new THREE.MeshLambertMaterial({
+          color: 0x555555,
+          transparent: true,
+          opacity: 0.3,
+        });
 
-  private addGrateAreas(): void {
-    // Add metal grating in some areas
-    const grateRooms = ["north_corridor", "west_wing"];
-    
-    grateRooms.forEach(roomId => {
-      const room = this.rooms.get(roomId);
-      if (!room) return;
-      
-      const grateGeometry = new THREE.PlaneGeometry(4, 4);
-      const grateMaterial = new THREE.MeshLambertMaterial({
-        color: 0x4a4a4a,
-        transparent: true,
-        opacity: 0.8,
-      });
-      
-      const grate = new THREE.Mesh(grateGeometry, grateMaterial);
-      grate.rotation.x = -Math.PI / 2;
-      grate.position.set(
-        room.position.x,
-        room.elevation + 0.05,
-        room.position.z
-      );
-      grate.receiveShadow = true;
-      this.addGroundTextureObject(grate);
+        const texture = new THREE.Mesh(textureGeometry, textureMaterial);
+        texture.rotation.x = -Math.PI / 2;
+        texture.position.set(
+          room.position.x,
+          room.elevation + 0.01,
+          room.position.z
+        );
+        texture.receiveShadow = true;
+        this.addGroundTextureObject(texture);
+      }
     });
   }
 
@@ -945,7 +890,9 @@ export class DoomMapTheme extends BaseSceneTheme {
   }
 
   private initializeMinimap(): void {
-    const radarCanvas = document.getElementById("radarCanvas") as HTMLCanvasElement;
+    const radarCanvas = document.getElementById(
+      "radarCanvas"
+    ) as HTMLCanvasElement;
     if (!radarCanvas) {
       console.warn("Radar canvas not found for minimap");
       return;
@@ -953,29 +900,38 @@ export class DoomMapTheme extends BaseSceneTheme {
 
     // Store original radar update function and replace it
     const originalUpdateRadar = (window as any).updateRadar;
-    (window as any).updateRadar = (playerPos: THREE.Vector3, demons: any[], camera: THREE.Camera) => {
+    (window as any).updateRadar = (
+      playerPos: THREE.Vector3,
+      demons: any[],
+      camera: THREE.Camera
+    ) => {
       this.updateMinimap(radarCanvas, playerPos, demons, camera);
     };
 
     console.log("🗺️ Minimap system initialized for Doom Map");
   }
 
-  private updateMinimap(canvas: HTMLCanvasElement, playerPos: THREE.Vector3, demons: any[], camera: THREE.Camera): void {
+  private updateMinimap(
+    canvas: HTMLCanvasElement,
+    playerPos: THREE.Vector3,
+    demons: any[],
+    camera: THREE.Camera
+  ): void {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Map bounds and scale
-    const mapBounds = { minX: -80, maxX: 60, minZ: -70, maxZ: 50 };
+    // Map bounds and scale for simplified maze
+    const mapBounds = { minX: -80, maxX: 80, minZ: -50, maxZ: 90 };
     const scaleX = canvas.width / (mapBounds.maxX - mapBounds.minX);
     const scaleZ = canvas.height / (mapBounds.maxZ - mapBounds.minZ);
 
     // Helper function to convert world coordinates to canvas coordinates
     const worldToCanvas = (worldX: number, worldZ: number) => {
-      const canvasX = ((worldX - mapBounds.minX) * scaleX);
-      const canvasY = ((worldZ - mapBounds.minZ) * scaleZ);
+      const canvasX = (worldX - mapBounds.minX) * scaleX;
+      const canvasY = (worldZ - mapBounds.minZ) * scaleZ;
       return { x: canvasX, y: canvas.height - canvasY }; // Flip Y axis
     };
 
@@ -987,16 +943,24 @@ export class DoomMapTheme extends BaseSceneTheme {
       );
       const roomSize = {
         width: room.size.x * scaleX,
-        height: room.size.z * scaleZ
+        height: room.size.z * scaleZ,
       };
 
       // Room fill based on type
       let fillColor = "rgba(100, 100, 100, 0.3)";
       switch (room.type) {
-        case "start": fillColor = "rgba(0, 100, 255, 0.4)"; break;
-        case "boss": fillColor = "rgba(255, 0, 100, 0.4)"; break;
-        case "secret": fillColor = "rgba(0, 255, 100, 0.4)"; break;
-        case "exit": fillColor = "rgba(100, 200, 255, 0.4)"; break;
+        case "start":
+          fillColor = "rgba(0, 100, 255, 0.4)";
+          break;
+        case "boss":
+          fillColor = "rgba(255, 0, 100, 0.4)";
+          break;
+        case "secret":
+          fillColor = "rgba(0, 255, 100, 0.4)";
+          break;
+        case "exit":
+          fillColor = "rgba(100, 200, 255, 0.4)";
+          break;
       }
 
       ctx.fillStyle = fillColor;
@@ -1005,7 +969,12 @@ export class DoomMapTheme extends BaseSceneTheme {
       // Room outline
       ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
       ctx.lineWidth = 1;
-      ctx.strokeRect(roomCorner.x, roomCorner.y, roomSize.width, roomSize.height);
+      ctx.strokeRect(
+        roomCorner.x,
+        roomCorner.y,
+        roomSize.width,
+        roomSize.height
+      );
     });
 
     // Draw hallways
@@ -1014,7 +983,10 @@ export class DoomMapTheme extends BaseSceneTheme {
       const end = worldToCanvas(hallway.end.x, hallway.end.z);
 
       ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
-      ctx.lineWidth = Math.max(2, hallway.width * Math.min(scaleX, scaleZ) * 0.3);
+      ctx.lineWidth = Math.max(
+        2,
+        hallway.width * Math.min(scaleX, scaleZ) * 0.3
+      );
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
@@ -1034,7 +1006,7 @@ export class DoomMapTheme extends BaseSceneTheme {
 
     // Draw player
     const playerCanvasPos = worldToCanvas(playerPos.x, playerPos.z);
-    
+
     // Player dot
     ctx.fillStyle = "rgba(0, 255, 0, 1)";
     ctx.beginPath();
@@ -1066,7 +1038,13 @@ export class DoomMapTheme extends BaseSceneTheme {
   }
 
   // Helper methods
-  private createWall(width: number, height: number, depth: number, position: THREE.Vector3, material: THREE.Material): THREE.Mesh {
+  private createWall(
+    width: number,
+    height: number,
+    depth: number,
+    position: THREE.Vector3,
+    material: THREE.Material
+  ): THREE.Mesh {
     const wallGeometry = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(wallGeometry, material);
     wall.position.copy(position);
@@ -1077,20 +1055,28 @@ export class DoomMapTheme extends BaseSceneTheme {
 
   private getRoomWallColor(roomType: string): number {
     switch (roomType) {
-      case "boss": return 0x660000;
-      case "secret": return 0x006600;
-      case "start": return 0x000066;
-      case "exit": return 0x404080;
-      default: return this.config.secondaryColor;
+      case "boss":
+        return 0x660000;
+      case "secret":
+        return 0x006600;
+      case "start":
+        return 0x000066;
+      case "exit":
+        return 0x404080;
+      default:
+        return this.config.secondaryColor;
     }
   }
 
-  private adjustColorForElevation(baseColor: number, elevation: number): number {
+  private adjustColorForElevation(
+    baseColor: number,
+    elevation: number
+  ): number {
     // Adjust color brightness based on elevation
-    const factor = 1 + (elevation * 0.1);
+    const factor = 1 + elevation * 0.1;
     const r = Math.min(255, ((baseColor >> 16) & 0xff) * factor);
     const g = Math.min(255, ((baseColor >> 8) & 0xff) * factor);
     const b = Math.min(255, (baseColor & 0xff) * factor);
     return (r << 16) | (g << 8) | b;
   }
-} 
+}

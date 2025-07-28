@@ -35,6 +35,7 @@ function getThemeDisplayName(themeName: SceneThemeName): string {
     toxic: "☢️ Toxic",
     industrial: "🏭 Industrial",
     doomMap: "🏛️ Doom Map",
+    bspMap: "🗺️ BSP Map",
   };
   return themeNames[themeName] || themeName;
 }
@@ -840,10 +841,10 @@ function setupUIEventListeners(
   // Setup game over event listeners
   setupGameOverEventListeners(game);
 
-  // Single player button
+  // Single player button - now shows map selection
   const singlePlayerBtn = document.getElementById("singlePlayerBtn");
-  singlePlayerBtn?.addEventListener("click", async () => {
-    await startSinglePlayer(game);
+  singlePlayerBtn?.addEventListener("click", () => {
+    showMapSelectionMenu();
   });
 
   // Multiplayer button
@@ -1196,6 +1197,51 @@ async function startSinglePlayer(game: Game): Promise<void> {
   }, 100);
 }
 
+// BSP map testing function - accessible from browser console
+async function testBSPMap(mapUrl?: string): Promise<void> {
+  console.log("🗺️ Testing BSP map loading...");
+  const game = window.game;
+
+  if (!game) {
+    console.error("❌ Game not initialized");
+    return;
+  }
+
+  try {
+    const mapPath = mapUrl || "maps/bsp/de_dust2.bsp";
+    console.log(`🎮 Loading BSP map: ${mapPath}`);
+
+    // Stop current game if running
+    if (game.getGameState() === "playing") {
+      game.pauseGame();
+    }
+
+    // Initialize with BSP theme
+    await game.initialize("bspMap", mapPath);
+
+    // Hide all menus and show game UI
+    hideAllMenus();
+    document.body.className = "game-mode";
+
+    // Start the game
+    game.setMultiplayerMode(false);
+    await game.startGame(false, "bspMap");
+
+    console.log("✅ BSP map loaded successfully!");
+  } catch (error) {
+    console.error("❌ Failed to load BSP map:", error);
+  }
+}
+
+// List available BSP maps
+function listBSPMaps(): string[] {
+  const game = window.game;
+  if (game && game.getSceneManager) {
+    return game.getSceneManager().getAvailableBSPMaps();
+  }
+  return ["maps/bsp/de_dust2.bsp", "maps/bsp/quake_start.bsp"];
+}
+
 function showMainMenu(): void {
   hideAllMenus();
   // Set body to menu mode to allow scrolling
@@ -1203,6 +1249,7 @@ function showMainMenu(): void {
   const menuElement = document.getElementById("mainMenu");
   if (menuElement) {
     menuElement.style.display = "flex";
+    menuElement.scrollTop = 0;
   }
 }
 
@@ -1213,6 +1260,169 @@ function showMultiplayerLobby(): void {
   const multiplayerLobby = document.getElementById("multiplayerLobby");
   if (multiplayerLobby) {
     multiplayerLobby.style.display = "flex";
+    multiplayerLobby.classList.add("scrollable");
+    setTimeout(() => {
+      multiplayerLobby.scrollTop = 0;
+    }, 100);
+  }
+}
+
+function showMapSelectionMenu(): void {
+  hideAllMenus();
+  // Set body to menu mode to allow scrolling
+  document.body.className = "menu-mode";
+  const mapSelectionMenu = document.getElementById("mapSelectionMenu");
+  if (mapSelectionMenu) {
+    mapSelectionMenu.style.display = "flex";
+    mapSelectionMenu.classList.add("scrollable");
+    setupMapSelectionEventListeners();
+
+    // Scroll to top
+    setTimeout(() => {
+      mapSelectionMenu.scrollTop = 0;
+    }, 100);
+  }
+}
+
+function setupMapSelectionEventListeners(): void {
+  let selectedTheme: string | null = null;
+  let selectedMapPath: string | null = null;
+  let selectedType: string | null = null;
+
+  // Map card click handlers
+  const mapCards = document.querySelectorAll(".map-card");
+  mapCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      // Remove selection from other cards
+      mapCards.forEach((c) => c.classList.remove("selected"));
+
+      // Select this card
+      card.classList.add("selected");
+
+      // Get map data
+      selectedTheme = card.getAttribute("data-theme");
+      selectedType = card.getAttribute("data-type");
+      selectedMapPath = card.getAttribute("data-map");
+
+      // Update selected map info
+      updateSelectedMapInfo(card);
+
+      // Enable start button
+      const startBtn = document.getElementById(
+        "startSelectedMapBtn"
+      ) as HTMLButtonElement;
+      if (startBtn) {
+        startBtn.disabled = false;
+      }
+    });
+  });
+
+  // Back to main menu button
+  const backBtn = document.getElementById("backToMainBtn");
+  backBtn?.addEventListener("click", () => {
+    showMainMenu();
+  });
+
+  // Start selected map button
+  const startBtn = document.getElementById("startSelectedMapBtn");
+  startBtn?.addEventListener("click", async () => {
+    if (selectedTheme && selectedType) {
+      await startSinglePlayerWithMap(
+        selectedTheme,
+        selectedType,
+        selectedMapPath
+      );
+    }
+  });
+}
+
+function updateSelectedMapInfo(selectedCard: Element): void {
+  const mapInfo = selectedCard.querySelector(".map-info");
+  if (!mapInfo) return;
+
+  const nameElement = mapInfo.querySelector("h4");
+  const descElement = mapInfo.querySelector("p");
+
+  const selectedMapName = document.getElementById("selectedMapName");
+  const selectedMapDescription = document.getElementById(
+    "selectedMapDescription"
+  );
+  const selectedMapInfo = document.getElementById("selectedMapInfo");
+
+  if (selectedMapName && nameElement) {
+    selectedMapName.textContent = nameElement.textContent || "";
+  }
+
+  if (selectedMapDescription && descElement) {
+    selectedMapDescription.textContent = descElement.textContent || "";
+  }
+
+  if (selectedMapInfo) {
+    selectedMapInfo.style.display = "block";
+  }
+}
+
+async function startSinglePlayerWithMap(
+  theme: string,
+  type: string,
+  mapPath?: string | null
+): Promise<void> {
+  console.log(
+    `🎮 Starting single player with theme: ${theme}, type: ${type}, map: ${mapPath}`
+  );
+
+  const game = window.game;
+  if (!game) {
+    console.error("❌ Game not initialized");
+    return;
+  }
+
+  // Hide map selection menu
+  hideAllMenus();
+
+  // Set body to game mode to prevent scrolling
+  document.body.className = "game-mode";
+
+  // Show the 3D renderer canvas
+  game.getSceneManager().showRenderer();
+
+  // Enter fullscreen mode
+  requestFullscreen();
+
+  // Set single player mode
+  game.setMultiplayerMode(false);
+
+  try {
+    // Handle different map types
+    if (theme === "random") {
+      // Random theme selection
+      const themes = ["hell", "ice", "toxic", "industrial", "doomMap"];
+      const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+      console.log(`🎲 Random theme selected: ${randomTheme}`);
+      await game.startGame(false, randomTheme as any);
+    } else if (type === "bsp" && mapPath) {
+      // BSP map
+      await game.initialize(theme as any, mapPath);
+      await game.startGame(false, theme as any);
+    } else {
+      // Regular theme
+      await game.startGame(false, theme as any);
+    }
+
+    // Setup pointer lock
+    setTimeout(() => {
+      document.addEventListener("click", requestPointerLock);
+
+      function requestPointerLock() {
+        document.body.requestPointerLock();
+        document.removeEventListener("click", requestPointerLock);
+      }
+    }, 100);
+
+    console.log(`✅ Single player game started with ${theme} theme`);
+  } catch (error) {
+    console.error("❌ Failed to start single player game:", error);
+    showMainMenu();
   }
 }
 
@@ -1224,12 +1434,15 @@ function hideAllMenus(): void {
     "instructionsScreen",
     "gameOverScreen",
     "pauseMenu",
+    "mapSelectionMenu",
   ];
 
   menus.forEach((menuId) => {
     const menu = document.getElementById(menuId);
     if (menu) {
       menu.style.display = "none";
+      menu.classList.remove("scrollable");
+      menu.scrollTop = 0;
     }
   });
 }
@@ -1606,3 +1819,6 @@ function initializePreviewReferences(game: any): void {
 (window as any).showInstructions = showInstructions;
 (window as any).hideInstructions = hideInstructions;
 (window as any).initializePreviewReferences = initializePreviewReferences;
+(window as any).testBSPMap = testBSPMap;
+(window as any).listBSPMaps = listBSPMaps;
+(window as any).showMapSelectionMenu = showMapSelectionMenu;
