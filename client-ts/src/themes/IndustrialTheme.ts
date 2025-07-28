@@ -266,7 +266,8 @@ export class IndustrialTheme extends BaseSceneTheme {
       facility.castShadow = true;
       facility.receiveShadow = true;
 
-      this.scene.add(facility);
+      // Add industrial facility as collidable object
+      this.addCollidableObject(facility, "static");
       this.addFacilityDetails(facility, width, height, depth);
     }
   }
@@ -373,7 +374,8 @@ export class IndustrialTheme extends BaseSceneTheme {
       );
       base.castShadow = true;
       base.receiveShadow = true;
-      this.scene.add(base);
+      // Add metal structure as collidable object
+      this.addCollidableObject(base, "static");
 
       // Add control panel
       const panelGeometry = new THREE.BoxGeometry(1.5, 2, 0.3);

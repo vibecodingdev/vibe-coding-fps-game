@@ -213,7 +213,8 @@ export class HellTheme extends BaseSceneTheme {
       building.castShadow = true;
       building.receiveShadow = true;
 
-      this.scene.add(building);
+      // Add building as collidable object instead of directly to scene
+      this.addCollidableObject(building, "static");
       this.addBuildingDetails(building, width, height, depth);
     }
   }
@@ -268,7 +269,8 @@ export class HellTheme extends BaseSceneTheme {
       );
       altar.castShadow = true;
       altar.receiveShadow = true;
-      this.scene.add(altar);
+      // Add altar as collidable object
+      this.addCollidableObject(altar, "static");
 
       // Add glowing orb
       const orbGeometry = new THREE.SphereGeometry(0.5, 16, 12);
@@ -301,7 +303,8 @@ export class HellTheme extends BaseSceneTheme {
       trunk.rotation.z = (Math.random() - 0.5) * 0.3;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
-      this.scene.add(trunk);
+      // Add dead trees as collidable objects
+      this.addCollidableObject(trunk, "static");
 
       // Add branches
       for (let j = 0; j < 6; j++) {

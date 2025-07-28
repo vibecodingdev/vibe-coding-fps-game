@@ -11,6 +11,7 @@ import { CollectibleSystem } from "@/systems/CollectibleSystem";
 import { StateManager } from "@/core/StateManager";
 import { GAME_CONFIG } from "@/config/game";
 import { type SceneThemeName } from "@/themes";
+import { CollisionSystem } from "@/systems/CollisionSystem";
 
 export class Game {
   private static instance: Game | null = null;
@@ -32,6 +33,7 @@ export class Game {
   private networkManager!: NetworkManager;
   private uiManager!: UIManager;
   private collectibleSystem!: CollectibleSystem;
+  private collisionSystem!: CollisionSystem;
 
   // Game state
   private playerState!: PlayerState;
@@ -139,6 +141,10 @@ export class Game {
       this.demonSystem.setAudioSystem(this.audioSystem);
       this.collectibleSystem.setScene(scene);
 
+      // Initialize collision system
+      this.collisionSystem = CollisionSystem.getInstance();
+      console.log("🔧 Collision system initialized");
+
       // Connect audio system
       this.audioSystem.setCamera(camera);
 
@@ -150,6 +156,96 @@ export class Game {
 
       this.gameInitialized = true;
       console.log("🎮 Game initialized successfully");
+
+      // Add debug commands to global scope for testing collision system
+      (window as any).debugCollision = () => {
+        const stats = this.getCollisionStats();
+        console.log("🔧 Collision System Stats:", stats);
+        const collidableObjects = this.sceneManager.getCollidableObjects();
+        console.log("📦 Total collidable objects:", collidableObjects.length);
+        return { stats, objectCount: collidableObjects.length };
+      };
+
+      // Add debug command to check player collision state
+      (window as any).checkPlayerCollision = () => {
+        const playerPos = this.playerController.getPosition();
+        const collisionSystem = this.sceneManager.getCollisionSystem();
+        const collision = collisionSystem.checkCollision(playerPos);
+        console.log("🧍 Player position:", playerPos);
+        console.log("💥 Current collision:", collision ? "YES" : "NO");
+        if (collision) {
+          console.log("🎯 Collision object:", collision.mesh.position);
+        }
+        return { position: playerPos, inCollision: !!collision };
+      };
+
+      // Add debug command to manually trigger escape
+      (window as any).forceEscape = () => {
+        const playerPos = this.playerController.getPosition();
+        const controls = this.playerController.getControls();
+        if (!controls) {
+          console.log("❌ No controls available");
+          return;
+        }
+
+        // Force teleport to spawn position
+        const spawnPos = new THREE.Vector3(0, 1.6, 20);
+        controls.getObject().position.copy(spawnPos);
+        console.log("🚀 Manually teleported to spawn:", spawnPos);
+
+        // Force network update if multiplayer
+        if (this.isMultiplayer && this.networkManager) {
+          this.networkManager.forcePositionUpdate(
+            spawnPos,
+            controls.getObject().rotation
+          );
+          console.log("📡 Network position updated");
+        }
+
+        return { from: playerPos, to: spawnPos };
+      };
+
+      // Add debug command to test direction escapes
+      (window as any).testDirectionEscape = (
+        direction: string,
+        distance: number = 3.0
+      ) => {
+        const playerPos = this.playerController.getPosition();
+        const controls = this.playerController.getControls();
+        if (!controls) {
+          console.log("❌ No controls available");
+          return;
+        }
+
+        let dirVector: THREE.Vector3;
+        switch (direction.toLowerCase()) {
+          case "right":
+            dirVector = new THREE.Vector3(1, 0, 0);
+            break;
+          case "left":
+            dirVector = new THREE.Vector3(-1, 0, 0);
+            break;
+          case "forward":
+            dirVector = new THREE.Vector3(0, 0, 1);
+            break;
+          case "backward":
+            dirVector = new THREE.Vector3(0, 0, -1);
+            break;
+          default:
+            console.log(
+              "❌ Invalid direction. Use: right, left, forward, backward"
+            );
+            return;
+        }
+
+        const newPos = playerPos
+          .clone()
+          .add(dirVector.multiplyScalar(distance));
+        controls.getObject().position.copy(newPos);
+        console.log(`🧭 Moved ${direction} by ${distance} units:`, newPos);
+
+        return { from: playerPos, to: newPos, direction };
+      };
     } catch (error) {
       console.error("Failed to initialize game:", error);
       throw error;
@@ -1509,6 +1605,13 @@ export class Game {
   // Weapon management for multiplayer
   public getCurrentWeapon(): any {
     return this.weaponSystem.getCurrentWeapon();
+  }
+
+  public getCollisionStats(): any {
+    if (this.collisionSystem) {
+      return this.collisionSystem.getStats();
+    }
+    return null;
   }
 
   public switchWeapon(weaponType: any): void {
