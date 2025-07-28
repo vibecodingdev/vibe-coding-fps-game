@@ -8,7 +8,7 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     name: "Imp",
     emoji: "👹",
     health: 1,
-    speed: 1.0,
+    speed: 5.0,
     scale: 1.0,
     color: 0x8b4513, // Brown
     headColor: 0x654321, // Dark brown
@@ -28,7 +28,7 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     name: "Demon",
     emoji: "🐺",
     health: 2,
-    speed: 1.8,
+    speed: 5.8,
     scale: 0.9,
     color: 0x4b0000, // Dark red
     headColor: 0x8b0000, // Red
@@ -97,13 +97,14 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     headColor: 0xff4500, // Orange red
     eyeColor: 0xffd700, // Gold
     detectRange: 120,
-    attackRange: 25.0,
+    attackRange: 120.0,
     chaseRange: 20,
     attackDamage: 25,
     spawnWeight: 15,
     isRanged: true,
-    fireballSpeed: 15.0,
-    fireballRange: 30.0,
+    fireballSpeed: 500.0,
+    fireballRange: 120.0,
+    attackCooldown: 180, // 3 seconds at 60fps
     bodyType: "humanoid",
     visualFeatures: {
       specialFeatures: ["fire_aura", "staff", "robe", "fire_crown"],
@@ -123,13 +124,14 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     secondaryColor: 0xffff00, // Yellow belly
     accentColor: 0x8b0000, // Dark red details
     detectRange: 90,
-    attackRange: 12.0,
-    chaseRange: 18,
+    attackRange: 35.0, // Match fireball range
+    chaseRange: 40,
     attackDamage: 30,
     spawnWeight: 20,
     isRanged: true,
     fireballSpeed: 18.0,
     fireballRange: 35.0,
+    attackCooldown: 120, // 2 seconds at 60fps - faster than Archvile
     bodyType: "dragon",
     visualFeatures: {
       hasWings: true,
@@ -150,13 +152,14 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     secondaryColor: 0xff0000, // Red cheeks
     accentColor: 0x8b4513, // Brown stripes
     detectRange: 70,
-    attackRange: 8.0,
-    chaseRange: 15,
+    attackRange: 25.0, // Match fireball range
+    chaseRange: 30,
     attackDamage: 18,
     spawnWeight: 40,
     isRanged: true,
     fireballSpeed: 20.0, // Lightning bolts
     fireballRange: 25.0,
+    attackCooldown: 90, // 1.5 seconds at 60fps - fastest ranged attacker
     bodyType: "small_biped",
     visualFeatures: {
       hasTail: true,
@@ -175,13 +178,14 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     secondaryColor: 0xf5deb3, // Wheat (shell)
     accentColor: 0x8b4513, // Brown shell pattern
     detectRange: 75,
-    attackRange: 10.0,
-    chaseRange: 12,
+    attackRange: 28.0, // Match fireball range
+    chaseRange: 35,
     attackDamage: 22,
     spawnWeight: 35,
     isRanged: true,
     fireballSpeed: 16.0, // Water blasts
     fireballRange: 28.0,
+    attackCooldown: 105, // 1.75 seconds at 60fps - between Pikachu and Charizard
     bodyType: "small_biped",
     visualFeatures: {
       hasTail: true,

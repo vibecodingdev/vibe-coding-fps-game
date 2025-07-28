@@ -48,6 +48,7 @@ export interface DemonConfig {
   readonly isRanged?: boolean;
   readonly fireballSpeed?: number;
   readonly fireballRange?: number;
+  readonly attackCooldown?: number; // Attack cooldown in frames (60fps)
   readonly bodyType: DemonBodyType; // New: defines overall body structure
   readonly visualFeatures?: DemonVisualFeatures; // New: modular visual features
   readonly secondaryColor?: number; // New: for accent colors, stripes, etc.

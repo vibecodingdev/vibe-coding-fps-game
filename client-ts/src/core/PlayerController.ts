@@ -10,7 +10,7 @@ export class PlayerController {
   private direction = new THREE.Vector3();
   private sceneManager: SceneManager | null = null;
 
-  private readonly MOVE_SPEED = 50;
+  private readonly MOVE_SPEED = 15;
 
   constructor(
     private playerState: PlayerState,

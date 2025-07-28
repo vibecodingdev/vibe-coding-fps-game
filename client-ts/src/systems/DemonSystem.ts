@@ -183,7 +183,7 @@ export class DemonSystem implements IDemonSystem {
         this.executeDemonAttack(demon, playerPosition);
       } else if (distanceToPlayer <= config.chaseRange) {
         // Ranged demons prefer to maintain distance
-        if (config.isRanged && demonType === "ARCHVILE") {
+        if (config.isRanged) {
           this.executeRangedPositioning(demon, playerPosition, deltaTime);
         } else {
           this.prepareDemonAttack(demon, playerPosition, deltaTime);
@@ -874,7 +874,12 @@ export class DemonSystem implements IDemonSystem {
 
     // Execute attack if cooldown is ready - matches original timing
     if (!userData.hasAttacked && userData.attackCooldown <= 0) {
-      userData.attackCooldown = 180; // 3 seconds at 60fps - matches original
+      // Get demon config for attack cooldown and damage calculation
+      const demonType = userData.demonType || "IMP";
+      const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
+      
+      // Use configured attack cooldown or default to 180 frames (3 seconds at 60fps)
+      userData.attackCooldown = config.attackCooldown || 180;
       userData.hasAttacked = true;
 
       // Calculate direction to player - matches original
@@ -882,12 +887,8 @@ export class DemonSystem implements IDemonSystem {
       const dz = playerPosition.z - meshObject.position.z;
       const direction = Math.atan2(dx, dz);
 
-      // Get demon config for damage calculation
-      const demonType = userData.demonType || "IMP";
-      const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
-
-      // Check if this is a ranged demon (ARCHVILE)
-      if (config.isRanged && demonType === "ARCHVILE") {
+      // Check if this is a ranged demon
+      if (config.isRanged) {
         // Ranged attack - launch fireball
         this.launchFireball(
           meshObject.position,

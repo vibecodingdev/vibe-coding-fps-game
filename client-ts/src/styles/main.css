@@ -1097,7 +1097,8 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
 #roomInfo {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.8);
   color: #ff6600;
   padding: 0.5rem 1rem;
@@ -1106,6 +1107,8 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
   font-weight: 600;
   text-shadow: 0 0 10px #ff6600;
   z-index: 1000;
+  max-width: 300px;
+  text-align: center;
 }
 
 /* Voice Chat UI */
