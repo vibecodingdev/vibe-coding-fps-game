@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doom Map Theme Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+
+        #info h2 {
+            margin: 0 0 10px 0;
+            color: #ff4400;
+            text-shadow: 0 0 10px #ff4400;
+        }
+
+        #info p {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+        }
+
+        .control-row {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button {
+            background: #333;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 3px;
+        }
+
+        button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+
+        #minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+        }
+
+        #minimapCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .room-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 2px solid #ff4400;
+            border-radius: 5px;
+            min-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>🏛️ DOOM MAP THEME</h2>
+        <p><strong>Classic E1M1 Recreation</strong></p>
+        <p>📍 Rooms: Start, Courtyard, Boss Chamber</p>
+        <p>🚪 Hallways: Connected with doors</p>
+        <p>💡 Sector Lighting: Classic Doom style</p>
+        <p>🎯 Features: 3D recreation of 2D schematic</p>
+        <p><em>Use WASD + Mouse to explore</em></p>
+    </div>
+
+    <div id="controls">
+        <div class="control-row">
+            <button onclick="resetCamera()">🏠 Reset View</button>
+            <button onclick="toggleWireframe()">📐 Wireframe</button>
+        </div>
+        <div class="control-row">
+            <button onclick="goToRoom('start')">🚪 Start Room</button>
+            <button onclick="goToRoom('courtyard')">🏛️ Courtyard</button>
+        </div>
+        <div class="control-row">
+            <button onclick="goToRoom('boss_chamber')">👹 Boss Chamber</button>
+            <button onclick="goToRoom('secret_1')">🔒 Secret Room</button>
+        </div>
+        <div class="control-row">
+            <button onclick="toggleLighting()">💡 Toggle Lights</button>
+            <button onclick="showRoomInfo()">ℹ️ Room Info</button>
+        </div>
+    </div>
+
+    <div id="minimap">
+        <canvas id="minimapCanvas" width="200" height="200"></canvas>
+    </div>
+
+    <div class="room-info" id="roomInfo" style="display: none;">
+        <h3 id="roomTitle">Room Information</h3>
+        <p id="roomDescription"></p>
+        <p id="roomConnections"></p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        import { PointerLockControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/PointerLockControls.js';
+
+        // Scene setup
+        let scene, camera, renderer, controls;
+        let doomMapTheme;
+        let wireframeMode = false;
+        let lightingEnabled = true;
+        let currentRoom = 'start';
+
+        // Room data for navigation and info
+        const roomData = {
+            start: {
+                position: new THREE.Vector3(30, 2, -30),
+                title: "Starting Area",
+                description: "Player spawn point with blue sector lighting",
+                connections: "Connected to: Courtyard, Hallway"
+            },
+            courtyard: {
+                position: new THREE.Vector3(15, 2, -10),
+                title: "Main Courtyard",
+                description: "Central hub area with multiple connections",
+                connections: "Connected to: Start, North Corridor, West Wing, Secret"
+            },
+            boss_chamber: {
+                position: new THREE.Vector3(-35, 4, -25),
+                title: "Boss Chamber",
+                description: "Elevated boss room with dramatic red lighting and pillars",
+                connections: "Connected to: West Wing"
+            },
+            secret_1: {
+                position: new THREE.Vector3(35, 1, 5),
+                title: "Secret Area",
+                description: "Hidden room with treasure and green lighting",
+                connections: "Connected to: Courtyard (hidden)"
+            },
+            north_corridor: {
+                position: new THREE.Vector3(0, 2, 25),
+                title: "North Corridor",
+                description: "Long hallway with red accent lighting",
+                connections: "Connected to: Courtyard, North Rooms"
+            },
+            west_wing: {
+                position: new THREE.Vector3(-20, 2, -5),
+                title: "West Wing",
+                description: "Large room with yellow lighting",
+                connections: "Connected to: Courtyard, Boss Chamber, Complex"
+            }
+        };
+
+        // Initialize the scene
+        async function init() {
+            console.log('🎮 Initializing Doom Map Theme Test...');
+
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(30, 2, -30); // Start in the starting room
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setClearColor(0x0a0a0a);
+            document.body.appendChild(renderer.domElement);
+
+            // Create controls
+            controls = new PointerLockControls(camera, document.body);
+            scene.add(controls.getObject());
+
+            // Lock pointer on click
+            document.addEventListener('click', () => {
+                controls.lock();
+            });
+
+            // Create Doom Map Theme
+            await createDoomMapTheme();
+
+            // Setup controls
+            setupMovementControls();
+
+            // Initialize minimap
+            initMinimap();
+
+            // Start render loop
+            animate();
+
+            console.log('✅ Doom Map Theme Test initialized successfully');
+            showRoomInfo();
+        }
+
+        async function createDoomMapTheme() {
+            console.log('🏛️ Creating Doom Map Theme...');
+
+            // Create a simplified version of the DoomMapTheme for testing
+            createDoomMapEnvironment();
+            
+            console.log('✅ Doom Map Theme created successfully');
+        }
+
+        function createDoomMapEnvironment() {
+            // Create the main rooms based on the Doom map schematic
+            createRoom('start', new THREE.Vector3(30, 0, -30), new THREE.Vector3(12, 8, 8), 0x000066);
+            createRoom('courtyard', new THREE.Vector3(15, 0, -10), new THREE.Vector3(20, 8, 15), 0x606060);
+            createRoom('north_corridor', new THREE.Vector3(0, 0, 25), new THREE.Vector3(25, 8, 8), 0x660000);
+            createRoom('boss_chamber', new THREE.Vector3(-35, 2, -25), new THREE.Vector3(16, 12, 16), 0x660000);
+            createRoom('west_wing', new THREE.Vector3(-20, 0, -5), new THREE.Vector3(18, 8, 20), 0x666600);
+            createRoom('secret_1', new THREE.Vector3(35, -1, 5), new THREE.Vector3(8, 6, 6), 0x006600);
+
+            // Create hallways connecting the rooms
+            createHallway(new THREE.Vector3(24, 0, -30), new THREE.Vector3(25, 0, -17), 4, 8);
+            createHallway(new THREE.Vector3(15, 0, -2), new THREE.Vector3(12, 0, 21), 5, 8);
+            createHallway(new THREE.Vector3(5, 0, -10), new THREE.Vector3(-11, 0, -5), 4, 8);
+            createHallway(new THREE.Vector3(-20, 0, -15), new THREE.Vector3(-27, 1, -25), 3, 8);
+
+            // Add atmospheric lighting
+            addDoomLighting();
+
+            // Add decorative elements
+            addDoomDecorations();
+        }
+
+        function createRoom(id, position, size, lightColor) {
+            // Create floor
+            const floorGeometry = new THREE.PlaneGeometry(size.x, size.z);
+            const floorMaterial = new THREE.MeshLambertMaterial({ 
+                color: id === 'secret_1' ? 0x2a4a2a : 0x333333 
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(position.x, position.y, position.z);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Create walls
+            const wallMaterial = new THREE.MeshLambertMaterial({ 
+                color: getRoomWallColor(id) 
+            });
+            const wallThickness = 0.5;
+
+            // North wall
+            const northWall = createWall(size.x, size.y, wallThickness, wallMaterial);
+            northWall.position.set(position.x, position.y + size.y/2, position.z + size.z/2);
+            scene.add(northWall);
+
+            // South wall
+            const southWall = createWall(size.x, size.y, wallThickness, wallMaterial);
+            southWall.position.set(position.x, position.y + size.y/2, position.z - size.z/2);
+            scene.add(southWall);
+
+            // East wall
+            const eastWall = createWall(wallThickness, size.y, size.z, wallMaterial);
+            eastWall.position.set(position.x + size.x/2, position.y + size.y/2, position.z);
+            scene.add(eastWall);
+
+            // West wall
+            const westWall = createWall(wallThickness, size.y, size.z, wallMaterial);
+            westWall.position.set(position.x - size.x/2, position.y + size.y/2, position.z);
+            scene.add(westWall);
+
+            // Add room-specific lighting
+            const roomLight = new THREE.PointLight(lightColor, 1.2, size.x * 1.5);
+            roomLight.position.set(position.x, position.y + size.y * 0.8, position.z);
+            roomLight.castShadow = true;
+            scene.add(roomLight);
+
+            // Add special features for specific rooms
+            if (id === 'boss_chamber') {
+                addBossRoomFeatures(position);
+            } else if (id === 'secret_1') {
+                addSecretRoomFeatures(position);
+            }
+        }
+
+        function createWall(width, height, depth, material) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const wall = new THREE.Mesh(geometry, material);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            return wall;
+        }
+
+        function createHallway(start, end, width, height) {
+            const length = start.distanceTo(end);
+            const direction = new THREE.Vector3().subVectors(end, start).normalize();
+            const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+
+            // Create hallway floor
+            const floorGeometry = new THREE.PlaneGeometry(width, length);
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.copy(midPoint);
+            floor.rotation.y = Math.atan2(direction.x, direction.z);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Create hallway walls
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
+            const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x);
+
+            // Left wall
+            const leftWallGeometry = new THREE.BoxGeometry(0.3, height, length);
+            const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+            leftWall.position.copy(midPoint);
+            leftWall.position.add(perpendicular.clone().multiplyScalar(width / 2));
+            leftWall.position.y = height / 2;
+            leftWall.rotation.y = Math.atan2(direction.x, direction.z);
+            leftWall.castShadow = true;
+            leftWall.receiveShadow = true;
+            scene.add(leftWall);
+
+            // Right wall
+            const rightWallGeometry = new THREE.BoxGeometry(0.3, height, length);
+            const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+            rightWall.position.copy(midPoint);
+            rightWall.position.add(perpendicular.clone().multiplyScalar(-width / 2));
+            rightWall.position.y = height / 2;
+            rightWall.rotation.y = Math.atan2(direction.x, direction.z);
+            rightWall.castShadow = true;
+            rightWall.receiveShadow = true;
+            scene.add(rightWall);
+
+            // Add hallway lighting
+            const hallwayLight = new THREE.PointLight(0xffaa44, 1.0, width * 2);
+            hallwayLight.position.set(midPoint.x, height - 2, midPoint.z);
+            scene.add(hallwayLight);
+        }
+
+        function getRoomWallColor(roomId) {
+            switch (roomId) {
+                case 'boss_chamber': return 0x660000;
+                case 'secret_1': return 0x006600;
+                case 'start': return 0x000066;
+                default: return 0x4a4a4a;
+            }
+        }
+
+        function addBossRoomFeatures(position) {
+            // Add elevated platform
+            const platformGeometry = new THREE.CylinderGeometry(3, 4, 1, 8);
+            const platformMaterial = new THREE.MeshLambertMaterial({ color: 0x660000 });
+            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+            platform.position.set(position.x, position.y + 0.5, position.z);
+            platform.castShadow = true;
+            platform.receiveShadow = true;
+            scene.add(platform);
+
+            // Add pillars
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const pillarRadius = 6;
+                const pillarX = position.x + Math.cos(angle) * pillarRadius;
+                const pillarZ = position.z + Math.sin(angle) * pillarRadius;
+                
+                const pillarGeometry = new THREE.CylinderGeometry(0.8, 1.0, 10, 8);
+                const pillarMaterial = new THREE.MeshLambertMaterial({ color: 0x330000 });
+                const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
+                pillar.position.set(pillarX, position.y + 5, pillarZ);
+                pillar.castShadow = true;
+                pillar.receiveShadow = true;
+                scene.add(pillar);
+            }
+
+            // Add dramatic red lighting
+            const bossLight = new THREE.PointLight(0xff0000, 2.0, 20);
+            bossLight.position.set(position.x, position.y + 15, position.z);
+            scene.add(bossLight);
+        }
+
+        function addSecretRoomFeatures(position) {
+            // Add treasure indicator
+            const treasureGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const treasureMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.8 
+            });
+            const treasure = new THREE.Mesh(treasureGeometry, treasureMaterial);
+            treasure.position.set(position.x, position.y + 1, position.z);
+            scene.add(treasure);
+
+            // Add pulsing animation
+            function animateTreasure() {
+                treasure.rotation.y += 0.02;
+                treasure.position.y = position.y + 1 + Math.sin(Date.now() * 0.003) * 0.2;
+                requestAnimationFrame(animateTreasure);
+            }
+            animateTreasure();
+        }
+
+        function addDoomLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            // Main directional light
+            const directionalLight = new THREE.DirectionalLight(0x808080, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 500;
+            directionalLight.shadow.camera.left = -100;
+            directionalLight.shadow.camera.right = 100;
+            directionalLight.shadow.camera.top = 100;
+            directionalLight.shadow.camera.bottom = -100;
+            scene.add(directionalLight);
+        }
+
+        function addDoomDecorations() {
+            // Add computer terminals
+            addComputerTerminal(new THREE.Vector3(20, 0, -10));
+            addComputerTerminal(new THREE.Vector3(-15, 0, 10));
+
+            // Add barrels
+            for (let i = 0; i < 5; i++) {
+                const barrel = createBarrel();
+                const positions = [
+                    new THREE.Vector3(12, 0, -15),
+                    new THREE.Vector3(-10, 0, 20),
+                    new THREE.Vector3(-25, 0, -10),
+                    new THREE.Vector3(25, 0, 15),
+                    new THREE.Vector3(-30, 2, -20)
+                ];
+                barrel.position.copy(positions[i]);
+                scene.add(barrel);
+            }
+        }
+
+        function addComputerTerminal(position) {
+            const terminalGeometry = new THREE.BoxGeometry(0.8, 1.5, 0.3);
+            const terminalMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+            const terminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
+            terminal.position.set(position.x, position.y + 0.75, position.z);
+            terminal.castShadow = true;
+            terminal.receiveShadow = true;
+            scene.add(terminal);
+
+            // Add screen glow
+            const screenGeometry = new THREE.PlaneGeometry(0.6, 0.4);
+            const screenMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.8 
+            });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(0, 0.3, 0.16);
+            terminal.add(screen);
+        }
+
+        function createBarrel() {
+            const barrelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 8);
+            const barrelMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+            const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+            barrel.position.y = 0.6;
+            barrel.castShadow = true;
+            barrel.receiveShadow = true;
+            return barrel;
+        }
+
+        // Movement controls
+        const moveState = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+
+        function setupMovementControls() {
+            document.addEventListener('keydown', (event) => {
+                switch (event.code) {
+                    case 'KeyW': moveState.forward = true; break;
+                    case 'KeyS': moveState.backward = true; break;
+                    case 'KeyA': moveState.left = true; break;
+                    case 'KeyD': moveState.right = true; break;
+                }
+            });
+
+            document.addEventListener('keyup', (event) => {
+                switch (event.code) {
+                    case 'KeyW': moveState.forward = false; break;
+                    case 'KeyS': moveState.backward = false; break;
+                    case 'KeyA': moveState.left = false; break;
+                    case 'KeyD': moveState.right = false; break;
+                }
+            });
+        }
+
+        function updateMovement() {
+            const speed = 0.3;
+            const direction = new THREE.Vector3();
+
+            if (moveState.forward) direction.z -= speed;
+            if (moveState.backward) direction.z += speed;
+            if (moveState.left) direction.x -= speed;
+            if (moveState.right) direction.x += speed;
+
+            if (direction.length() > 0) {
+                controls.moveRight(direction.x);
+                controls.moveForward(-direction.z);
+            }
+        }
+
+        // Minimap
+        function initMinimap() {
+            const canvas = document.getElementById('minimapCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            function drawMinimap() {
+                ctx.clearRect(0, 0, 200, 200);
+                
+                // Draw rooms
+                const rooms = [
+                    { name: 'start', pos: [30, -30], size: [12, 8], color: '#0066ff' },
+                    { name: 'courtyard', pos: [15, -10], size: [20, 15], color: '#606060' },
+                    { name: 'boss_chamber', pos: [-35, -25], size: [16, 16], color: '#ff0000' },
+                    { name: 'secret_1', pos: [35, 5], size: [8, 6], color: '#00ff00' },
+                    { name: 'north_corridor', pos: [0, 25], size: [25, 8], color: '#ff6600' },
+                    { name: 'west_wing', pos: [-20, -5], size: [18, 20], color: '#ffff00' }
+                ];
+
+                rooms.forEach(room => {
+                    const x = (room.pos[0] + 50) * 2;
+                    const y = (room.pos[1] + 50) * 2;
+                    const w = room.size[0] * 1.5;
+                    const h = room.size[1] * 1.5;
+
+                    ctx.strokeStyle = room.color;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x - w/2, y - h/2, w, h);
+                    
+                    if (room.name === currentRoom) {
+                        ctx.fillStyle = room.color + '40';
+                        ctx.fillRect(x - w/2, y - h/2, w, h);
+                    }
+                });
+
+                // Draw player position
+                const playerX = (camera.position.x + 50) * 2;
+                const playerY = (camera.position.z + 50) * 2;
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(playerX, playerY, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                requestAnimationFrame(drawMinimap);
+            }
+            drawMinimap();
+        }
+
+        // UI Functions
+        window.resetCamera = function() {
+            camera.position.set(30, 2, -30);
+            controls.getObject().rotation.y = 0;
+            currentRoom = 'start';
+            showRoomInfo();
+        };
+
+        window.toggleWireframe = function() {
+            wireframeMode = !wireframeMode;
+            scene.traverse((object) => {
+                if (object.material) {
+                    object.material.wireframe = wireframeMode;
+                }
+            });
+        };
+
+        window.goToRoom = function(roomId) {
+            if (roomData[roomId]) {
+                const pos = roomData[roomId].position;
+                camera.position.copy(pos);
+                currentRoom = roomId;
+                showRoomInfo();
+            }
+        };
+
+        window.toggleLighting = function() {
+            lightingEnabled = !lightingEnabled;
+            scene.traverse((object) => {
+                if (object.isLight && object.type !== 'AmbientLight') {
+                    object.visible = lightingEnabled;
+                }
+            });
+        };
+
+        window.showRoomInfo = function() {
+            const infoElement = document.getElementById('roomInfo');
+            const data = roomData[currentRoom];
+            
+            if (data) {
+                document.getElementById('roomTitle').textContent = data.title;
+                document.getElementById('roomDescription').textContent = data.description;
+                document.getElementById('roomConnections').textContent = data.connections;
+                infoElement.style.display = 'block';
+                
+                setTimeout(() => {
+                    infoElement.style.display = 'none';
+                }, 5000);
+            }
+        };
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            updateMovement();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize the test
+        init();
+    </script>
+</body>
+</html> 

@@ -13,6 +13,7 @@ export class StateManager {
     moveBackward: false,
     moveLeft: false,
     moveRight: false,
+    jump: false,
     isMouseLocked: false,
   };
 
@@ -41,6 +42,7 @@ export class StateManager {
     this._inputState.moveBackward = false;
     this._inputState.moveLeft = false;
     this._inputState.moveRight = false;
+    this._inputState.jump = false;
     this._inputState.isMouseLocked = false;
     console.log("🔄 Input state reset (reference preserved)");
   }

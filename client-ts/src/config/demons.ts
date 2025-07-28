@@ -152,14 +152,10 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     secondaryColor: 0xff0000, // Red cheeks
     accentColor: 0x8b4513, // Brown stripes
     detectRange: 70,
-    attackRange: 25.0, // Match fireball range
+    attackRange: 4.0, // Melee attack range
     chaseRange: 30,
     attackDamage: 18,
     spawnWeight: 40,
-    isRanged: true,
-    fireballSpeed: 20.0, // Lightning bolts
-    fireballRange: 25.0,
-    attackCooldown: 90, // 1.5 seconds at 60fps - fastest ranged attacker
     bodyType: "small_biped",
     visualFeatures: {
       hasTail: true,
@@ -178,14 +174,10 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     secondaryColor: 0xf5deb3, // Wheat (shell)
     accentColor: 0x8b4513, // Brown shell pattern
     detectRange: 75,
-    attackRange: 28.0, // Match fireball range
+    attackRange: 4.5, // Melee attack range
     chaseRange: 35,
     attackDamage: 22,
     spawnWeight: 35,
-    isRanged: true,
-    fireballSpeed: 16.0, // Water blasts
-    fireballRange: 28.0,
-    attackCooldown: 105, // 1.75 seconds at 60fps - between Pikachu and Charizard
     bodyType: "small_biped",
     visualFeatures: {
       hasTail: true,

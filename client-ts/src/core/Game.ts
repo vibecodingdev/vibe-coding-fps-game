@@ -272,12 +272,10 @@ export class Game {
     this.gameState = "playing";
     this.resetGameState();
 
-    // For single player, use random theme if not specified
+    // For single player, use doomMap theme if not specified
     if (!isMultiplayer && !themeName) {
-      const availableThemes = this.sceneManager.getAvailableThemes();
-      themeName =
-        availableThemes[Math.floor(Math.random() * availableThemes.length)];
-      console.log(`🎨 Selected random theme for single player: ${themeName}`);
+      themeName = "doomMap";
+      console.log(`🏛️ Using default Doom Map theme for single player`);
     }
 
     // Switch to the selected theme if different from current
@@ -1351,7 +1349,7 @@ export class Game {
         break;
       case "Space":
         event.preventDefault();
-        this.weaponSystem.shoot();
+        this.inputState.jump = true;
         break;
       case "KeyR":
         this.weaponSystem.reload();
@@ -1391,6 +1389,9 @@ export class Game {
       case "KeyD":
       case "ArrowRight":
         this.inputState.moveRight = false;
+        break;
+      case "Space":
+        this.inputState.jump = false;
         break;
     }
   }

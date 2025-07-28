@@ -40,6 +40,7 @@ export interface InputState {
   moveBackward: boolean;
   moveLeft: boolean;
   moveRight: boolean;
+  jump: boolean;
   isMouseLocked: boolean;
 }
 

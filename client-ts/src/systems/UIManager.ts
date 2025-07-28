@@ -19,6 +19,7 @@ export class UIManager {
       ice: "❄️ Ice",
       toxic: "☢️ Toxic",
       industrial: "🏭 Industrial",
+      doomMap: "🏛️ Doom Map",
     };
     return themeNames[themeName] || themeName;
   }

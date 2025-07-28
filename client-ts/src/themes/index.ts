@@ -3,11 +3,13 @@ export { HellTheme } from "./HellTheme";
 export { IceTheme } from "./IceTheme";
 export { ToxicTheme } from "./ToxicTheme";
 export { IndustrialTheme } from "./IndustrialTheme";
+export { DoomMapTheme } from "./DoomMapTheme";
 
 import { HellTheme } from "./HellTheme";
 import { IceTheme } from "./IceTheme";
 import { ToxicTheme } from "./ToxicTheme";
 import { IndustrialTheme } from "./IndustrialTheme";
+import { DoomMapTheme } from "./DoomMapTheme";
 
 // Theme registry for easy access
 export const SCENE_THEMES = {
@@ -15,6 +17,7 @@ export const SCENE_THEMES = {
   ice: IceTheme,
   toxic: ToxicTheme,
   industrial: IndustrialTheme,
+  doomMap: DoomMapTheme,
 } as const;
 
 export type SceneThemeName = keyof typeof SCENE_THEMES;

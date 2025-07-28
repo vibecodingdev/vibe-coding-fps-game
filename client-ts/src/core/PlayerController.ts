@@ -13,6 +13,13 @@ export class PlayerController {
   private lastEscapeTime = 0; // Prevent frequent escapes
   private readonly ESCAPE_COOLDOWN = 500; // 0.5 second cooldown between escapes (reduced for better responsiveness)
   private readonly MOVE_SPEED = 25; // Reduced speed to prevent collision tunneling
+  
+  // Jump physics properties
+  private verticalVelocity = 0;
+  private isOnGround = true;
+  private readonly JUMP_SPEED = 12;
+  private readonly GRAVITY = -30;
+  private readonly GROUND_HEIGHT = 1.6;
 
   constructor(
     private playerState: PlayerState,
@@ -124,7 +131,16 @@ export class PlayerController {
   }
 
   private updateMovement(delta: number): void {
-    // Reset velocity for direct movement
+    // Handle jump input
+    if (this.inputState.jump && this.isOnGround) {
+      this.verticalVelocity = this.JUMP_SPEED;
+      this.isOnGround = false;
+    }
+
+    // Apply gravity
+    this.verticalVelocity += this.GRAVITY * delta;
+
+    // Reset horizontal velocity for direct movement
     this.velocity.set(0, 0, 0);
 
     // Calculate movement direction based on input
@@ -147,7 +163,7 @@ export class PlayerController {
     }
   }
 
-  private updatePosition(_delta: number): void {
+  private updatePosition(delta: number): void {
     if (!this.controls || !this.camera) return;
 
     // Store current position before movement
@@ -287,10 +303,18 @@ export class PlayerController {
       }
     }
 
-    // Keep camera above ground with better height management
-    const minHeight = 1.6; // Camera at head level for proper FPS perspective
-    const maxHeight = 200; // Prevent flying too high
-    playerPos.y = Math.max(minHeight, Math.min(maxHeight, playerPos.y));
+    // Apply vertical movement and handle ground collision
+    const newY = playerPos.y + this.verticalVelocity * delta;
+    
+    // Ground collision detection
+    if (newY <= this.GROUND_HEIGHT) {
+      playerPos.y = this.GROUND_HEIGHT;
+      this.verticalVelocity = 0;
+      this.isOnGround = true;
+    } else {
+      playerPos.y = Math.min(newY, 200); // Prevent flying too high
+      this.isOnGround = false;
+    }
   }
 
   /**
@@ -534,6 +558,8 @@ export class PlayerController {
     }
     this.velocity.set(0, 0, 0);
     this.direction.set(0, 0, 0);
+    this.verticalVelocity = 0;
+    this.isOnGround = true;
   }
 
   public getCamera(): THREE.PerspectiveCamera | null {
