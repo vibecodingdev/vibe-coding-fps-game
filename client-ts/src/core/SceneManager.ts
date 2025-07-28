@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { SCENE_THEMES, type SceneThemeName, BaseSceneTheme } from "../themes";
+import { CollisionSystem } from "../systems/CollisionSystem";
 
 export class SceneManager {
   private static instance: SceneManager | null = null;
@@ -17,6 +18,9 @@ export class SceneManager {
 
   // Ground texture management
   private groundTexturesEnabled: boolean = true;
+
+  // Collision system
+  private collisionSystem: CollisionSystem;
 
   // Boundary system
   public readonly BOUNDARY_SIZE = 90; // Size of the playable area
@@ -40,6 +44,7 @@ export class SceneManager {
       preserveDrawingBuffer: false,
     });
 
+    this.collisionSystem = CollisionSystem.getInstance();
     this.setupRenderer();
     this.setupCamera();
   }
@@ -480,5 +485,19 @@ export class SceneManager {
    */
   public getGroundTexturesEnabled(): boolean {
     return this.groundTexturesEnabled;
+  }
+
+  /**
+   * Get collision system instance
+   */
+  public getCollisionSystem(): CollisionSystem {
+    return this.collisionSystem;
+  }
+
+  /**
+   * Get all collidable objects from current theme
+   */
+  public getCollidableObjects(): any[] {
+    return this.currentTheme ? this.currentTheme.getCollidableObjects() : [];
   }
 }

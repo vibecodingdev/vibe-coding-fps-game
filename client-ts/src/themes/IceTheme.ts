@@ -242,7 +242,8 @@ export class IceTheme extends BaseSceneTheme {
       citadel.castShadow = true;
       citadel.receiveShadow = true;
 
-      this.scene.add(citadel);
+      // Add ice citadel as collidable object
+      this.addCollidableObject(citadel, "static");
       this.addCitadelDetails(citadel, width, height, depth);
     }
   }

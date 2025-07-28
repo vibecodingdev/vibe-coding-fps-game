@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { PlayerState, InputState } from "@/types/game";
 import { SceneManager } from "./SceneManager";
+import { CollisionSystem } from "../systems/CollisionSystem";
 
 export class PlayerController {
   private camera: THREE.PerspectiveCamera | null = null;
@@ -9,8 +10,9 @@ export class PlayerController {
   private velocity = new THREE.Vector3();
   private direction = new THREE.Vector3();
   private sceneManager: SceneManager | null = null;
-
-  private readonly MOVE_SPEED = 15;
+  private lastEscapeTime = 0; // Prevent frequent escapes
+  private readonly ESCAPE_COOLDOWN = 500; // 0.5 second cooldown between escapes (reduced for better responsiveness)
+  private readonly MOVE_SPEED = 25; // Reduced speed to prevent collision tunneling
 
   constructor(
     private playerState: PlayerState,
@@ -148,10 +150,101 @@ export class PlayerController {
   private updatePosition(_delta: number): void {
     if (!this.controls || !this.camera) return;
 
-    // Use PointerLockControls movement methods
-    // 注意：这里不需要乘以delta，因为velocity已经包含了delta
-    this.controls.moveRight(this.velocity.x);
-    this.controls.moveForward(-this.velocity.z);
+    // Store current position before movement
+    const currentPos = this.controls.getObject().position.clone();
+
+    // Calculate potential new position
+    // Note: velocity.z is already negative for forward movement, so we add it directly
+    const newPos = currentPos.clone();
+    newPos.x += this.velocity.x;
+    newPos.z += this.velocity.z;
+
+    // Check for scene object collisions if SceneManager is available
+    let canMove = true;
+    let adjustedPos = newPos.clone();
+
+    if (this.sceneManager) {
+      const collisionSystem = this.sceneManager.getCollisionSystem();
+
+      // First check if we're already in a collision state and need to escape
+      // Use tolerance to allow slight overlaps
+      const currentCollision = collisionSystem.checkCollisionWithTolerance(
+        currentPos,
+        0.1
+      );
+      if (currentCollision) {
+        // Check if we can escape (not too frequent)
+        const currentTime = performance.now();
+        const canEscape =
+          currentTime - this.lastEscapeTime > this.ESCAPE_COOLDOWN;
+
+        if (canEscape) {
+          // Player is stuck in an object, try to find escape direction
+          const escapePos = this.findEscapePosition(
+            currentPos,
+            collisionSystem
+          );
+          if (escapePos) {
+            // Directly set player position for escape
+            this.controls.getObject().position.copy(escapePos);
+            this.lastEscapeTime = currentTime;
+            console.log("🆘 Escaping from collision to:", escapePos);
+            this.notifyPositionChange(escapePos);
+            return; // Skip normal movement processing
+          } else {
+            // Last resort: force teleport to a safe position
+            const safePos = this.findSafePosition(collisionSystem);
+            if (safePos) {
+              this.controls.getObject().position.copy(safePos);
+              this.lastEscapeTime = currentTime;
+              console.log("🚨 Force teleporting to safe position:", safePos);
+              this.notifyPositionChange(safePos);
+              return; // Skip normal movement processing
+            } else {
+              // Absolute last resort: teleport to spawn point
+              const spawnPos = new THREE.Vector3(0, 1.6, 20);
+              this.controls.getObject().position.copy(spawnPos);
+              this.lastEscapeTime = currentTime;
+              console.log("🏠 Emergency teleport to spawn position:", spawnPos);
+              this.notifyPositionChange(spawnPos);
+              return; // Skip normal movement processing
+            }
+          }
+        } else {
+          // Too soon to escape again, just don't move
+          canMove = false;
+          console.log("⏳ Escape on cooldown, waiting...");
+        }
+      } else {
+        // Normal movement collision checking with stepped movement
+        const movementResult = this.checkSteppedMovement(
+          currentPos,
+          newPos,
+          collisionSystem
+        );
+
+        if (!movementResult.canMove) {
+          // Cannot move to new position due to collision
+          canMove = false;
+          console.log("🚧 Movement blocked by scene object collision");
+        } else if (movementResult.adjustedPosition) {
+          // Can move but position is adjusted (sliding along wall)
+          adjustedPos = movementResult.adjustedPosition;
+          console.log("🔄 Movement adjusted for collision sliding");
+        }
+      }
+    }
+
+    if (canMove) {
+      // Apply movement (either original or adjusted position)
+      const deltaX = adjustedPos.x - currentPos.x;
+      const deltaZ = adjustedPos.z - currentPos.z;
+
+      // Use PointerLockControls movement methods with calculated deltas
+      // Note: PointerLockControls expects the movement values as they are
+      this.controls.moveRight(deltaX);
+      this.controls.moveForward(-deltaZ);
+    }
 
     // Keep player within game boundaries using SceneManager's boundary system
     const playerPos = this.controls.getObject().position;
@@ -198,6 +291,223 @@ export class PlayerController {
     const minHeight = 1.6; // Camera at head level for proper FPS perspective
     const maxHeight = 200; // Prevent flying too high
     playerPos.y = Math.max(minHeight, Math.min(maxHeight, playerPos.y));
+  }
+
+  /**
+   * Find a position to escape from collision with progressive search
+   */
+  private findEscapePosition(
+    currentPos: THREE.Vector3,
+    collisionSystem: any
+  ): THREE.Vector3 | null {
+    // Progressive escape strategy: try different distances and patterns
+    const escapeStrategies = [
+      // Strategy 1: Medium steps in cardinal directions (increased distances)
+      {
+        directions: [
+          new THREE.Vector3(1, 0, 0), // Right (+X)
+          new THREE.Vector3(-1, 0, 0), // Left (-X)
+          new THREE.Vector3(0, 0, 1), // Forward (+Z)
+          new THREE.Vector3(0, 0, -1), // Backward (-Z)
+        ],
+        distances: [1.5, 3.0, 4.5, 6.0],
+      },
+      // Strategy 2: Large steps in cardinal directions
+      {
+        directions: [
+          new THREE.Vector3(1, 0, 0), // Right
+          new THREE.Vector3(-1, 0, 0), // Left
+          new THREE.Vector3(0, 0, 1), // Forward
+          new THREE.Vector3(0, 0, -1), // Backward
+        ],
+        distances: [7.0, 8.0, 9.0, 10.0],
+      },
+      // Strategy 3: Diagonal movements with larger distances
+      {
+        directions: [
+          new THREE.Vector3(1, 0, 1).normalize(),
+          new THREE.Vector3(-1, 0, 1).normalize(),
+          new THREE.Vector3(1, 0, -1).normalize(),
+          new THREE.Vector3(-1, 0, -1).normalize(),
+        ],
+        distances: [3.0, 5.0, 7.0, 9.0],
+      },
+      // Strategy 4: Random directions with larger distances
+      {
+        directions: this.generateRandomDirections(16),
+        distances: [4.0, 6.0, 8.0, 12.0],
+      },
+    ];
+
+    // Try each strategy
+    for (const strategy of escapeStrategies) {
+      for (const distance of strategy.distances) {
+        for (const direction of strategy.directions) {
+          const escapePos = currentPos
+            .clone()
+            .add(direction.clone().multiplyScalar(distance));
+          if (!collisionSystem.checkCollision(escapePos)) {
+            // Add direction name for better debugging
+            let directionName = "Unknown";
+            if (direction.x > 0) directionName = "Right(+X)";
+            else if (direction.x < 0) directionName = "Left(-X)";
+            else if (direction.z > 0) directionName = "Forward(+Z)";
+            else if (direction.z < 0) directionName = "Backward(-Z)";
+
+            console.log(
+              `✅ Found escape route: distance ${distance}, direction: ${directionName}`,
+              direction
+            );
+            console.log(
+              `📍 From position:`,
+              currentPos,
+              `to position:`,
+              escapePos
+            );
+            return escapePos;
+          }
+        }
+      }
+    }
+
+    // Last resort: try moving upward slightly then back down
+    const upwardEscape = currentPos.clone();
+    upwardEscape.y += 2.0; // Move up
+    if (!collisionSystem.checkCollision(upwardEscape)) {
+      // Try to move back down to ground level
+      for (let y = upwardEscape.y; y >= currentPos.y; y -= 0.2) {
+        const testPos = upwardEscape.clone();
+        testPos.y = Math.max(y, 1.6); // Don't go below ground
+        if (!collisionSystem.checkCollision(testPos)) {
+          console.log(
+            `🚁 Found escape via upward movement at height ${testPos.y}`
+          );
+          return testPos;
+        }
+      }
+    }
+
+    console.log("❌ No escape route found with any strategy");
+    return null;
+  }
+
+  /**
+   * Generate random directions for escape attempts
+   */
+  private generateRandomDirections(count: number): THREE.Vector3[] {
+    const directions: THREE.Vector3[] = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count;
+      directions.push(new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)));
+    }
+    return directions;
+  }
+
+  /**
+   * Notify external systems about position changes (for networking)
+   */
+  private notifyPositionChange(newPosition: THREE.Vector3): void {
+    // Update player state
+    this.playerState.position.copy(newPosition);
+
+    // Force network position update if we have access to a game instance
+    try {
+      // Try to access global game instance for network sync
+      const game = (window as any).game;
+      if (game && game.networkManager && game.isMultiplayer) {
+        game.networkManager.forcePositionUpdate(
+          newPosition,
+          this.camera?.rotation || new THREE.Euler()
+        );
+        console.log("📡 Forced network position update for escape");
+      }
+    } catch (error) {
+      // Silently fail if network manager is not available
+      console.log("📡 Network position update not available");
+    }
+  }
+
+  /**
+   * Find a completely safe position when normal escape fails
+   */
+  private findSafePosition(collisionSystem: any): THREE.Vector3 | null {
+    // Try well-known safe positions in order of preference
+    const safePositions = [
+      new THREE.Vector3(0, 1.6, 20), // Default spawn
+      new THREE.Vector3(0, 1.6, -20), // Opposite spawn
+      new THREE.Vector3(20, 1.6, 0), // Right side
+      new THREE.Vector3(-20, 1.6, 0), // Left side
+      new THREE.Vector3(10, 1.6, 10), // Diagonal positions
+      new THREE.Vector3(-10, 1.6, 10),
+      new THREE.Vector3(10, 1.6, -10),
+      new THREE.Vector3(-10, 1.6, -10),
+      new THREE.Vector3(0, 3.0, 0), // Higher up in center
+    ];
+
+    for (const position of safePositions) {
+      if (!collisionSystem.checkCollision(position)) {
+        console.log("🏆 Found safe position:", position);
+        return position;
+      }
+    }
+
+    console.log("🔥 No safe positions found, this should never happen!");
+    return null;
+  }
+
+  /**
+   * Check movement with smaller steps to prevent tunneling
+   */
+  private checkSteppedMovement(
+    fromPos: THREE.Vector3,
+    toPos: THREE.Vector3,
+    collisionSystem: any
+  ): { canMove: boolean; adjustedPosition?: THREE.Vector3; hitObject?: any } {
+    const movementVector = new THREE.Vector3().subVectors(toPos, fromPos);
+    const movementDistance = movementVector.length();
+
+    // If movement is very small, just check normally
+    if (movementDistance < 0.1) {
+      return collisionSystem.checkMovementCollision(fromPos, toPos);
+    }
+
+    // Use smaller steps for collision checking
+    const stepSize = 0.2; // Small step size to prevent tunneling
+    const steps = Math.ceil(movementDistance / stepSize);
+    const stepVector = movementVector.clone().divideScalar(steps);
+
+    let currentTestPos = fromPos.clone();
+
+    // Check each step
+    for (let i = 1; i <= steps; i++) {
+      const nextTestPos = fromPos
+        .clone()
+        .add(stepVector.clone().multiplyScalar(i));
+
+      const collision = collisionSystem.checkCollision(nextTestPos);
+      if (collision) {
+        // Hit something, try sliding from the last valid position
+        const lastValidPos = currentTestPos.clone();
+        const slidingResult = collisionSystem.checkMovementCollision(
+          fromPos,
+          lastValidPos
+        );
+
+        if (slidingResult.adjustedPosition) {
+          return {
+            canMove: true,
+            adjustedPosition: slidingResult.adjustedPosition,
+          };
+        }
+
+        return { canMove: false, hitObject: collision };
+      }
+
+      currentTestPos = nextTestPos.clone();
+    }
+
+    // No collision detected, movement is safe
+    return { canMove: true };
   }
 
   public setCamera(camera: THREE.PerspectiveCamera): void {

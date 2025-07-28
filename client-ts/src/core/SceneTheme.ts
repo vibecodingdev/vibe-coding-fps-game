@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { CollisionSystem } from "../systems/CollisionSystem";
 
 export interface SceneThemeConfig {
   name: string;
@@ -18,10 +19,12 @@ export abstract class BaseSceneTheme {
   protected scene: THREE.Scene;
   protected config: SceneThemeConfig;
   protected groundTextureObjects: THREE.Object3D[] = [];
+  protected collisionSystem: CollisionSystem;
 
   constructor(scene: THREE.Scene, config: SceneThemeConfig) {
     this.scene = scene;
     this.config = config;
+    this.collisionSystem = CollisionSystem.getInstance();
   }
 
   abstract createAtmosphere(): void;
@@ -35,6 +38,31 @@ export abstract class BaseSceneTheme {
   protected addGroundTextureObject(object: THREE.Object3D): void {
     this.scene.add(object);
     this.groundTextureObjects.push(object);
+  }
+
+  /**
+   * Add a collidable object to both the scene and collision system
+   */
+  protected addCollidableObject(
+    object: THREE.Object3D,
+    type: "static" | "interactive" | "decorative" = "static",
+    customBoundingBox?: THREE.Box3,
+    onCollision?: (player: THREE.Vector3) => void
+  ): void {
+    this.scene.add(object);
+    this.collisionSystem.addCollidableObject(
+      object,
+      type,
+      customBoundingBox,
+      onCollision
+    );
+  }
+
+  /**
+   * Get all collidable objects from the collision system
+   */
+  public getCollidableObjects(): any[] {
+    return this.collisionSystem.getCollidableObjects();
   }
 
   protected clearGroundTextures(): void {
@@ -105,5 +133,7 @@ export abstract class BaseSceneTheme {
 
   public clearAll(): void {
     this.clearGroundTextures();
+    // Clear collision objects when theme is cleared
+    this.collisionSystem.clearAll();
   }
 }

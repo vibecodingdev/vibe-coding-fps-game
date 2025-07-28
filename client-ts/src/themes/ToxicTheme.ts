@@ -247,7 +247,8 @@ export class ToxicTheme extends BaseSceneTheme {
       lab.castShadow = true;
       lab.receiveShadow = true;
 
-      this.scene.add(lab);
+      // Add toxic lab as collidable object
+      this.addCollidableObject(lab, "static");
       this.addLabDetails(lab, width, height, depth);
     }
   }
