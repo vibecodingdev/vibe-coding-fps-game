@@ -1,3 +1,5 @@
+import { NetworkManager } from "./NetworkManager";
+
 export interface VoiceChatSettings {
   mode: "speech-to-text" | "voice-transmission" | "disabled";
   voiceVolume: number;
@@ -19,6 +21,7 @@ export class VoiceChatSystem {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private remoteAudios: HTMLAudioElement[] = [];
+  private networkManager: NetworkManager = NetworkManager.getInstance();
 
   // Callback for handling voice messages
   private onVoiceMessage: ((message: string, type: string) => void) | null =
@@ -409,15 +412,15 @@ export class VoiceChatSystem {
       console.log(`Voice Chat Message: ${message}`);
     }
 
-    // TODO: Send to multiplayer server when implemented
-    // if (socket && socket.connected) {
-    //   socket.emit("voice:message", {
-    //     type: type,
-    //     message: message,
-    //     playerId: socket.id,
-    //     timestamp: Date.now(),
-    //   });
-    // }
+    const socket = this.networkManager.socket;
+    if (socket && socket.connected) {
+      socket.emit("voice:message", {
+        type: type,
+        message: message,
+        playerId: socket.id,
+        timestamp: Date.now(),
+      });
+    }
   }
 
   private sendVoiceData(audioBlob: Blob): void {
@@ -426,19 +429,19 @@ export class VoiceChatSystem {
     // Show test message - we'll handle this differently to avoid type issues
     console.log("Voice Chat: Audio recording completed");
 
-    // TODO: Send audio data to multiplayer server when implemented
-    // const reader = new FileReader();
-    // reader.onload = () => {
-    //   if (socket && socket.connected) {
-    //     socket.emit("voice:data", {
-    //       type: "voice-transmission",
-    //       audioData: reader.result,
-    //       playerId: socket.id,
-    //       timestamp: Date.now(),
-    //     });
-    //   }
-    // };
-    // reader.readAsArrayBuffer(audioBlob);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const socket = this.networkManager.socket;
+      if (socket && socket.connected) {
+        socket.emit("voice:data", {
+          type: "voice-transmission",
+          audioData: reader.result,
+          playerId: socket.id,
+          timestamp: Date.now(),
+        });
+      }
+    };
+    reader.readAsArrayBuffer(audioBlob);
   }
 
   private updateStatus(
