@@ -1,0 +1,48 @@
+# This file specifies files that are _not_ uploaded to Google Cloud Platform
+# using gcloud. It follows the same syntax as .gitignore, with the addition of
+# "#!include" directives (which insert the entries of the given .gitignore-style
+# file at that point).
+#
+# For more information, run:
+# $ gcloud topic gcloudignore
+#
+
+.gcloudignore
+
+# Git and version control
+.git
+.gitignore
+
+# Source code (we only deploy built files)
+src/
+tsconfig.json
+tsconfig.test.json
+jest.config.js
+
+# Development dependencies and tools
+node_modules/
+.cursor/
+.DS_Store
+yarn-error.log
+test-runner.js
+
+# Logs (App Engine handles logging)
+logs/
+
+# PM2 specific files (not needed for App Engine)
+ecosystem.config.js
+start-pm2.sh
+
+# Documentation and tests
+docs/
+README.md
+tests/
+*.test.ts
+*.test.js
+
+# Lock files and dev configs
+yarn.lock
+package-lock.json
+
+# Deployment script
+deploy-gae.sh 

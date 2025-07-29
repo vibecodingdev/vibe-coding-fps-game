@@ -1121,10 +1121,12 @@ export class UIManager {
       return { type: "local", url: "http://localhost:3000" };
     } else if (lanServer?.checked) {
       const ip = lanServerIP?.value || "192.168.1.100:3000";
-      return { type: "lan", url: `http://${ip}` };
+      // Let NetworkManager handle protocol and port normalization
+      return { type: "lan", url: ip.startsWith("http") ? ip : `http://${ip}` };
     } else if (customServer?.checked) {
       const ip = customServerIP?.value || "localhost:3000";
-      return { type: "custom", url: `http://${ip}` };
+      // Let NetworkManager handle protocol and port normalization
+      return { type: "custom", url: ip.startsWith("http") ? ip : ip };
     }
 
     return { type: "local", url: "http://localhost:3000" };

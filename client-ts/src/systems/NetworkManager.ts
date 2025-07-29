@@ -92,7 +92,76 @@ export class NetworkManager implements NetworkState {
   }
 
   public setServerURL(url: string): void {
-    this.currentServerURL = url;
+    this.currentServerURL = this.normalizeServerURL(url);
+  }
+
+  /**
+   * Normalize the server URL to handle HTTPS/WSS conversion and port management
+   *
+   * This method automatically:
+   * - Detects if the current page is served over HTTPS
+   * - Converts HTTP URLs to HTTPS for production (non-localhost) environments
+   * - Removes port numbers for HTTPS production deployments (uses default HTTPS port 443)
+   * - Maintains backward compatibility with development environments
+   *
+   * Examples:
+   * - Input: "doom-server.example.com:3000" on HTTPS → Output: "https://doom-server.example.com"
+   * - Input: "localhost:3000" on HTTPS → Output: "http://localhost:3000" (development)
+   * - Input: "192.168.1.100:3000" on HTTP → Output: "http://192.168.1.100:3000" (LAN)
+   */
+  private normalizeServerURL(inputUrl: string): string {
+    let normalizedUrl = inputUrl.trim();
+
+    // Check if we're running on HTTPS
+    const isHTTPS = window.location.protocol === "https:";
+    const isLocalhost =
+      normalizedUrl.includes("localhost") ||
+      normalizedUrl.includes("127.0.0.1");
+
+    console.log("🔍 Normalizing server URL:", {
+      input: inputUrl,
+      isHTTPS,
+      isLocalhost,
+      windowProtocol: window.location.protocol,
+      windowHost: window.location.host,
+    });
+
+    // Handle different URL formats
+    if (
+      !normalizedUrl.startsWith("http://") &&
+      !normalizedUrl.startsWith("https://") &&
+      !normalizedUrl.startsWith("ws://") &&
+      !normalizedUrl.startsWith("wss://")
+    ) {
+      // No protocol specified, add appropriate one
+      if (isHTTPS && !isLocalhost) {
+        // Production HTTPS environment - use HTTPS and remove port
+        const urlWithoutPort = normalizedUrl.replace(/:\d+$/, "");
+        normalizedUrl = `https://${urlWithoutPort}`;
+      } else {
+        // Development environment or localhost - keep existing behavior
+        normalizedUrl = `http://${normalizedUrl}`;
+      }
+    } else if (normalizedUrl.startsWith("http://")) {
+      // HTTP specified
+      if (isHTTPS && !isLocalhost) {
+        // Convert to HTTPS for production and remove port
+        const urlPart = normalizedUrl
+          .replace("http://", "")
+          .replace(/:\d+$/, "");
+        normalizedUrl = `https://${urlPart}`;
+      }
+      // Keep HTTP for localhost/development
+    } else if (normalizedUrl.startsWith("https://")) {
+      // HTTPS specified
+      if (!isLocalhost) {
+        // Remove port for production HTTPS
+        normalizedUrl = normalizedUrl.replace(/:\d+$/, "");
+      }
+    }
+
+    console.log("✅ Normalized server URL:", normalizedUrl);
+    return normalizedUrl;
   }
 
   public connectToServer(): void {
@@ -110,10 +179,40 @@ export class NetworkManager implements NetworkState {
     }
 
     try {
-      this.socket = io(this.currentServerURL, {
+      // Determine if we need secure connection
+      const isHTTPS = window.location.protocol === "https:";
+      const isLocalhost =
+        this.currentServerURL.includes("localhost") ||
+        this.currentServerURL.includes("127.0.0.1");
+
+      // Socket.IO connection options
+      const socketOptions: any = {
         timeout: 10000, // 10 second timeout
         transports: ["websocket", "polling"], // Try websocket first, fallback to polling
+      };
+
+      // Force secure connection for HTTPS sites (except localhost)
+      if (isHTTPS && !isLocalhost) {
+        socketOptions.secure = true;
+        socketOptions.rejectUnauthorized = false; // For development/testing with self-signed certs
+        console.log(
+          "🔒 Using secure WebSocket connection (WSS) for HTTPS environment"
+        );
+      } else {
+        console.log(
+          "🔓 Using regular WebSocket connection (WS) for development"
+        );
+      }
+
+      console.log("🔗 Connecting to server:", {
+        url: this.currentServerURL,
+        isHTTPS,
+        isLocalhost,
+        secure: socketOptions.secure,
+        options: socketOptions,
       });
+
+      this.socket = io(this.currentServerURL, socketOptions);
     } catch (error) {
       console.error("Failed to initialize Socket.IO:", error);
       this.updateConnectionStatus("🔴 Connection failed");
@@ -150,9 +249,22 @@ export class NetworkManager implements NetworkState {
     this.socket.on("connect_error", (error) => {
       console.error("❌ Connection error:", error);
       this.isConnected = false;
-      this.updateConnectionStatus(
-        `🔴 Connection failed: ${error.message || "Unknown error"}`
-      );
+
+      // Provide more specific error messages for common issues
+      let errorMessage = error.message || "Unknown error";
+      if (
+        errorMessage.includes("mixed content") ||
+        errorMessage.includes("insecure")
+      ) {
+        errorMessage =
+          "Mixed content error - server must use HTTPS/WSS for HTTPS sites";
+      } else if (errorMessage.includes("CORS")) {
+        errorMessage = "CORS policy error - server configuration issue";
+      } else if (errorMessage.includes("timeout")) {
+        errorMessage = "Connection timeout - check server URL and network";
+      }
+
+      this.updateConnectionStatus(`🔴 Connection failed: ${errorMessage}`);
     });
 
     this.socket.on("reconnect", (attemptNumber) => {
@@ -2537,7 +2649,19 @@ export class NetworkManager implements NetworkState {
       currentRoom: this.currentRoom?.name,
       isRoomLeader: this.isRoomLeader,
       isPlayerReady: this.isPlayerReady,
+      windowProtocol: window.location.protocol,
+      windowHost: window.location.host,
     });
+  }
+
+  /**
+   * Test URL normalization for debugging
+   */
+  public testURLNormalization(testUrl: string): string {
+    console.log("🧪 Testing URL normalization for:", testUrl);
+    const result = this.normalizeServerURL(testUrl);
+    console.log("🧪 Result:", result);
+    return result;
   }
 
   /**

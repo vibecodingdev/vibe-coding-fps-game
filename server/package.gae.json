@@ -1,0 +1,20 @@
+{
+  "name": "doom-protocol-server",
+  "version": "1.0.0",
+  "description": "Doom-style multiplayer FPS game server",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js"
+  },
+  "keywords": ["doom", "fps", "multiplayer", "websocket", "game"],
+  "author": "Doom Protocol Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,43 @@
+runtime: nodejs20
+
+# ------------------------------------------------------------------------------------------------------
+# Doom Protocol Game Server - Google App Engine Configuration
+# FPS Multiplayer Game Server for doom-fps project
+# ------------------------------------------------------------------------------------------------------
+service: doom-server
+
+# Use pre-built files
+entrypoint: node dist/index.js
+
+env_variables:
+  NODE_ENV: "production"
+  PORT: 8080
+  HOST: "0.0.0.0"
+  # Game server specific environment variables
+  CLIENT_URL: "https://fps.tinyvideogame.com"
+  MAX_ROOMS: 50
+  MAX_PLAYERS_PER_ROOM: 8
+  ROOM_CLEANUP_INTERVAL: 300000
+  # Socket.IO configuration
+  SOCKET_IO_CORS_ORIGIN: "*"
+  # Game configuration
+  DEMON_SPAWN_INTERVAL: 2000
+  WAVE_COMPLETE_DELAY: 5000
+  AI_UPDATE_INTERVAL: 100
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+network:
+  session_affinity: true
+
+handlers:
+  - url: /socket.io/.*
+    script: auto
+    secure: always
+
+  - url: /.*
+    script: auto
+    secure: always

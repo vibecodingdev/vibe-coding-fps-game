@@ -36,7 +36,8 @@ const io = new SocketIO(server, {
   },
 });
 
-const PORT = process.env.PORT || 3000;
+// Port configuration for both App Engine and local/PM2 deployment
+const PORT = process.env.PORT || 3001; // App Engine uses PORT env var, PM2 uses 3001
 const HOST = process.env.HOST || "0.0.0.0"; // Listen on all network interfaces
 
 type Player = {
@@ -419,6 +420,23 @@ server.listen(Number(PORT), HOST, () => {
 
 app.get("/", (req, res) => {
   res.send("<h1>🔥 Doom Protocol Server 🔥</h1>");
+});
+
+// Health check endpoint for Google App Engine
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    activeRooms: rooms.size,
+    activePlayers: activePlayers.size,
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
+// App Engine readiness check
+app.get("/_ah/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
 app.get("/leaderboard", (req, res) => {

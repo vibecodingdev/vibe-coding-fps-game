@@ -853,15 +853,31 @@ function setupUIEventListeners(
     showMultiplayerLobby();
     populateRandomNames(); // Populate random names on multiplayer lobby entry
 
-    // Auto-connect to localhost if it's selected (which is the default)
+    // Auto-connect to localhost if it's selected (which is the default) - only in development
     setTimeout(() => {
       const localServerRadio = document.getElementById(
         "localServer"
       ) as HTMLInputElement;
-      if (localServerRadio && localServerRadio.checked) {
-        console.log("🔥 Auto-connecting to localhost:3000...");
+      const isHTTPS = window.location.protocol === "https:";
+      const isProduction =
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1";
+
+      // Only auto-connect to localhost in development environment
+      if (
+        localServerRadio &&
+        localServerRadio.checked &&
+        (!isHTTPS || !isProduction)
+      ) {
+        console.log(
+          "🔥 Auto-connecting to localhost:3000 (development mode)..."
+        );
         networkManager.setServerURL("http://localhost:3000");
         networkManager.connectToServer();
+      } else if (isHTTPS && isProduction) {
+        console.log(
+          "🔒 Production HTTPS environment detected - manual connection required"
+        );
       }
     }, 100); // Small delay to ensure UI is rendered
   });
@@ -1013,10 +1029,12 @@ function getSelectedServerConfig(): { type: string; url: string } {
     return { type: "local", url: "http://localhost:3000" };
   } else if (lanServer?.checked) {
     const ip = lanServerIP?.value || "192.168.1.100:3000";
-    return { type: "lan", url: `http://${ip}` };
+    // Let NetworkManager handle protocol and port normalization
+    return { type: "lan", url: ip.startsWith("http") ? ip : `http://${ip}` };
   } else if (customServer?.checked) {
     const ip = customServerIP?.value || "localhost:3000";
-    return { type: "custom", url: `http://${ip}` };
+    // Let NetworkManager handle protocol and port normalization
+    return { type: "custom", url: ip.startsWith("http") ? ip : ip };
   }
 
   return { type: "local", url: "http://localhost:3000" };
