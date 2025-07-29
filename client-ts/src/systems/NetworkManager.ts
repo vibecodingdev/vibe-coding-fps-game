@@ -164,6 +164,46 @@ export class NetworkManager implements NetworkState {
     return normalizedUrl;
   }
 
+  /**
+   * Attempt fallback connection for Google App Engine using polling-only
+   */
+  private attemptFallbackConnection(): void {
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+
+    console.log(
+      "🔄 Attempting fallback connection with polling-only for GAE..."
+    );
+
+    try {
+      // Fallback options - polling only
+      const fallbackOptions: any = {
+        timeout: 30000, // Very long timeout for GAE
+        transports: ["polling"], // Polling only
+        upgrade: false, // Don't try to upgrade to websocket
+        forceNew: true,
+        reconnectionDelay: 3000,
+        maxReconnectionAttempts: 3,
+      };
+
+      const isHTTPS = window.location.protocol === "https:";
+      if (isHTTPS) {
+        fallbackOptions.secure = true;
+        fallbackOptions.rejectUnauthorized = false;
+      }
+
+      console.log("🌩️ GAE Fallback connection options:", fallbackOptions);
+      this.socket = io(this.currentServerURL, fallbackOptions);
+      this.setupSocketEvents();
+
+      this.updateConnectionStatus("🔄 Retrying with polling-only mode...");
+    } catch (error) {
+      console.error("Failed fallback connection:", error);
+      this.updateConnectionStatus("🔴 Fallback connection failed");
+    }
+  }
+
   public connectToServer(): void {
     if (this.socket) {
       this.socket.disconnect();
@@ -178,6 +218,63 @@ export class NetworkManager implements NetworkState {
       return;
     }
 
+    // For GAE, test basic connectivity first
+    if (this.currentServerURL.includes("appspot.com")) {
+      this.testServerConnectivity().then((isReachable) => {
+        if (!isReachable) {
+          this.updateConnectionStatus("🔴 Server not reachable");
+          return;
+        }
+        this.performConnection();
+      });
+    } else {
+      this.performConnection();
+    }
+  }
+
+  /**
+   * Test basic server connectivity for GAE
+   */
+  private async testServerConnectivity(): Promise<boolean> {
+    try {
+      console.log("🧪 Testing server connectivity...");
+      this.updateConnectionStatus("🔄 Testing server connectivity...");
+
+      // First try the health endpoint
+      const healthUrl = `${this.currentServerURL}/health`;
+      let response = await fetch(healthUrl, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-cache",
+      });
+
+      if (response.ok) {
+        const healthData = await response.json();
+        console.log("🧪 Server health check passed:", healthData);
+        return true;
+      }
+
+      // Fallback to Socket.IO endpoint test
+      console.log("🧪 Health check failed, trying Socket.IO endpoint...");
+      const testUrl = `${this.currentServerURL}/socket.io/`;
+      response = await fetch(testUrl, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-cache",
+      });
+
+      console.log("🧪 Socket.IO endpoint test response:", response.status);
+      return response.status < 500; // Accept redirects and client errors, but not server errors
+    } catch (error) {
+      console.error("🧪 Server connectivity test failed:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Perform the actual Socket.IO connection
+   */
+  private performConnection(): void {
     try {
       // Determine if we need secure connection
       const isHTTPS = window.location.protocol === "https:";
@@ -187,21 +284,33 @@ export class NetworkManager implements NetworkState {
 
       // Socket.IO connection options
       const socketOptions: any = {
-        timeout: 10000, // 10 second timeout
+        timeout: 15000, // 15 second timeout (increased for GAE)
         transports: ["websocket", "polling"], // Try websocket first, fallback to polling
+        upgrade: true, // Allow transport upgrades
+        rememberUpgrade: false, // Don't remember transport choice for GAE compatibility
       };
 
       // Force secure connection for HTTPS sites (except localhost)
       if (isHTTPS && !isLocalhost) {
         socketOptions.secure = true;
         socketOptions.rejectUnauthorized = false; // For development/testing with self-signed certs
+
+        // Special configuration for Google App Engine
+        if (this.currentServerURL.includes("appspot.com")) {
+          console.log(
+            "🌩️ Detected Google App Engine - using polling-first strategy"
+          );
+          socketOptions.transports = ["polling", "websocket"]; // Polling first for GAE
+          socketOptions.forceNew = true; // Force new connection each time
+          socketOptions.reconnectionDelay = 2000; // Delay between reconnection attempts
+          socketOptions.timeout = 20000; // Longer timeout for GAE
+        }
+
         console.log(
-          "🔒 Using secure WebSocket connection (WSS) for HTTPS environment"
+          "🔒 Using secure connection (HTTPS/WSS) for production environment"
         );
       } else {
-        console.log(
-          "🔓 Using regular WebSocket connection (WS) for development"
-        );
+        console.log("🔓 Using regular connection (HTTP/WS) for development");
       }
 
       console.log("🔗 Connecting to server:", {
@@ -262,6 +371,14 @@ export class NetworkManager implements NetworkState {
         errorMessage = "CORS policy error - server configuration issue";
       } else if (errorMessage.includes("timeout")) {
         errorMessage = "Connection timeout - check server URL and network";
+      } else if (this.currentServerURL.includes("appspot.com")) {
+        errorMessage =
+          "Google App Engine connection failed - trying fallback method";
+        console.log("🔄 Attempting fallback connection strategy for GAE...");
+        // Try to reconnect with polling-only after a short delay
+        setTimeout(() => {
+          this.attemptFallbackConnection();
+        }, 2000);
       }
 
       this.updateConnectionStatus(`🔴 Connection failed: ${errorMessage}`);
@@ -2662,6 +2779,34 @@ export class NetworkManager implements NetworkState {
     const result = this.normalizeServerURL(testUrl);
     console.log("🧪 Result:", result);
     return result;
+  }
+
+  /**
+   * Test connection to a specific server URL
+   */
+  public async testConnection(url: string): Promise<void> {
+    console.log("🧪 Testing connection to:", url);
+    const originalURL = this.currentServerURL;
+
+    try {
+      this.setServerURL(url);
+
+      // Test basic connectivity first
+      const isReachable = await this.testServerConnectivity();
+      console.log("🧪 Server reachable:", isReachable);
+
+      if (isReachable) {
+        console.log("🧪 Attempting Socket.IO connection...");
+        this.connectToServer();
+      } else {
+        console.log("🧪 Server not reachable - skipping Socket.IO test");
+      }
+    } catch (error) {
+      console.error("🧪 Connection test failed:", error);
+    } finally {
+      // Restore original URL
+      this.currentServerURL = originalURL;
+    }
   }
 
   /**

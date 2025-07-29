@@ -24,8 +24,14 @@
    - Implemented pre-build deployment strategy
 
 3. **Health Checks**: Added App Engine monitoring endpoints
+
    - `/health` - Detailed server status
    - `/_ah/health` - Simple App Engine health check
+
+4. **Custom Domain Routing**: Fixed fps-server.0.works routing issues
+   - Created `dispatch.yaml` file for custom domain routing
+   - Configured routing rules to direct all traffic to doom-server service
+   - Deployed dispatch configuration to App Engine
 
 ### 📁 Files Created/Modified
 
@@ -37,6 +43,7 @@
 - ✅ `tsconfig.test.json` - Test-specific TypeScript config
 - ✅ `deploy-gae.sh` - Interactive deployment script
 - ✅ `docs/GAE_DEPLOYMENT.md` - Comprehensive deployment guide
+- ✅ `dispatch.yaml` - Custom domain routing configuration
 
 #### Modified Files:
 
@@ -55,6 +62,9 @@
 
 # Or using npm scripts
 npm run gae:deploy
+
+# Deploy dispatch configuration for custom domain
+gcloud app deploy dispatch.yaml
 ```
 
 #### Staging Deployment:

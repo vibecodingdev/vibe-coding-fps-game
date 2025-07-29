@@ -34,6 +34,11 @@ const io = new SocketIO(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  // Google App Engine specific settings
+  transports: ["polling", "websocket"], // Polling first for GAE compatibility
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  pingTimeout: 60000, // Longer ping timeout for GAE
+  pingInterval: 25000, // Longer ping interval
 });
 
 // Port configuration for both App Engine and local/PM2 deployment
