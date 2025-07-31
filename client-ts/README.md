@@ -1,71 +1,335 @@
 # DOOM PROTOCOL - TypeScript Client
 
-🔥 **Hellish Combat Arena** - TypeScript Edition
+🔥 **Hellish Combat Arena** - Advanced TypeScript Edition
 
-## ⚡ 开发环境 (Vite)
+A modern, TypeScript-based first-person shooter game built with **Three.js** and **Vite**, featuring multiple demon types, diverse weapon systems, immersive themes, and robust multiplayer capabilities.
 
-本项目已迁移到 **Vite** 以获得更好的开发体验！
+## 🌟 Key Features
 
-### 🚀 快速开始
+### 🎯 **Core Gameplay**
+
+- **First-Person Shooter**: Smooth 3D movement and shooting mechanics
+- **Wave-Based Survival**: Progressive difficulty with endless demon waves
+- **Multiple Game Modes**: Single-player and multiplayer combat
+- **Dynamic Environments**: 6 unique themed battlegrounds
+
+### 👹 **Enhanced Demon Bestiary**
+
+- **5 Classic DOOM Demons**: IMP, DEMON, CACODEMON, BARON, ARCHVILE
+- **4 Pokemon-Inspired Creatures**: CHARIZARD, PIKACHU, SQUIRTLE, EEVEE
+- **Advanced AI Systems**: Smart pathfinding, attack patterns, and behaviors
+- **Ranged Combat**: Fireball-shooting demons with projectile physics
+
+### 🔫 **Weapon Arsenal**
+
+- **Shotgun** 🔫: High damage, spread pattern (8 pellets)
+- **Chaingun** ⚡: Rapid-fire, high rate of fire (100ms intervals)
+- **Rocket Launcher** 🚀: Explosive damage with splash radius
+- **Plasma Rifle** 🔥: Energy-based precision weapon
+
+### 🎪 **Battle Arenas & Themes**
+
+- **🔥 Hell Theme**: Classic infernal environment
+- **❄️ Ice Theme**: Frozen wasteland battlefield
+- **☢️ Toxic Theme**: Radioactive industrial complex
+- **🏭 Industrial Theme**: Modern facility environment
+- **🏛️ Doom Map Theme**: Procedural maze-like levels
+- **🗺️ BSP Map Theme**: Real Quake/Half-Life BSP map support
+
+## ⚡ Development Environment (Vite)
+
+This project uses **Vite** for lightning-fast development experience!
+
+### 🚀 Quick Start
 
 ```bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动开发服务器 (超快启动!)
+# Start development server (super fast!)
 npm run dev
 
-# 构建生产版本
+# Build for production
 npm run build
 
-# 预览生产构建
+# Preview production build
 npm run preview
 ```
 
-### 🛠️ 可用命令
+### 🛠️ Available Commands
 
-- `npm run dev` - 启动 Vite 开发服务器 (推荐)
-- `npm run dev:webpack` - 启动 webpack 开发服务器 (备用)
-- `npm run build` - Vite 生产构建
-- `npm run build:webpack` - webpack 生产构建 (备用)
-- `npm run preview` - 预览生产构建
-- `npm run test` - 运行测试
-- `npm run type-check` - TypeScript 类型检查
+- `npm run dev` - Start Vite development server (recommended)
+- `npm run dev:webpack` - Start webpack development server (fallback)
+- `npm run build` - Vite production build
+- `npm run build:webpack` - webpack production build (fallback)
+- `npm run preview` - Preview production build
+- `npm run test` - Run Jest tests
+- `npm run type-check` - TypeScript type checking
+- `npm run lint` - ESLint code analysis
+- `npm run lint:fix` - Auto-fix ESLint issues
 
-### ✨ Vite 优势
+### ✨ Vite Advantages
 
-- **🚀 极快启动**: ~1-3 秒 vs webpack 的 10-30 秒
-- **⚡ 毫秒级热更新**: 文件修改立即反映
-- **🎯 按需编译**: 只编译改变的文件
-- **📦 更小包体积**: 更好的 Tree Shaking
-- **🔧 零配置**: TypeScript 开箱即用
+- **🚀 Ultra-fast startup**: ~1-3 seconds vs webpack's 10-30 seconds
+- **⚡ Instant HMR**: File changes reflect immediately
+- **🎯 On-demand compilation**: Only compile changed files
+- **📦 Smaller bundles**: Better tree shaking
+- **🔧 Zero configuration**: TypeScript works out of the box
 
-### 🏗️ 项目结构
+## 🏗️ Project Architecture
+
+### 📁 Source Structure
 
 ```
 src/
-├── core/           # 核心游戏逻辑
-├── systems/        # 游戏系统
-├── types/          # TypeScript类型定义
-├── config/         # 配置文件
-├── styles/         # CSS样式
-├── main.ts         # 入口文件
-└── index.html      # HTML模板
+├── core/                   # Core game engine
+│   ├── Game.ts            # Main game controller (singleton)
+│   ├── SceneManager.ts    # 3D scene management
+│   ├── PlayerController.ts # First-person controls
+│   ├── StateManager.ts    # Global state management
+│   └── SceneTheme.ts      # Theme abstraction layer
+├── systems/               # Game systems
+│   ├── WeaponSystem.ts    # Weapon mechanics & ballistics
+│   ├── DemonSystem.ts     # AI and demon management
+│   ├── AudioSystem.ts     # 3D spatial audio
+│   ├── NetworkManager.ts  # Multiplayer networking
+│   ├── UIManager.ts       # User interface management
+│   ├── CollisionSystem.ts # Physics collision detection
+│   ├── CollectibleSystem.ts # Power-ups and items
+│   └── VoiceChatSystem.ts # Voice communication
+├── themes/                # Environment themes
+│   ├── HellTheme.ts       # Infernal environment
+│   ├── IceTheme.ts        # Frozen battlefield
+│   ├── ToxicTheme.ts      # Radioactive facility
+│   ├── IndustrialTheme.ts # Modern complex
+│   ├── DoomMapTheme.ts    # Procedural maze
+│   └── BSPMapTheme.ts     # BSP map loader
+├── config/                # Game configuration
+│   ├── weapons.ts         # Weapon specifications
+│   ├── demons.ts          # Demon types & stats
+│   ├── audio.ts           # Audio asset definitions
+│   └── game.ts            # Core game settings
+├── types/                 # TypeScript definitions
+│   ├── game.ts            # Game state types
+│   ├── weapons.ts         # Weapon system types
+│   ├── demons.ts          # Demon system types
+│   ├── audio.ts           # Audio system types
+│   ├── network.ts         # Networking types
+│   └── global.d.ts        # Global type declarations
+├── styles/                # CSS styling
+│   └── main.css           # Game UI styles
+├── main.ts                # Application entry point
+└── index.html             # HTML template
 ```
 
-### 🔧 故障排除
+### 🔧 Technical Stack
 
-如果遇到缓存问题，运行：
+- **Core Engine**: Three.js (3D graphics and WebGL)
+- **Language**: TypeScript (type-safe JavaScript)
+- **Build Tool**: Vite (fast development and building)
+- **Audio**: Web Audio API (3D spatial sound)
+- **Networking**: Socket.IO (real-time multiplayer)
+- **Testing**: Jest (unit testing framework)
+- **Linting**: ESLint + TypeScript (code quality)
+
+## 🎮 Game Features
+
+### 🔫 Advanced Weapon System
+
+- **Realistic Ballistics**: Bullet physics with gravity and air resistance
+- **Recoil Mechanics**: Weapon-specific recoil patterns
+- **Ammo Management**: Limited ammunition with reload mechanics
+- **Visual Effects**: Muzzle flashes, impact particles, and shell casings
+- **3D Weapon Models**: First-person weapon positioning
+
+### 👹 Intelligent Demon AI
+
+- **State-Based Behavior**: Idle, patrol, chase, attack, and flee states
+- **Dynamic Pathfinding**: Smart navigation around obstacles
+- **Attack Patterns**: Varied combat behaviors per demon type
+- **Ranged Attacks**: Fireball projectiles with physics
+- **Visual Diversity**: Unique models and animations for each demon type
+
+### 🎵 Immersive Audio System
+
+- **3D Spatial Audio**: Distance-based audio falloff
+- **Dynamic Music**: Context-aware background music switching
+- **Weapon Audio**: Authentic weapon sound effects
+- **Demon Sounds**: Varied creature audio (roars, growls, attacks)
+- **Environmental Audio**: Atmospheric soundscapes per theme
+
+### 🌐 Multiplayer Features
+
+- **Real-time Networking**: Socket.IO-based synchronization
+- **Voice Chat**: Push-to-talk voice communication
+- **Player Models**: 3D character representations
+- **Synchronized Combat**: Shared demon spawning and elimination
+- **Chat System**: Text-based in-game communication
+- **Room Management**: Create and join multiplayer lobbies
+
+### 🗺️ Map System
+
+- **BSP Map Support**: Load real Quake/Half-Life BSP maps
+- **Procedural Generation**: Dynamic maze-like level creation
+- **Themed Environments**: 6 distinct visual themes
+- **Interactive Elements**: Doors, switches, and environmental hazards
+- **Boundary System**: Intelligent player boundary enforcement
+
+## 🔧 Development Setup
+
+### 📋 Prerequisites
+
+- **Node.js** 16+ (LTS recommended)
+- **npm** 8+ or **yarn** 1.22+
+- Modern web browser with WebGL 2.0 support
+- **Optional**: Git for version control
+
+### 🔄 Development Workflow
 
 ```bash
-./clear-dev-cache.sh
+# Clone the repository
+git clone <repository-url>
+cd game-fps/client-ts
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Open browser to http://localhost:5173
 ```
 
-### 🎮 游戏特性
+### 🏗️ Build Process
 
-- 🎯 FPS 射击游戏机制
-- 👾 多种恶魔敌人类型
-- 🔫 武器系统
-- 🎵 3D 音效
-- 📱 响应式 UI 设计
-- 🌐 多人游戏支持
+```bash
+# Development build
+npm run dev
+
+# Production build
+npm run build
+
+# Preview production build
+npm run preview
+
+# Type checking
+npm run type-check
+
+# Run tests
+npm run test
+```
+
+### 🔧 Troubleshooting
+
+If you encounter cache issues:
+
+```bash
+# Clear Vite cache
+rm -rf node_modules/.vite
+
+# Clear npm cache
+npm cache clean --force
+
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
+```
+
+## 🎯 Controls
+
+| Control                   | Action                         |
+| ------------------------- | ------------------------------ |
+| **WASD** / **Arrow Keys** | Player movement                |
+| **Mouse**                 | Look around / Aim              |
+| **Left Click**            | Fire weapon                    |
+| **Right Click**           | Switch weapon                  |
+| **1-4 Keys**              | Select specific weapon         |
+| **ESC**                   | Pause game / Exit pointer lock |
+| **T** (Multiplayer)       | Push-to-talk voice chat        |
+| **Enter** (Multiplayer)   | Text chat                      |
+
+## 🧪 Testing
+
+### 🔬 Running Tests
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test -- --coverage
+```
+
+### 🎮 Manual Testing
+
+Access these testing utilities in the browser console:
+
+```javascript
+// Test BSP map loading
+await testBSPMap("maps/bsp/de_dust2.bsp");
+
+// List available BSP maps
+listBSPMaps();
+
+// Access game instance
+window.game.getGameState();
+
+// Access network manager
+window.networkManager.isConnected;
+```
+
+## 🚀 Deployment
+
+### 📦 Production Build
+
+```bash
+# Create production build
+npm run build
+
+# Build artifacts will be in ./dist/
+```
+
+### 🌐 Deployment Options
+
+- **Static Hosting**: Vercel, Netlify, GitHub Pages
+- **CDN**: AWS CloudFront, Cloudflare
+- **Self-hosted**: Nginx, Apache
+- **Container**: Docker deployment
+
+## 🔗 Related Projects
+
+- **Server**: `../server/` - Node.js multiplayer server
+- **Original Client**: `../client/` - JavaScript version
+- **BSP Viewer**: `../bspview/` - BSP map visualization tool
+- **Website**: `../website/` - Project website and documentation
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 🔮 Future Roadmap
+
+- [ ] Advanced physics engine integration
+- [ ] Procedural weapon generation
+- [ ] Enhanced AI behavior trees
+- [ ] Real-time map editor
+- [ ] VR support
+- [ ] Mobile platform support
+- [ ] Achievement system
+- [ ] Player progression and unlocks
+
+---
+
+**Created with ❤️ using TypeScript, Three.js, and modern web technologies**  
+_Experience the future of web-based FPS gaming_
