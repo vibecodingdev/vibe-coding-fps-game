@@ -4,6 +4,7 @@ import { Game } from "./core/Game";
 import { NetworkManager } from "./systems/NetworkManager";
 import { setupVoiceChatDebugFunctions } from "./debug-voice-chat";
 import { SceneThemeName } from "./themes";
+import { DemonManagerUI } from "./systems/DemonManagerUI";
 
 console.log("🔥 DOOM PROTOCOL - TypeScript Client Starting 🔥");
 
@@ -1553,6 +1554,7 @@ let networkManager: any = null;
 let weaponSystem: any = null;
 let demonSystem: any = null;
 let sceneManager: any = null;
+let demonManagerUI: DemonManagerUI | null = null;
 
 // Tab switching functions
 function showInstructionTab(tabName: string): void {
@@ -1825,7 +1827,72 @@ function initializePreviewReferences(game: any): void {
   demonSystem = game.demonSystem;
   sceneManager = game.sceneManager;
 
+  // Initialize Demon Manager UI
+  const jsonDemonManager = demonSystem?.getJsonDemonManager();
+  if (jsonDemonManager) {
+    demonManagerUI = new DemonManagerUI(jsonDemonManager);
+    console.log("👹 Demon Manager UI initialized");
+
+    // Bind demon manager button
+    bindDemonManagerButton();
+  }
+
   console.log("🎨 Preview system references initialized");
+}
+
+// Bind demon manager button event
+function bindDemonManagerButton(): void {
+  const demonManagerBtn = document.getElementById("openDemonManagerBtn");
+  if (demonManagerBtn && demonManagerUI) {
+    demonManagerBtn.addEventListener("click", () => {
+      demonManagerUI?.show();
+    });
+
+    // Update global reference
+    (window as any).demonManagerUI = demonManagerUI;
+
+    console.log("🔗 Demon Manager button bound");
+  }
+}
+
+// Open demon manager from combat manual
+async function openDemonManagerFromCombatManual(): Promise<void> {
+  console.log("📝 Opening Demon Manager from Combat Manual");
+
+  // Initialize demon manager if not already done
+  if (!demonManagerUI) {
+    // Check if we can initialize it
+    if (demonSystem && demonSystem.getJsonDemonManager) {
+      const jsonDemonManager = demonSystem.getJsonDemonManager();
+      if (jsonDemonManager) {
+        demonManagerUI = new DemonManagerUI(jsonDemonManager);
+        (window as any).demonManagerUI = demonManagerUI;
+        console.log("👹 Demon Manager UI initialized from Combat Manual");
+      }
+    }
+
+    // If still no demon manager, create a standalone one
+    if (!demonManagerUI) {
+      try {
+        const { JsonDemonManager } = await import("./systems/JsonDemonManager");
+        const standaloneManager = new JsonDemonManager();
+        demonManagerUI = new DemonManagerUI(standaloneManager);
+        (window as any).demonManagerUI = demonManagerUI;
+        console.log("👹 Standalone Demon Manager UI created");
+      } catch (error) {
+        console.error("❌ Failed to import JsonDemonManager:", error);
+      }
+    }
+  }
+
+  if (demonManagerUI) {
+    demonManagerUI.show();
+  } else {
+    console.error("❌ Failed to initialize Demon Manager UI");
+    alert(
+      "Unable to open Demon Manager. Please try again from the in-game menu."
+    );
+  }
 }
 
 // Make functions available globally
@@ -1840,3 +1907,8 @@ function initializePreviewReferences(game: any): void {
 (window as any).testBSPMap = testBSPMap;
 (window as any).listBSPMaps = listBSPMaps;
 (window as any).showMapSelectionMenu = showMapSelectionMenu;
+(window as any).openDemonManagerFromCombatManual =
+  openDemonManagerFromCombatManual;
+
+// Make demon manager available globally for UI callbacks
+(window as any).demonManagerUI = demonManagerUI;

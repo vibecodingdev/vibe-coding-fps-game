@@ -1269,6 +1269,18 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
   box-shadow: 0 0 20px rgba(255, 102, 0, 0.6);
 }
 
+/* Special styling for Custom Demons button */
+.tab-button[onclick*="openDemonManagerFromCombatManual"] {
+  background: linear-gradient(135deg, #8a2be2, #6a1b9a);
+  border-color: #8a2be2;
+  color: #ffffff;
+}
+
+.tab-button[onclick*="openDemonManagerFromCombatManual"]:hover {
+  background: linear-gradient(135deg, #9932cc, #7b1fa2);
+  box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+}
+
 .tab-content {
   display: none;
   animation: fadeIn 0.3s ease;

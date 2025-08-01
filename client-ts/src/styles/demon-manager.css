@@ -1,0 +1,34 @@
+/* Demon Manager Button Styles */
+.demon-manager-btn {
+  background: linear-gradient(45deg, #ff6600, #ff8800);
+  color: white;
+  border: 2px solid #ff4500;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.demon-manager-btn:hover {
+  background: linear-gradient(45deg, #ff8800, #ffaa00);
+  border-color: #ff6600;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4);
+}
+
+.demon-manager-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 102, 0, 0.3);
+}
+
+/* Settings group for demon manager */
+.setting-group h4 {
+  color: #ff6600;
+  margin: 15px 0 10px 0;
+  font-size: 16px;
+  text-align: center;
+}

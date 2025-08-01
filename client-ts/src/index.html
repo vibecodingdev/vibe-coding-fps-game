@@ -15,6 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Exo+2:wght@300;400;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="styles/demon-manager.css" />
     
     <!-- Critical CSS to prevent FOUC -->
     <style>
@@ -294,6 +295,9 @@
           </button>
           <button class="tab-button" onclick="showPreviewTab('scenes')">
             🎪 SCENES
+          </button>
+          <button class="tab-button" onclick="openDemonManagerFromCombatManual()">
+            📝 CUSTOM DEMONS
           </button>
         </div>
 
@@ -710,6 +714,17 @@
                   </select>
                 </label>
               </div>
+            </div>
+            
+            <!-- Demon Manager Section -->
+            <div class="setting-group">
+              <h4>👹 CUSTOM DEMONS</h4>
+              <button id="openDemonManagerBtn" class="demon-manager-btn">
+                📝 Manage Custom Demons
+              </button>
+              <small style="color: #888; display: block; margin-top: 4px;">
+                Create, edit, and import custom demon configurations
+              </small>
             </div>
           </div>
         </div>

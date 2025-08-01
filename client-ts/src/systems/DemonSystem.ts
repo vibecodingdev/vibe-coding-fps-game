@@ -13,6 +13,7 @@ import {
 } from "@/config/demons";
 import { SceneManager } from "@/core/SceneManager";
 import { SceneThemeName } from "@/themes";
+import { JsonDemonManager } from "./JsonDemonManager";
 
 // Animation states for demons
 interface DemonAnimation {
@@ -51,9 +52,34 @@ export class DemonSystem implements IDemonSystem {
   private nextWaveTimer: NodeJS.Timeout | null = null;
   private readonly timeBetweenWaves = 5000; // 5 seconds between waves
   private isMultiplayerMode = false; // Track if we're in multiplayer mode
+  private jsonDemonManager: JsonDemonManager | null = null; // JSON demon management
 
   public async initialize(): Promise<void> {
     console.log("🔥 DemonSystem initialized with enhanced DOOM-style models");
+
+    // Initialize JSON demon manager
+    this.jsonDemonManager = new JsonDemonManager();
+
+    // Ensure auto-load is enabled
+    this.jsonDemonManager.updateSettings({ autoLoad: true });
+
+    console.log("📝 JSON Demon Manager initialized with auto-load enabled");
+
+    // Log the number of loaded JSON demons
+    const loadedDemons = this.jsonDemonManager.getLoadedDemons();
+    console.log(
+      `🎮 ${loadedDemons.size} JSON demons loaded and ready for spawning`
+    );
+
+    // Debug: List all loaded JSON demons
+    if (loadedDemons.size > 0) {
+      console.log("📋 Loaded JSON demons:");
+      loadedDemons.forEach((config, id) => {
+        console.log(`  - ${id}: ${(config as any).name || "Unnamed"}`);
+      });
+    } else {
+      console.warn("⚠️ No JSON demons were loaded!");
+    }
   }
 
   public setMultiplayerMode(isMultiplayer: boolean): void {
@@ -80,6 +106,78 @@ export class DemonSystem implements IDemonSystem {
 
   public setSceneManager(sceneManager: SceneManager): void {
     this.sceneManager = sceneManager;
+  }
+
+  public getJsonDemonManager(): JsonDemonManager | null {
+    return this.jsonDemonManager;
+  }
+
+  /**
+   * Select a random JSON demon based on spawn weights
+   */
+  private selectRandomJsonDemon(): string | null {
+    if (!this.jsonDemonManager) {
+      console.log("🚫 No JSON demon manager available");
+      return null;
+    }
+
+    const jsonDemons = this.jsonDemonManager.getLoadedDemons();
+    console.log(`🎲 Checking JSON demons: ${jsonDemons.size} available`);
+
+    if (jsonDemons.size === 0) {
+      console.log("📭 No JSON demons to select from");
+      return null;
+    }
+
+    // Convert to array with spawn weights
+    const weightedDemons: Array<{ id: string; weight: number }> = [];
+
+    jsonDemons.forEach((config, id) => {
+      const weight = (config as any).spawnWeight || 1;
+      weightedDemons.push({ id, weight });
+    });
+
+    // Calculate total weight
+    const totalWeight = weightedDemons.reduce(
+      (sum, demon) => sum + demon.weight,
+      0
+    );
+
+    // 30% chance to spawn a JSON demon (adjustable)
+    const spawnChance = 0.3;
+    const random = Math.random();
+    console.log(
+      `🎯 Spawn chance check: ${random.toFixed(3)} vs ${spawnChance} threshold`
+    );
+
+    if (random > spawnChance) {
+      console.log("🚫 Random check failed, using standard demon");
+      return null;
+    }
+
+    console.log("✅ JSON demon spawn chance succeeded!");
+    console.log(`🎲 Available weighted demons:`, weightedDemons);
+
+    // Select based on weight
+    let weightRandom = Math.random() * totalWeight;
+    console.log(
+      `🎲 Weight selection: ${weightRandom.toFixed(3)} out of ${totalWeight}`
+    );
+
+    for (const demon of weightedDemons) {
+      weightRandom -= demon.weight;
+      console.log(
+        `  Checking ${demon.id} (weight: ${
+          demon.weight
+        }), remaining: ${weightRandom.toFixed(3)}`
+      );
+      if (weightRandom <= 0) {
+        console.log(`🎲 Selected JSON demon: ${demon.id}`);
+        return demon.id;
+      }
+    }
+
+    return null;
   }
 
   public update(deltaTime: number): void {
@@ -877,7 +975,7 @@ export class DemonSystem implements IDemonSystem {
       // Get demon config for attack cooldown and damage calculation
       const demonType = userData.demonType || "IMP";
       const config = DEMON_CONFIGS[demonType as DemonType] || DEMON_CONFIGS.IMP;
-      
+
       // Use configured attack cooldown or default to 180 frames (3 seconds at 60fps)
       userData.attackCooldown = config.attackCooldown || 180;
       userData.hasAttacked = true;
@@ -1288,7 +1386,26 @@ export class DemonSystem implements IDemonSystem {
 
   private spawnDemon(demonType: DemonType): void {
     const config = DEMON_CONFIGS[demonType];
-    const demon = this.createDemonModel(demonType);
+
+    // Check if we should spawn a JSON demon instead
+    const jsonDemonId = this.selectRandomJsonDemon();
+    let actualConfig = config;
+
+    // Get JSON demon config if selected
+    if (jsonDemonId && this.jsonDemonManager) {
+      const jsonDemons = this.jsonDemonManager.getLoadedDemons();
+      const jsonConfig = jsonDemons.get(jsonDemonId);
+      if (jsonConfig) {
+        actualConfig = jsonConfig as any;
+        console.log(
+          `🎮 Spawning JSON demon: ${jsonConfig.name || jsonDemonId}`
+        );
+      }
+    }
+
+    const demon = jsonDemonId
+      ? this.createDemonModel(demonType, jsonDemonId)
+      : this.createDemonModel(demonType);
 
     // Position demon randomly around the map edges, respecting boundaries
     const angle = Math.random() * Math.PI * 2;
@@ -1317,37 +1434,45 @@ export class DemonSystem implements IDemonSystem {
     spawnPosition.y = groundHeight;
 
     demon.position.copy(spawnPosition);
-    demon.scale.setScalar(config.scale);
+    demon.scale.setScalar(actualConfig.scale);
 
     const demonInstance: DemonInstance = {
       id: `demon_${Date.now()}_${Math.random()}`,
       type: demonType,
       mesh: demon,
       state: "idle",
-      health: config.health,
+      health: actualConfig.health,
       position: spawnPosition,
       targetPosition: spawnPosition.clone(),
       patrolCenter: spawnPosition.clone(),
       patrolRadius: 10,
       lastAttackTime: 0,
       lastStateChange: Date.now(),
-      movementSpeed: config.speed,
+      movementSpeed: actualConfig.speed,
     };
+
+    // Store JSON demon ID for reference if this is a JSON demon
+    if (jsonDemonId) {
+      (demonInstance as any).jsonDemonId = jsonDemonId;
+    }
 
     // Set up user data
     demon.userData = {
       demonType,
-      detectRange: config.detectRange,
-      attackRange: config.attackRange,
-      chaseRange: config.chaseRange,
-      attackDamage: config.attackDamage,
-      walkSpeed: config.speed, // Add walk speed from config
+      detectRange:
+        actualConfig.behavior?.detectRange || actualConfig.detectRange,
+      attackRange:
+        actualConfig.behavior?.attackRange || actualConfig.attackRange,
+      chaseRange: actualConfig.behavior?.chaseRange || actualConfig.chaseRange,
+      attackDamage:
+        actualConfig.behavior?.attackDamage || actualConfig.attackDamage,
+      walkSpeed: actualConfig.speed, // Add walk speed from config
       attackCooldown: 0,
       isAttacking: false,
       isFalling: false,
       isDead: false,
       attackScaleSet: false,
-      originalScale: config.scale,
+      originalScale: actualConfig.scale,
       wanderDirection: Math.random() * Math.PI * 2, // Add initial wander direction
       wanderTimer: Math.random() * 120, // Add initial wander timer
     };
@@ -1367,26 +1492,52 @@ export class DemonSystem implements IDemonSystem {
     );
   }
 
-  public createDemonModel(demonType: DemonType): THREE.Group {
+  public createDemonModel(
+    demonType: DemonType,
+    jsonDemonId?: string
+  ): THREE.Group {
     // Get current theme from SceneManager for theme-specific demon variants
     const currentTheme = this.sceneManager?.getCurrentTheme();
     const themeName = currentTheme
       ?.getConfig()
       .name.toLowerCase() as SceneThemeName;
 
-    // Use theme-specific configuration if available, otherwise fall back to base config
-    const typeData = getThemeDemonConfig(demonType, themeName);
+    let typeData: any;
+
+    // Check if this is a JSON demon first
+    if (jsonDemonId && this.jsonDemonManager) {
+      const jsonDemons = this.jsonDemonManager.getLoadedDemons();
+      const jsonDemonConfig = jsonDemons.get(jsonDemonId);
+      if (jsonDemonConfig) {
+        typeData = jsonDemonConfig;
+        console.log(`🎮 Creating JSON demon model: ${jsonDemonConfig.name}`);
+      } else {
+        console.warn(
+          `❌ JSON demon not found: ${jsonDemonId}, falling back to standard config`
+        );
+        typeData = getThemeDemonConfig(demonType, themeName);
+      }
+    } else {
+      // Use theme-specific configuration if available, otherwise fall back to base config
+      typeData = getThemeDemonConfig(demonType, themeName);
+    }
+
     const demonGroup = new THREE.Group();
 
     // Create enhanced materials with DOOM-style aesthetics
+    // Handle both standard and JSON demon configurations
+    const bodyColor = typeData.colors?.primary || typeData.color || "#ff0000";
+    const headColor = typeData.colors?.head || typeData.headColor || "#ff0000";
+    const eyeColor = typeData.colors?.eyes || typeData.eyeColor || "#ffff00";
+
     const bodyMaterial = new THREE.MeshPhongMaterial({
-      color: typeData.color,
+      color: bodyColor,
       shininess: 10,
       specular: 0x222222,
     });
 
     const headMaterial = new THREE.MeshPhongMaterial({
-      color: typeData.headColor,
+      color: headColor,
       shininess: 15,
       specular: 0x333333,
     });
@@ -1430,8 +1581,8 @@ export class DemonSystem implements IDemonSystem {
     // Enhanced glowing eyes
     const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
     const eyeMaterial = new THREE.MeshLambertMaterial({
-      color: typeData.eyeColor,
-      emissive: new THREE.Color(typeData.eyeColor),
+      color: eyeColor,
+      emissive: new THREE.Color(eyeColor),
       emissiveIntensity: 0.8,
     });
 
@@ -1483,7 +1634,7 @@ export class DemonSystem implements IDemonSystem {
     }
 
     // Add demon-specific details
-    this.addDemonDetails(demonGroup, demonType, typeData);
+    this.addDemonDetails(demonGroup, demonType, typeData, eyeColor);
 
     // Add theme-specific enhancements
     if (themeName) {
@@ -1858,7 +2009,8 @@ export class DemonSystem implements IDemonSystem {
   private addDemonDetails(
     demonGroup: THREE.Group,
     demonType: DemonType,
-    typeData: any
+    typeData: any,
+    eyeColor: string
   ): void {
     if (demonType === "BARON") {
       // Baron: Crown and shoulder armor
@@ -1963,7 +2115,7 @@ export class DemonSystem implements IDemonSystem {
     // Add ambient glow effect for all demons
     const glowGeometry = new THREE.SphereGeometry(0.5, 16, 8);
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: typeData.eyeColor,
+      color: eyeColor,
       transparent: true,
       opacity: 0.1,
       side: THREE.BackSide,
