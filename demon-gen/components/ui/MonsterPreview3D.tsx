@@ -131,25 +131,30 @@ export default function MonsterPreview3D({
         roughness: 0.6,
       });
 
-      // Create body based on body type
+      // Create body based on body type - matching client-ts DemonSystem implementation
       const bodyType = monster.appearance?.bodyType || "humanoid";
       let bodyGeometry: THREE.BufferGeometry;
 
       switch (bodyType) {
         case "floating":
+          // Floating demons like Cacodemon: Large sphere
           bodyGeometry = new THREE.SphereGeometry(0.8, 16, 12);
           break;
         case "dragon":
-          bodyGeometry = new THREE.CylinderGeometry(0.3, 0.6, 1.8, 8);
+          // Dragon: Tall imposing figure
+          bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.6, 12);
           break;
         case "quadruped":
+          // Quadruped: Horizontal body
           bodyGeometry = new THREE.BoxGeometry(1.2, 0.6, 0.8);
           break;
         case "small_biped":
+          // Small biped: Compact cylindrical body
           bodyGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 8);
           break;
         case "humanoid":
         default:
+          // Humanoid: More muscular torso like client-ts
           bodyGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);
           break;
       }
@@ -160,14 +165,17 @@ export default function MonsterPreview3D({
       body.receiveShadow = true;
       demonGroup.add(body);
 
-      // Create head
+      // Create head - matching client-ts DemonSystem implementation
       let headGeometry: THREE.BufferGeometry;
       if (bodyType === "floating") {
+        // Floating demons: Small head on top of sphere
         headGeometry = new THREE.SphereGeometry(0.3, 12, 8);
       } else if (bodyType === "dragon") {
-        headGeometry = new THREE.ConeGeometry(0.3, 0.6, 8);
+        // Dragon: Angular, menacing head
+        headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
       } else {
-        headGeometry = new THREE.SphereGeometry(0.25, 12, 8);
+        // Humanoid/small_biped: Rounded but angular
+        headGeometry = new THREE.CylinderGeometry(0.2, 0.25, 0.4, 8);
       }
 
       const head = new THREE.Mesh(headGeometry, headMaterial);
@@ -189,11 +197,22 @@ export default function MonsterPreview3D({
       const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
       const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
 
-      leftEye.position.set(-0.1, head.position.y + 0.05, 0.2);
-      rightEye.position.set(0.1, head.position.y + 0.05, 0.2);
+      // Position eyes based on body type - matching client-ts positioning
+      if (bodyType === "floating") {
+        leftEye.position.set(-0.15, head.position.y + 0.05, 0.25);
+        rightEye.position.set(0.15, head.position.y + 0.05, 0.25);
+      } else {
+        leftEye.position.set(-0.1, head.position.y + 0.05, 0.3);
+        rightEye.position.set(0.1, head.position.y + 0.05, 0.3);
+      }
 
       demonGroup.add(leftEye);
       demonGroup.add(rightEye);
+
+      // Add basic limbs for humanoid and small_biped types (matching client-ts)
+      if (bodyType === "humanoid" || bodyType === "small_biped") {
+        addBasicLimbs(demonGroup, monster, bodyMaterial);
+      }
 
       // Add visual features
       addVisualFeatures(demonGroup, monster, bodyMaterial);
@@ -211,6 +230,126 @@ export default function MonsterPreview3D({
       console.error("Failed to create demon model:", err);
       setError("Failed to create 3D model");
       setIsLoading(false);
+    }
+  };
+
+  const addBasicLimbs = (
+    demonGroup: THREE.Group,
+    monster: MonsterConfig,
+    baseMaterial: THREE.Material
+  ) => {
+    const bodyType = monster.appearance?.bodyType || "humanoid";
+    const features = monster.appearance?.visualFeatures;
+
+    // Create arm material - matching client-ts
+    const armMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(monster.colors.head || "#ff0000"),
+      emissive: new THREE.Color(monster.colors.head || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
+    });
+
+    // Create leg material - matching client-ts
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(monster.colors.primary || "#ff0000"),
+      emissive: new THREE.Color(monster.colors.primary || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
+    });
+
+    // Add arms
+    const armGeometry =
+      bodyType === "small_biped"
+        ? new THREE.CylinderGeometry(0.06, 0.08, 0.4, 6)
+        : new THREE.CylinderGeometry(0.06, 0.1, 0.7, 6);
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+
+    if (bodyType === "small_biped") {
+      leftArm.position.set(-0.25, 0.5, 0);
+      rightArm.position.set(0.25, 0.5, 0);
+      leftArm.rotation.z = 0.2;
+      rightArm.rotation.z = -0.2;
+    } else {
+      leftArm.position.set(-0.45, 0.8, 0);
+      rightArm.position.set(0.45, 0.8, 0);
+      leftArm.rotation.z = 0.3;
+      rightArm.rotation.z = -0.3;
+    }
+
+    leftArm.castShadow = true;
+    rightArm.castShadow = true;
+    demonGroup.add(leftArm);
+    demonGroup.add(rightArm);
+
+    // Add legs
+    const legGeometry =
+      bodyType === "small_biped"
+        ? new THREE.CylinderGeometry(0.1, 0.12, 0.5, 6)
+        : new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+
+    if (bodyType === "small_biped") {
+      leftLeg.position.set(-0.15, -0.25, 0);
+      rightLeg.position.set(0.15, -0.25, 0);
+    } else {
+      leftLeg.position.set(-0.2, -0.4, 0);
+      rightLeg.position.set(0.2, -0.4, 0);
+    }
+
+    leftLeg.castShadow = true;
+    rightLeg.castShadow = true;
+    demonGroup.add(leftLeg);
+    demonGroup.add(rightLeg);
+
+    // Add claws if specified - matching client-ts implementation
+    if (features?.hasClaws) {
+      const clawGeometry = new THREE.ConeGeometry(0.03, 0.15, 6);
+      const clawMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#222222"),
+        metalness: 0.6,
+        roughness: 0.3,
+      });
+
+      for (let side = 0; side < 2; side++) {
+        const armSide = side === 0 ? -1 : 1;
+        for (let i = 0; i < 3; i++) {
+          const claw = new THREE.Mesh(clawGeometry, clawMaterial);
+          const xPos = bodyType === "small_biped" ? 0.25 : 0.45;
+          const yPos = bodyType === "small_biped" ? 0.3 : 0.4;
+
+          claw.position.set(armSide * xPos + (i - 1) * 0.05, yPos, 0.1);
+          claw.rotation.x = Math.PI;
+          claw.castShadow = true;
+          demonGroup.add(claw);
+        }
+      }
+    }
+
+    // Add hooves for humanoid demons - matching client-ts
+    if (bodyType === "humanoid") {
+      const hoofGeometry = new THREE.BoxGeometry(0.15, 0.08, 0.2);
+      const hoofMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#333333"),
+        metalness: 0.3,
+        roughness: 0.8,
+      });
+
+      const leftHoof = new THREE.Mesh(hoofGeometry, hoofMaterial);
+      const rightHoof = new THREE.Mesh(hoofGeometry, hoofMaterial);
+
+      leftHoof.position.set(-0.2, -0.84, 0.05);
+      rightHoof.position.set(0.2, -0.84, 0.05);
+
+      leftHoof.castShadow = true;
+      rightHoof.castShadow = true;
+      demonGroup.add(leftHoof);
+      demonGroup.add(rightHoof);
     }
   };
 
@@ -232,19 +371,43 @@ export default function MonsterPreview3D({
       roughness: 0.5,
     });
 
-    // Add wings
+    // Add wings - improved to match client-ts style
     if (features.hasWings) {
-      const wingGeometry = new THREE.PlaneGeometry(0.8, 0.4);
-      const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
-      const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
+      const bodyType = monster.appearance?.bodyType || "humanoid";
 
-      leftWing.position.set(-0.6, 1.2, -0.2);
-      rightWing.position.set(0.6, 1.2, -0.2);
-      leftWing.rotation.z = 0.3;
-      rightWing.rotation.z = -0.3;
+      if (bodyType === "dragon") {
+        // Dragon wings: More angular, like client-ts dragon features
+        const wingGeometry = new THREE.CylinderGeometry(0.05, 0.3, 1.2, 8);
+        const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
 
-      demonGroup.add(leftWing);
-      demonGroup.add(rightWing);
+        leftWing.position.set(-0.8, 1.0, -0.2);
+        rightWing.position.set(0.8, 1.0, -0.2);
+        leftWing.rotation.z = Math.PI / 4;
+        leftWing.rotation.x = -Math.PI / 6;
+        rightWing.rotation.z = -Math.PI / 4;
+        rightWing.rotation.x = -Math.PI / 6;
+
+        leftWing.castShadow = true;
+        rightWing.castShadow = true;
+        demonGroup.add(leftWing);
+        demonGroup.add(rightWing);
+      } else {
+        // Standard wings: Plane geometry
+        const wingGeometry = new THREE.PlaneGeometry(0.8, 0.4);
+        const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
+
+        leftWing.position.set(-0.6, 1.2, -0.2);
+        rightWing.position.set(0.6, 1.2, -0.2);
+        leftWing.rotation.z = 0.3;
+        rightWing.rotation.z = -0.3;
+
+        leftWing.castShadow = true;
+        rightWing.castShadow = true;
+        demonGroup.add(leftWing);
+        demonGroup.add(rightWing);
+      }
     }
 
     // Add horns
@@ -256,6 +419,8 @@ export default function MonsterPreview3D({
       leftHorn.position.set(-0.15, 1.6, 0);
       rightHorn.position.set(0.15, 1.6, 0);
 
+      leftHorn.castShadow = true;
+      rightHorn.castShadow = true;
       demonGroup.add(leftHorn);
       demonGroup.add(rightHorn);
     }
@@ -266,6 +431,7 @@ export default function MonsterPreview3D({
       const tail = new THREE.Mesh(tailGeometry, accentMaterial);
       tail.position.set(0, 0.4, -0.4);
       tail.rotation.x = 0.5;
+      tail.castShadow = true;
       demonGroup.add(tail);
     }
 
@@ -280,6 +446,7 @@ export default function MonsterPreview3D({
           1.0 + Math.random() * 0.4,
           Math.sin(angle) * 0.3
         );
+        spike.castShadow = true;
         demonGroup.add(spike);
       }
     }
