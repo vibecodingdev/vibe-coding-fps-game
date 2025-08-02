@@ -15,6 +15,7 @@ A comprehensive **multi-platform FPS game ecosystem** featuring both classic Jav
 - **🌐 Real-time Multiplayer**: Socket.IO-based networking with voice chat
 - **📱 Professional Website**: Next.js-based platform with Stripe integration
 - **🗺️ BSP Map Viewer**: Dedicated tool for Quake/Half-Life map visualization
+- **🤖 AI Demon Generator**: OpenSota AI-powered custom monster creation tool
 
 ## 📁 Project Architecture
 
@@ -61,6 +62,13 @@ A comprehensive **multi-platform FPS game ecosystem** featuring both classic Jav
 - **Technology**: Three.js with Parcel build system
 - **Features**: Real-time map loading, texture visualization, geometry analysis
 - **Integration**: Direct BSP file support for game client testing
+
+#### 👹 **AI Demon Generator** (`demon-gen/`)
+
+- **Purpose**: AI-powered tool for creating custom demon configurations
+- **Technology**: Next.js 14 + OpenSota AI (GLM-4.5-Air model)
+- **Features**: Natural language to JSON conversion, visual preview, export functionality
+- **Integration**: Direct JSON import into game's demon management system
 
 ### 📚 **Documentation** (`docs/`)
 
@@ -111,6 +119,15 @@ A comprehensive **multi-platform FPS game ecosystem** featuring both classic Jav
 - **Weapon Sound Effects**: Authentic audio for each weapon type
 - **Demon Audio**: Varied creature sounds (roars, growls, attacks)
 - **Environmental Audio**: Atmospheric soundscapes per theme
+
+### 🤖 **AI-Powered Demon Creation**
+
+- **Natural Language Processing**: Describe monsters in plain English for AI generation
+- **OpenSota AI Integration**: Powered by GLM-4.5-Air model for intelligent content creation
+- **JSON Configuration Output**: Generate complete demon configs ready for game import
+- **Visual Preview System**: Review monster stats, colors, and abilities before export
+- **Multi-Theme Support**: Automatic color variations for all 6 game environments
+- **Direct Game Integration**: One-click import into the demon management system
 
 ## 📁 Complete Project Structure
 
@@ -164,6 +181,16 @@ doom-protocol/
 │   ├── docs/                 # Built viewer application
 │   ├── package.json          # Parcel build system
 │   └── readme.md             # BSP viewer documentation
+├── demon-gen/                    # 👹 AI Demon Generator
+│   ├── app/                  # Next.js 14 app router
+│   │   ├── api/generate/    # OpenSota AI integration
+│   │   ├── layout.tsx       # Root layout
+│   │   └── page.tsx         # Main generator interface
+│   ├── components/ui/        # Gaming-themed React components
+│   ├── types/                # Monster configuration types
+│   ├── utils/                # Helper functions
+│   ├── package.json          # Next.js + AI dependencies
+│   └── README.md             # Generator documentation
 ├── docs/                         # 📚 Project Documentation
 │   ├── doc-en.md            # English documentation
 │   ├── doc.md               # Chinese documentation
@@ -213,6 +240,12 @@ cd ../server
 npm install
 npm run dev
 # 🌐 Server running at http://localhost:3000
+
+# Setup AI demon generator (optional)
+cd ../demon-gen
+npm install
+npm run dev
+# 🤖 AI Generator available at http://localhost:3001
 ```
 
 ### 🔥 **Classic Setup (JavaScript Client)**
@@ -245,6 +278,9 @@ cd website && npm install && cd ..
 # 4. BSP Map Viewer
 cd bspview && npm install && cd ..
 
+# 5. AI Demon Generator
+cd demon-gen && npm install && cd ..
+
 # Start development servers
 npm run dev:all  # If available, or start each individually
 ```
@@ -254,6 +290,29 @@ npm run dev:all  # If available, or start each individually
 - Games must be served via HTTP/HTTPS (not file://) for audio and multiplayer features
 - TypeScript client requires Node.js build process, JavaScript client can run directly
 - Multiplayer requires server setup for real-time features
+- AI Demon Generator requires OpenSota API key for AI functionality
+
+### 🤖 **Using the AI Demon Generator**
+
+```bash
+# 1. Setup the generator
+cd demon-gen
+npm install
+
+# 2. Configure API key
+cp .env.example .env.local
+# Edit .env.local and add: OPENSOTA_API_KEY=your_api_key_here
+
+# 3. Start the generator
+npm run dev
+# Available at http://localhost:3001
+
+# 4. Create custom demons
+# - Enter natural language description
+# - Generate JSON configuration
+# - Copy or export the result
+# - Import into game via demon manager
+```
 
 ## 🎨 Visual Design & Technical Architecture
 
@@ -304,12 +363,13 @@ npm run dev:all  # If available, or start each individually
 
 ### 📈 **Codebase Metrics**
 
-- **Total Lines of Code**: 25,000+ across all components
+- **Total Lines of Code**: 26,000+ across all components
 - **TypeScript Client**: 15,000+ lines (modular architecture)
 - **JavaScript Client**: 7,500+ lines (monolithic structure)
 - **Multiplayer Server**: 2,000+ lines (Node.js + Socket.IO)
 - **Website Platform**: 3,000+ lines (Next.js + React)
 - **BSP Map Viewer**: 1,500+ lines (Three.js + utilities)
+- **AI Demon Generator**: 1,000+ lines (Next.js + OpenSota AI)
 
 ### 🎮 **Game Content**
 
@@ -338,6 +398,7 @@ npm run dev:all  # If available, or start each individually
 - **Enhanced Game Content**: 9 demons, 4 weapons, 6 themes
 - **BSP Map Support**: Quake/Half-Life map loading
 - **Professional Website**: Next.js platform with authentication
+- **AI Demon Generator**: OpenSota AI-powered custom monster creation
 - **Development Tools**: Comprehensive testing and build systems
 
 ### 🔄 **Current Development**
@@ -347,6 +408,7 @@ npm run dev:all  # If available, or start each individually
 - **Enhanced Networking**: Improved synchronization algorithms
 - **Content Expansion**: Additional weapons and demon types
 - **Map Editor**: In-browser level creation tools
+- **Enhanced AI Generation**: Advanced demon creation with more AI models
 
 ### 🎯 **Future Phases**
 
@@ -395,6 +457,13 @@ npm run dev:all  # If available, or start each individually
 - **Process Manager**: PM2 for production deployment
 - **Database**: PostgreSQL (via Supabase) for website features
 
+### 🤖 **AI Tool Requirements**
+
+- **OpenSota API Key**: For demon generator AI functionality
+- **GLM-4.5-Air Model**: Access via OpenSota platform
+- **Environment Variables**: Secure API key storage
+- **HTTPS/SSL**: Required for API calls in production
+
 ## 🏆 Project Achievements
 
 ### 🎮 **Game Development Excellence**
@@ -437,6 +506,7 @@ npm run dev:all  # If available, or start each individually
 - **[Multiplayer Server](./server/)** - Node.js + Socket.IO real-time server
 - **[Professional Website](./website/)** - Next.js platform with authentication
 - **[BSP Map Viewer](./bspview/)** - Three.js-based map visualization tool
+- **[AI Demon Generator](./demon-gen/)** - OpenSota AI-powered monster creation tool
 
 ### 📚 **Documentation**
 
