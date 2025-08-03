@@ -1803,3 +1803,331 @@ body.game-mode canvas:not(#radarCanvas):not(.preview-canvas) {
     margin-bottom: 1rem;
   }
 }
+
+/* =================== EXPERIMENTAL MAPS STYLES =================== */
+
+/* Experimental button styling */
+.menu-button.experimental {
+  background: linear-gradient(135deg, #8a2be2, #6a1b9a);
+  border-color: #8a2be2;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-button.experimental::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: experimentalShimmer 3s infinite;
+}
+
+.menu-button.experimental:hover {
+  background: linear-gradient(135deg, #9932cc, #7b1fa2);
+  box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+  transform: translateY(-2px);
+}
+
+@keyframes experimentalShimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Experimental menu styling */
+#experimentalMapsMenu {
+  justify-content: flex-start !important;
+  padding-top: 1rem;
+  padding-bottom: 3rem;
+}
+
+.experimental-warning {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 69, 0, 0.2),
+    rgba(255, 140, 0, 0.1)
+  );
+  border: 3px solid #ff4500;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem auto 2rem;
+  max-width: 800px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.experimental-warning::before {
+  content: "⚠️";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff4500;
+  color: white;
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #ffffff;
+}
+
+.warning-text {
+  color: #ffffff;
+  font-size: 1rem;
+  margin: 0.5rem 0;
+  text-shadow: 0 0 5px rgba(255, 69, 0, 0.5);
+}
+
+.experimental-map-selection {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  width: 100%;
+}
+
+.experimental-category {
+  margin-bottom: 3rem;
+}
+
+.experimental-category h3 {
+  color: #8a2be2;
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+  border-bottom: 2px solid #8a2be2;
+  padding-bottom: 0.5rem;
+}
+
+.category-description {
+  color: #cccccc;
+  text-align: center;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+.experimental-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  justify-items: center;
+}
+
+.experimental-map-card {
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  border: 2px solid #8a2be2;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 350px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.experimental-map-card:hover {
+  transform: translateY(-8px);
+  border-color: #9932cc;
+  box-shadow: 0 12px 30px rgba(138, 43, 226, 0.3);
+}
+
+.experimental-map-card.selected {
+  border-color: #00ff00;
+  background: linear-gradient(135deg, #003300, #001a00);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+}
+
+.experimental-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #8a2be2, #6a1b9a);
+  color: white;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  border-radius: 15px;
+  border: 1px solid #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: experimentalPulse 2s infinite;
+}
+
+@keyframes experimentalPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.experimental-status {
+  color: #ff8c00;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  text-align: center;
+  padding: 0.3rem;
+  background: rgba(255, 140, 0, 0.1);
+  border-radius: 5px;
+  border: 1px solid #ff8c00;
+}
+
+.experimental-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem 2rem;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.experimental-buttons .menu-button {
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.menu-button.experimental-confirm {
+  background: linear-gradient(135deg, #ff4500, #ff6500);
+  border-color: #ff4500;
+  color: #ffffff;
+  position: relative;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.menu-button.experimental-confirm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff6500, #ff8500);
+  box-shadow: 0 4px 15px rgba(255, 69, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.menu-button.experimental-confirm:disabled {
+  background: #444444;
+  border-color: #666666;
+  color: #888888;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menu-button.experimental-confirm:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.selected-experimental-info {
+  background: linear-gradient(135deg, #003300, #001a00);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem auto 0;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.selected-experimental-info h3 {
+  color: #00ff00;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+}
+
+.selected-experimental-info p {
+  color: #cccccc;
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.risk-acknowledgment {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 69, 0, 0.1);
+  border: 1px solid #ff4500;
+  border-radius: 5px;
+}
+
+.risk-acknowledgment label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.risk-acknowledgment input[type="checkbox"] {
+  accent-color: #ff4500;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Responsive design for experimental menu */
+@media (max-width: 768px) {
+  #experimentalMapsMenu {
+    padding: 1rem 0.5rem 2rem;
+  }
+
+  .experimental-map-selection {
+    padding: 0.5rem;
+  }
+
+  .experimental-map-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .experimental-map-card {
+    max-width: none;
+    margin: 0 auto;
+  }
+
+  .experimental-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .experimental-buttons .menu-button {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .experimental-warning {
+    margin: 1rem 0.5rem 2rem;
+    padding: 1rem;
+  }
+
+  .warning-text {
+    font-size: 0.9rem;
+  }
+}

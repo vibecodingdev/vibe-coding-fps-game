@@ -53,11 +53,26 @@ export interface MonsterConfig {
 }
 
 export type BodyType =
-  | "humanoid"
-  | "quadruped"
-  | "dragon"
-  | "small_biped"
-  | "floating";
+  | "humanoid" // Traditional bipedal demons with arms
+  | "quadruped" // Four-legged beasts
+  | "dragon" // Large winged creatures
+  | "small_biped" // Small agile bipeds
+  | "floating" // Levitating entities
+  | "serpentine" // Snake-like, elongated bodies
+  | "arachnid" // Spider-like, multiple legs
+  | "tentacled" // Octopus-like, flexible appendages
+  | "insectoid" // Bug-like, segmented bodies
+  | "amorphous" // Shapeless, blob-like forms
+  | "centauroid" // Horse-like lower body, humanoid upper
+  | "multi_headed" // Multiple heads on one body
+  | "elemental" // Energy/fire/ice/rock form beings
+  | "mechanical" // Robotic/cybernetic constructs
+  | "plant_like" // Vine/tree-like organic forms
+  | "crystalline" // Gem/crystal-based structures
+  | "swarm" // Multiple small entities as one
+  | "giant_humanoid" // Massive bipedal titans
+  | "winged_humanoid" // Humanoid with prominent wings
+  | "aquatic";
 
 export interface GenerationRequest {
   prompt: string;

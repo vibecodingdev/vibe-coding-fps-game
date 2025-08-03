@@ -12,6 +12,7 @@ import { StateManager } from "@/core/StateManager";
 import { GAME_CONFIG } from "@/config/game";
 import { type SceneThemeName } from "@/themes";
 import { CollisionSystem } from "@/systems/CollisionSystem";
+import { LeaderboardSystem } from "@/systems/LeaderboardSystem";
 
 export class Game {
   private static instance: Game | null = null;
@@ -34,6 +35,7 @@ export class Game {
   private uiManager!: UIManager;
   private collectibleSystem!: CollectibleSystem;
   private collisionSystem!: CollisionSystem;
+  private leaderboardSystem!: LeaderboardSystem;
 
   // Game state
   private playerState!: PlayerState;
@@ -97,6 +99,7 @@ export class Game {
     this.networkManager = NetworkManager.getInstance();
     this.uiManager = UIManager.getInstance();
     this.collectibleSystem = new CollectibleSystem();
+    this.leaderboardSystem = LeaderboardSystem.getInstance();
   }
 
   public async initialize(
@@ -275,6 +278,38 @@ export class Game {
     this.gameState = "playing";
     this.resetGameState();
 
+    // Start tracking for leaderboard (safe call)
+    try {
+      const gameMode = isMultiplayer ? "multiplayer" : "single_player";
+      const mapType = themeName || "default";
+      this.leaderboardSystem?.startSession(gameMode, mapType);
+    } catch (error) {
+      console.warn("⚠️ Failed to start leaderboard tracking:", error);
+    }
+
+    // Check authentication status (non-blocking, safe call)
+    try {
+      this.leaderboardSystem
+        ?.checkAuthentication()
+        .then((authResult) => {
+          if (authResult.authenticated) {
+            console.log(
+              "✅ Leaderboard tracking enabled for user:",
+              authResult.user?.email
+            );
+          } else {
+            console.log(
+              "📊 Playing anonymously - stats won't be saved to leaderboard"
+            );
+          }
+        })
+        .catch((error) => {
+          console.warn("⚠️ Leaderboard authentication check failed:", error);
+        });
+    } catch (error) {
+      console.warn("⚠️ Leaderboard system not available:", error);
+    }
+
     // For single player, use doomMap theme if not specified
     if (!isMultiplayer && !themeName) {
       themeName = "doomMap";
@@ -439,6 +474,25 @@ export class Game {
     this.stopGameLoop();
     this.audioSystem.stopBackgroundMusic();
 
+    // End leaderboard session
+    try {
+      this.leaderboardSystem
+        ?.endSession(false)
+        .then((result) => {
+          if (result && result.success) {
+            console.log("📊 Game stats submitted to leaderboard");
+          }
+        })
+        .catch((error) => {
+          console.warn("⚠️ Failed to submit leaderboard stats:", error);
+        });
+    } catch (error) {
+      console.warn(
+        "⚠️ Leaderboard system not available for session end:",
+        error
+      );
+    }
+
     // Reset demon system to stop wave spawning
     this.demonSystem.waveInProgress = false;
 
@@ -471,6 +525,28 @@ export class Game {
 
   public returnToMainMenu(): void {
     console.log("🏠 Returning to main menu...");
+
+    // End leaderboard session if active
+    try {
+      this.leaderboardSystem
+        ?.endSession(false)
+        .then((result) => {
+          if (result && result.success) {
+            console.log("📊 Game stats submitted when returning to menu");
+          }
+        })
+        .catch((error) => {
+          console.warn(
+            "⚠️ Failed to submit leaderboard stats on menu return:",
+            error
+          );
+        });
+    } catch (error) {
+      console.warn(
+        "⚠️ Leaderboard system not available for menu return:",
+        error
+      );
+    }
 
     // Stop the game loop first to prevent issues
     this.stopGameLoop();
@@ -931,6 +1007,9 @@ export class Game {
         // Play health pack sound
         this.audioSystem.playHealthPackSound();
 
+        // Track for leaderboard
+        this.leaderboardSystem?.incrementHealthPacksCollected();
+
         // Update UI to reflect health change
         this.uiManager.updateHealth(this.playerState);
       }
@@ -943,6 +1022,9 @@ export class Game {
         console.log(`🔋 Energy cell collected! Refilled ${refillText}`);
         // Play ammo pack sound
         this.audioSystem.playAmmoPackSound();
+
+        // Track for leaderboard
+        this.leaderboardSystem?.incrementAmmoPacksCollected();
 
         // Update UI to reflect ammo changes
         const currentWeapon = this.weaponSystem.currentWeapon;
@@ -1057,6 +1139,9 @@ export class Game {
     this.isDead = true;
     this.playerState.isAlive = false;
     this.playerState.health = 0;
+
+    // Track player death for leaderboard
+    this.leaderboardSystem?.incrementPlayerDeaths();
 
     console.log(`💀 You were killed by ${killerName} with ${weaponType}`);
 
@@ -1249,6 +1334,8 @@ export class Game {
           // Update local stats immediately (server will sync with all players)
           this.gameStats.demonKills++;
           this.gameStats.score += 100;
+          this.leaderboardSystem?.incrementDemonKills();
+          this.leaderboardSystem?.updateScore(this.gameStats.score);
           this.audioSystem.playDemonDeathSound();
         } else {
           // Demon hit but not killed - just play hit sound
@@ -1261,6 +1348,8 @@ export class Game {
       if (killed) {
         this.gameStats.demonKills++;
         this.gameStats.score += 100;
+        this.leaderboardSystem?.incrementDemonKills();
+        this.leaderboardSystem?.updateScore(this.gameStats.score);
         this.audioSystem.playDemonDeathSound();
       } else {
         this.audioSystem.playDemonHitSound();
@@ -1330,6 +1419,10 @@ export class Game {
     const totalShots = this.weaponSystem.getTotalShots();
     this.gameStats.accuracy =
       totalShots > 0 ? (shotsHit / totalShots) * 100 : 0;
+
+    // Update leaderboard system
+    this.leaderboardSystem?.updateAccuracy(totalShots, shotsHit);
+    this.leaderboardSystem?.updateWaveLevel(this.gameStats.currentWave);
   }
 
   // Input handlers
@@ -1998,7 +2091,9 @@ export class Game {
   }
 
   /**
-   * Load a BSP map
+   * Load a BSP map (experimental feature)
+   * This is part of the experimental maps system and should only be called
+   * through the experimental menu with user acknowledgment of potential issues.
    */
   public async loadBSPMap(mapUrl: string): Promise<void> {
     try {

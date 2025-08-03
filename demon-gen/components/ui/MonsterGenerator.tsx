@@ -133,11 +133,29 @@ export default function MonsterGenerator() {
   };
 
   const samplePrompts = [
-    "A fierce fire dragon with massive wings and breath attacks",
-    "A shadowy assassin demon with teleportation abilities",
-    "A heavily armored tank demon with devastating melee attacks",
-    "A flying ice demon that shoots freezing projectiles",
-    "A small but fast poison demon with toxic abilities",
+    // Classic archetypes (original 5 body types)
+    "A fierce fire dragon with massive wings, flame breath, and ancient armor plates",
+    "A shadowy assassin demon with teleportation, razor claws, and stealth abilities",
+    "A heavily armored tank demon with bone spikes, massive fists, and defensive stance",
+    "A floating ice wraith with crystalline body, freezing aura, and ice shard projectiles",
+    "A small but agile toxic imp with poison claws, acid spit, and venomous tail",
+
+    // New diverse body types (showcasing the 15 additional types)
+    "A serpentine viper demon with coiling body, hypnotic gaze, and venomous strikes",
+    "An arachnid nightmare with eight razor legs, web-spinning, and paralyzing venom",
+    "A tentacled kraken spawn with crushing appendages, ink clouds, and aquatic terror",
+    "An insectoid mantis with scything arms, compound eyes, and lightning reflexes",
+    "An amorphous slime with shapeshifting form, corrosive touch, and absorption powers",
+    "A centauroid champion with horse body, warrior torso, and charging spear attacks",
+    "A multi-headed hydra with regenerating heads, breath weapons, and shared rage",
+    "An elemental fire being with plasma form, flame bursts, and heat aura damage",
+    "A mechanical war machine with laser weapons, steel plating, and tactical systems",
+    "A plant-like treant with root networks, thorn volleys, and nature's wrath",
+    "A crystalline golem with gem armor, light refraction, and mineral projectiles",
+    "A swarm of shadow bats with collective mind, dive attacks, and darkness clouds",
+    "A giant humanoid titan with colossal strength, ground tremors, and massive reach",
+    "A winged humanoid seraph with holy corruption, aerial supremacy, and light beams",
+    "An aquatic leviathan with fins, sonar, and crushing water pressure attacks",
   ];
 
   return (

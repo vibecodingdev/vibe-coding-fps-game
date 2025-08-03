@@ -12,13 +12,28 @@ export type DemonType =
   | "SQUIRTLE"
   | "EEVEE";
 
-// Body type categories for easier model creation
+// Body type categories for easier model creation - EXPANDED for maximum diversity
 export type DemonBodyType =
   | "humanoid" // Two legs, two arms, upright posture
   | "quadruped" // Four legs, horizontal body
   | "floating" // No legs, floats in air
   | "dragon" // Wings, tail, four legs or bipedal
-  | "small_biped"; // Small, two legs, compact body
+  | "small_biped" // Small, two legs, compact body
+  | "serpentine" // Snake-like, long sinuous body
+  | "arachnid" // Spider-like, 6-8 legs, segmented
+  | "tentacled" // Octopus-like, flexible appendages
+  | "insectoid" // Bug-like, segmented body, antennae
+  | "amorphous" // Shapeless, blob-like, fluid form
+  | "centauroid" // Horse/beast lower, humanoid upper
+  | "multi_headed" // Multiple heads, shared body
+  | "elemental" // Pure energy/fire/ice/earth form
+  | "mechanical" // Robotic, cybernetic constructs
+  | "plant_like" // Vine/tree-like organic growth
+  | "crystalline" // Gem/crystal-based structure
+  | "swarm" // Multiple small entities as one
+  | "giant_humanoid" // Massive bipedal titans
+  | "winged_humanoid" // Humanoid with prominent wings
+  | "aquatic"; // Fish/sea creature adaptations
 
 // Visual feature types for modular construction
 export interface DemonVisualFeatures {

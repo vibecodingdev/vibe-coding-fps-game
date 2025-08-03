@@ -133,6 +133,9 @@
           <button id="multiPlayerBtn" class="menu-button">
             🎮 ENTER HELL (MULTIPLAYER)
           </button>
+          <button id="experimentalMapsBtn" class="menu-button experimental">
+            🧪 EXPERIMENTAL MAPS
+          </button>
           <button class="menu-button" onclick="showInstructions()">
             📖 COMBAT MANUAL
           </button>
@@ -209,38 +212,6 @@
                 </div>
               </div>
               
-              <div class="map-card" data-theme="doomMap" data-type="theme">
-                <div class="map-preview doom-preview"></div>
-                <div class="map-info">
-                  <h4>🏛️ Doom Map</h4>
-                  <p>Classic E1M1 maze recreation</p>
-                  <div class="map-difficulty">Difficulty: ★★★★☆</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- BSP Maps -->
-          <div class="map-category">
-            <h3>🗺️ CLASSIC BSP MAPS</h3>
-            <div class="map-grid">
-              <div class="map-card" data-theme="bspMap" data-type="bsp" data-map="maps/bsp/de_dust2.bsp">
-                <div class="map-preview bsp-preview dust2-preview"></div>
-                <div class="map-info">
-                  <h4>🏜️ de_dust2</h4>
-                  <p>Counter-Strike's most iconic map</p>
-                  <div class="map-difficulty">Difficulty: ★★★★★</div>
-                </div>
-              </div>
-              
-              <div class="map-card" data-theme="bspMap" data-type="bsp" data-map="maps/bsp/quake_start.bsp">
-                <div class="map-preview bsp-preview quake-preview"></div>
-                <div class="map-info">
-                  <h4>⚡ quake_start</h4>
-                  <p>Classic Quake starting level</p>
-                  <div class="map-difficulty">Difficulty: ★★★☆☆</div>
-                </div>
-              </div>
             </div>
           </div>
           
@@ -398,6 +369,92 @@
         </div>
       </div>
 
+      <!-- Experimental Maps Menu -->
+      <div id="experimentalMapsMenu" class="menu-screen" style="display: none;">
+        <h1>🧪 EXPERIMENTAL MAPS 🧪</h1>
+        <h2>⚠️ EXPERIMENTAL CONTENT WARNING ⚠️</h2>
+        <div class="experimental-warning">
+          <p class="warning-text">
+            ⚠️ These maps are in <strong>experimental development</strong> and may contain bugs, performance issues, or incomplete features.
+          </p>
+          <p class="warning-text">
+            🚧 Use at your own risk. Not recommended for serious gameplay sessions.
+          </p>
+          <p class="warning-text">
+            💡 Your feedback helps us improve these features for future releases.
+          </p>
+        </div>
+        
+        <div class="experimental-map-selection">
+          <!-- Classic BSP Maps -->
+          <div class="experimental-category">
+            <h3>🗺️ CLASSIC BSP MAPS</h3>
+            <p class="category-description">Classic FPS maps from legendary games</p>
+            <div class="experimental-map-grid">
+              <div class="experimental-map-card" data-theme="bspMap" data-type="bsp" data-map="maps/bsp/de_dust2.bsp">
+                <div class="experimental-badge">🧪 EXPERIMENTAL</div>
+                <div class="map-preview bsp-preview dust2-preview"></div>
+                <div class="map-info">
+                  <h4>🏜️ de_dust2</h4>
+                  <p>Counter-Strike's most iconic map</p>
+                  <div class="map-difficulty">Difficulty: ★★★★★</div>
+                  <div class="experimental-status">Status: Alpha - Basic geometry only</div>
+                </div>
+              </div>
+              
+              <div class="experimental-map-card" data-theme="bspMap" data-type="bsp" data-map="maps/bsp/quake_start.bsp">
+                <div class="experimental-badge">🧪 EXPERIMENTAL</div>
+                <div class="map-preview bsp-preview quake-preview"></div>
+                <div class="map-info">
+                  <h4>⚡ quake_start</h4>
+                  <p>Classic Quake starting level</p>
+                  <div class="map-difficulty">Difficulty: ★★★☆☆</div>
+                  <div class="experimental-status">Status: Alpha - Basic geometry only</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- DOOM-Style Maps -->
+          <div class="experimental-category">
+            <h3>🏛️ DOOM-STYLE MAPS</h3>
+            <p class="category-description">Procedurally generated maze-like environments</p>
+            <div class="experimental-map-grid">
+              <div class="experimental-map-card" data-theme="doomMap" data-type="theme">
+                <div class="experimental-badge">🧪 EXPERIMENTAL</div>
+                <div class="map-preview doom-preview"></div>
+                <div class="map-info">
+                  <h4>🏛️ Doom Map</h4>
+                  <p>Classic E1M1 maze recreation</p>
+                  <div class="map-difficulty">Difficulty: ★★★★☆</div>
+                  <div class="experimental-status">Status: Beta - Navigation issues possible</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="experimental-buttons">
+          <button id="backToMainFromExperimentalBtn" class="menu-button">
+            ← BACK TO MAIN MENU
+          </button>
+          <button id="startExperimentalMapBtn" class="menu-button experimental-confirm" disabled>
+            🧪 I UNDERSTAND THE RISKS - START EXPERIMENTAL MAP
+          </button>
+        </div>
+        
+        <div id="selectedExperimentalMapInfo" class="selected-experimental-info" style="display: none;">
+          <h3>Selected: <span id="selectedExperimentalMapName"></span></h3>
+          <p id="selectedExperimentalMapDescription"></p>
+          <div class="risk-acknowledgment">
+            <label>
+              <input type="checkbox" id="riskAcknowledged">
+              I understand this is experimental content and may have issues
+            </label>
+          </div>
+        </div>
+      </div>
+
       <!-- Multiplayer Lobby Screen -->
       <div id="multiplayerLobby" class="menu-screen" style="display: none;">
         <h1>🔥 HELLISH COMBAT LOBBY 🔥</h1>
@@ -462,8 +519,7 @@
                 <option value="ice">❄️ Ice Theme - Frozen wasteland</option>
                 <option value="toxic">☢️ Toxic Theme - Contaminated industrial zone</option>
                 <option value="industrial" selected>🏭 Industrial Theme - Mechanical facility</option>
-                <option value="doomMap">🏛️ Doom Map - Classic E1M1 recreation</option>
-                <option value="bspMap">🗺️ BSP Map - Classic FPS maps</option>
+
               </select>
               <button class="menu-button success" id="createRoomBtn">
                 🔥 CREATE CHAMBER

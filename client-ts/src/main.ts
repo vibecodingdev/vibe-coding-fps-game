@@ -5,6 +5,7 @@ import { NetworkManager } from "./systems/NetworkManager";
 import { setupVoiceChatDebugFunctions } from "./debug-voice-chat";
 import { SceneThemeName } from "./themes";
 import { DemonManagerUI } from "./systems/DemonManagerUI";
+import { LeaderboardSystem } from "./systems/LeaderboardSystem";
 
 console.log("🔥 DOOM PROTOCOL - TypeScript Client Starting 🔥");
 
@@ -27,6 +28,104 @@ function hideLoadingScreen() {
 
 // Call after a short delay to ensure everything is rendered
 setTimeout(hideLoadingScreen, 150);
+
+// Leaderboard status checking
+async function checkLeaderboardStatus(game: Game): Promise<void> {
+  try {
+    const leaderboardSystem = LeaderboardSystem.getInstance();
+    const authResult = await leaderboardSystem.checkAuthentication();
+
+    // Update UI to show leaderboard status
+    updateLeaderboardStatusUI(authResult.authenticated, authResult.user);
+
+    // Add global function for testing
+    (window as any).testLeaderboard = async () => {
+      try {
+        console.log("🧪 Testing leaderboard submission...");
+        const result = await leaderboardSystem.submitTestSession();
+        if (result && result.success) {
+          console.log("✅ Test session submitted successfully!");
+          alert("Test session submitted successfully! Check the leaderboard.");
+        } else {
+          console.log("❌ Test session failed:", result?.error);
+          alert("Test session failed: " + (result?.error || "Unknown error"));
+        }
+      } catch (error) {
+        console.error("❌ Test leaderboard error:", error);
+        alert("Test failed due to error: " + error);
+      }
+    };
+  } catch (error) {
+    console.error("❌ Failed to check leaderboard status:", error);
+  }
+}
+
+function updateLeaderboardStatusUI(isAuthenticated: boolean, user: any): void {
+  // Add a status indicator to the main menu
+  const mainMenu = document.getElementById("mainMenu");
+  if (!mainMenu) return;
+
+  // Remove any existing status
+  const existingStatus = document.getElementById("leaderboardStatus");
+  if (existingStatus) {
+    existingStatus.remove();
+  }
+
+  // Create status element
+  const statusDiv = document.createElement("div");
+  statusDiv.id = "leaderboardStatus";
+  statusDiv.style.cssText = `
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 14px;
+    z-index: 1000;
+    max-width: 300px;
+  `;
+
+  if (isAuthenticated && user) {
+    statusDiv.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+    statusDiv.style.border = "1px solid rgba(34, 197, 94, 0.3)";
+    statusDiv.style.color = "#22c55e";
+    statusDiv.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span>🏆</span>
+        <div>
+          <div style="font-weight: bold;">Leaderboard Active</div>
+          <div style="font-size: 12px; opacity: 0.8;">Logged in as ${user.email}</div>
+          <div style="font-size: 11px; margin-top: 5px;">
+            <a href="https://www.tinyvideogame.com/leaderboard" target="_blank" style="color: #22c55e; text-decoration: underline;">View Leaderboard</a>
+            <span style="margin: 0 8px;">|</span>
+            <button onclick="testLeaderboard()" style="background: none; border: 1px solid rgba(34, 197, 94, 0.5); color: #22c55e; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px;">Test</button>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    statusDiv.style.backgroundColor = "rgba(251, 191, 36, 0.1)";
+    statusDiv.style.border = "1px solid rgba(251, 191, 36, 0.3)";
+    statusDiv.style.color = "#fbbf24";
+    statusDiv.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span>📊</span>
+        <div>
+          <div style="font-weight: bold;">Playing Anonymously</div>
+          <div style="font-size: 12px; opacity: 0.8;">Stats won't be saved</div>
+          <div style="font-size: 11px; margin-top: 5px;">
+            <a href="https://www.tinyvideogame.com/signin" target="_blank" style="color: #fbbf24; text-decoration: underline;">Sign In</a>
+            <span style="margin: 0 8px;">|</span>
+            <a href="https://www.tinyvideogame.com/leaderboard" target="_blank" style="color: #fbbf24; text-decoration: underline;">View Leaderboard</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  mainMenu.appendChild(statusDiv);
+}
 
 // Helper function to get display name for scene themes
 function getThemeDisplayName(themeName: SceneThemeName): string {
@@ -182,6 +281,14 @@ async function initializeGame(): Promise<void> {
 
     await game.initialize();
     await networkManager.initialize();
+
+    // Check leaderboard authentication status (non-blocking)
+    checkLeaderboardStatus(game).catch((error) => {
+      console.warn(
+        "⚠️ Leaderboard initialization failed, but game continues:",
+        error
+      );
+    });
 
     // Setup basic network callbacks
     setupBasicNetworkCallbacks(networkManager);
@@ -848,6 +955,12 @@ function setupUIEventListeners(
     showMapSelectionMenu();
   });
 
+  // Experimental maps button
+  const experimentalMapsBtn = document.getElementById("experimentalMapsBtn");
+  experimentalMapsBtn?.addEventListener("click", () => {
+    showExperimentalMapsMenu();
+  });
+
   // Multiplayer button
   const multiPlayerBtn = document.getElementById("multiPlayerBtn");
   multiPlayerBtn?.addEventListener("click", () => {
@@ -1415,7 +1528,7 @@ async function startSinglePlayerWithMap(
     // Handle different map types
     if (theme === "random") {
       // Random theme selection
-      const themes = ["hell", "ice", "toxic", "industrial", "doomMap"];
+      const themes = ["hell", "ice", "toxic", "industrial"];
       const randomTheme = themes[Math.floor(Math.random() * themes.length)];
       console.log(`🎲 Random theme selected: ${randomTheme}`);
       await game.startGame(false, randomTheme as any);
@@ -1454,6 +1567,7 @@ function hideAllMenus(): void {
     "gameOverScreen",
     "pauseMenu",
     "mapSelectionMenu",
+    "experimentalMapsMenu",
   ];
 
   menus.forEach((menuId) => {
@@ -1464,6 +1578,122 @@ function hideAllMenus(): void {
       menu.scrollTop = 0;
     }
   });
+}
+
+function showExperimentalMapsMenu(): void {
+  hideAllMenus();
+  // Set body to menu mode to allow scrolling
+  document.body.className = "menu-mode";
+  const experimentalMapsMenu = document.getElementById("experimentalMapsMenu");
+  if (experimentalMapsMenu) {
+    experimentalMapsMenu.style.display = "flex";
+    experimentalMapsMenu.classList.add("scrollable");
+    setupExperimentalMapSelectionEventListeners();
+
+    // Scroll to top
+    setTimeout(() => {
+      experimentalMapsMenu.scrollTop = 0;
+    }, 100);
+  }
+}
+
+function setupExperimentalMapSelectionEventListeners(): void {
+  let selectedTheme: string | null = null;
+  let selectedMapPath: string | null = null;
+  let selectedType: string | null = null;
+
+  // Map card click handlers
+  const mapCards = document.querySelectorAll(".experimental-map-card");
+  mapCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      // Remove selection from other cards
+      mapCards.forEach((c) => c.classList.remove("selected"));
+
+      // Select this card
+      card.classList.add("selected");
+
+      // Get map data
+      selectedTheme = card.getAttribute("data-theme");
+      selectedType = card.getAttribute("data-type");
+      selectedMapPath = card.getAttribute("data-map");
+
+      // Update selected map info
+      updateSelectedExperimentalMapInfo(card);
+
+      // Check if risk is acknowledged to enable start button
+      updateExperimentalStartButton();
+    });
+  });
+
+  // Back to main menu button
+  const backBtn = document.getElementById("backToMainFromExperimentalBtn");
+  backBtn?.addEventListener("click", () => {
+    showMainMenu();
+  });
+
+  // Risk acknowledgment checkbox
+  const riskCheckbox = document.getElementById(
+    "riskAcknowledged"
+  ) as HTMLInputElement;
+  riskCheckbox?.addEventListener("change", () => {
+    updateExperimentalStartButton();
+  });
+
+  // Start experimental map button
+  const startBtn = document.getElementById("startExperimentalMapBtn");
+  startBtn?.addEventListener("click", async () => {
+    const riskCheckbox = document.getElementById(
+      "riskAcknowledged"
+    ) as HTMLInputElement;
+    if (selectedTheme && selectedType && riskCheckbox?.checked) {
+      console.log("🧪 Starting experimental map with user acknowledgment");
+      await startSinglePlayerWithMap(
+        selectedTheme,
+        selectedType,
+        selectedMapPath
+      );
+    }
+  });
+
+  function updateExperimentalStartButton(): void {
+    const startBtn = document.getElementById(
+      "startExperimentalMapBtn"
+    ) as HTMLButtonElement;
+    const riskCheckbox = document.getElementById(
+      "riskAcknowledged"
+    ) as HTMLInputElement;
+
+    if (startBtn) {
+      startBtn.disabled = !selectedTheme || !riskCheckbox?.checked;
+    }
+  }
+}
+
+function updateSelectedExperimentalMapInfo(selectedCard: Element): void {
+  const selectedMapInfo = document.getElementById(
+    "selectedExperimentalMapInfo"
+  );
+  const mapNameSpan = document.getElementById("selectedExperimentalMapName");
+  const mapDescSpan = document.getElementById(
+    "selectedExperimentalMapDescription"
+  );
+
+  if (selectedCard && mapNameSpan && mapDescSpan) {
+    const mapName =
+      selectedCard.querySelector("h4")?.textContent || "Unknown Map";
+    const mapDesc =
+      selectedCard.querySelector("p")?.textContent ||
+      "No description available";
+    const experimentalStatus =
+      selectedCard.querySelector(".experimental-status")?.textContent || "";
+
+    mapNameSpan.textContent = mapName;
+    mapDescSpan.textContent = `${mapDesc}\n\n${experimentalStatus}`;
+  }
+
+  if (selectedMapInfo) {
+    selectedMapInfo.style.display = "block";
+  }
 }
 
 function requestFullscreen(): void {
