@@ -126,6 +126,35 @@ export default function MonsterGenerator() {
     linkElement.click();
   };
 
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const result = MonsterStorage.importData(text);
+
+        if (result.success) {
+          // Reload monsters from storage
+          const updatedMonsters = MonsterStorage.loadMonsters();
+          setGeneratedMonsters(updatedMonsters);
+          alert(`✅ Successfully imported ${result.imported} monster(s)!`);
+        } else {
+          alert(`❌ Import failed:\n${result.error}`);
+        }
+      } catch (error) {
+        alert(
+          `❌ Failed to read file: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    };
+    input.click();
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       handleGenerate();
@@ -239,6 +268,14 @@ export default function MonsterGenerator() {
               🔥 SUMMONED DEMONS ({generatedMonsters.length}) 🔥
             </h2>
             <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImport}
+                className="border-gaming-secondary text-gaming-secondary hover:bg-gaming-secondary hover:text-white font-gaming uppercase tracking-wide"
+              >
+                📥 IMPORT
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

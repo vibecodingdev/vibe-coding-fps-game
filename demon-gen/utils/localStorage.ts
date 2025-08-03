@@ -171,17 +171,32 @@ export class MonsterStorage {
 
       // Validate each monster
       const validMonsters: MonsterConfig[] = [];
-      for (const monster of monstersToImport) {
-        if (this.validateMonster(monster)) {
+      const invalidMonsters: { index: number; reason: string }[] = [];
+
+      for (let i = 0; i < monstersToImport.length; i++) {
+        const monster = monstersToImport[i];
+        const validationResult = this.validateMonsterWithDetails(monster);
+
+        if (validationResult.isValid) {
           validMonsters.push(monster);
+        } else {
+          invalidMonsters.push({
+            index: i,
+            reason: validationResult.error || "Unknown validation error",
+          });
         }
       }
 
       if (validMonsters.length === 0) {
+        const errorDetails =
+          invalidMonsters.length > 0
+            ? `Validation errors: ${invalidMonsters.map((inv) => `Monster ${inv.index + 1}: ${inv.reason}`).join("; ")}`
+            : "No valid monsters found";
+
         return {
           success: false,
           imported: 0,
-          error: "No valid monsters found",
+          error: errorDetails,
         };
       }
 
@@ -211,30 +226,147 @@ export class MonsterStorage {
   }
 
   /**
-   * Basic monster validation
+   * Basic monster validation (legacy)
    */
   private static validateMonster(monster: any): monster is MonsterConfig {
-    return (
-      monster &&
-      typeof monster.id === "string" &&
-      typeof monster.name === "string" &&
-      typeof monster.emoji === "string" &&
-      typeof monster.health === "number" &&
-      typeof monster.speed === "number" &&
-      typeof monster.scale === "number" &&
-      monster.colors &&
-      typeof monster.colors.primary === "string" &&
-      typeof monster.colors.head === "string" &&
-      typeof monster.colors.eyes === "string" &&
-      monster.behavior &&
-      typeof monster.behavior.detectRange === "number" &&
-      typeof monster.behavior.attackRange === "number" &&
-      typeof monster.behavior.chaseRange === "number" &&
-      typeof monster.behavior.attackDamage === "number" &&
-      typeof monster.behavior.spawnWeight === "number" &&
-      monster.appearance &&
-      typeof monster.appearance.bodyType === "string"
-    );
+    return this.validateMonsterWithDetails(monster).isValid;
+  }
+
+  /**
+   * Detailed monster validation with error messages
+   */
+  private static validateMonsterWithDetails(monster: any): {
+    isValid: boolean;
+    error?: string;
+  } {
+    const validBodyTypes = [
+      "humanoid",
+      "quadruped",
+      "dragon",
+      "small_biped",
+      "floating",
+      "serpentine",
+      "arachnid",
+      "tentacled",
+      "insectoid",
+      "amorphous",
+      "centauroid",
+      "multi_headed",
+      "elemental",
+      "mechanical",
+      "plant_like",
+      "crystalline",
+      "swarm",
+      "giant_humanoid",
+      "winged_humanoid",
+      "aquatic",
+    ];
+
+    if (!monster) {
+      return { isValid: false, error: "Monster data is null or undefined" };
+    }
+
+    if (typeof monster.id !== "string") {
+      return { isValid: false, error: "Missing or invalid id field" };
+    }
+
+    if (typeof monster.name !== "string") {
+      return { isValid: false, error: "Missing or invalid name field" };
+    }
+
+    if (typeof monster.emoji !== "string") {
+      return { isValid: false, error: "Missing or invalid emoji field" };
+    }
+
+    if (typeof monster.health !== "number") {
+      return { isValid: false, error: "Missing or invalid health field" };
+    }
+
+    if (typeof monster.speed !== "number") {
+      return { isValid: false, error: "Missing or invalid speed field" };
+    }
+
+    if (typeof monster.scale !== "number") {
+      return { isValid: false, error: "Missing or invalid scale field" };
+    }
+
+    if (!monster.colors) {
+      return { isValid: false, error: "Missing colors object" };
+    }
+
+    if (typeof monster.colors.primary !== "string") {
+      return {
+        isValid: false,
+        error: "Missing or invalid colors.primary field",
+      };
+    }
+
+    if (typeof monster.colors.head !== "string") {
+      return { isValid: false, error: "Missing or invalid colors.head field" };
+    }
+
+    if (typeof monster.colors.eyes !== "string") {
+      return { isValid: false, error: "Missing or invalid colors.eyes field" };
+    }
+
+    if (!monster.behavior) {
+      return { isValid: false, error: "Missing behavior object" };
+    }
+
+    if (typeof monster.behavior.detectRange !== "number") {
+      return {
+        isValid: false,
+        error: "Missing or invalid behavior.detectRange field",
+      };
+    }
+
+    if (typeof monster.behavior.attackRange !== "number") {
+      return {
+        isValid: false,
+        error: "Missing or invalid behavior.attackRange field",
+      };
+    }
+
+    if (typeof monster.behavior.chaseRange !== "number") {
+      return {
+        isValid: false,
+        error: "Missing or invalid behavior.chaseRange field",
+      };
+    }
+
+    if (typeof monster.behavior.attackDamage !== "number") {
+      return {
+        isValid: false,
+        error: "Missing or invalid behavior.attackDamage field",
+      };
+    }
+
+    if (typeof monster.behavior.spawnWeight !== "number") {
+      return {
+        isValid: false,
+        error: "Missing or invalid behavior.spawnWeight field",
+      };
+    }
+
+    if (!monster.appearance) {
+      return { isValid: false, error: "Missing appearance object" };
+    }
+
+    if (typeof monster.appearance.bodyType !== "string") {
+      return {
+        isValid: false,
+        error: "Missing or invalid appearance.bodyType field",
+      };
+    }
+
+    if (!validBodyTypes.includes(monster.appearance.bodyType)) {
+      return {
+        isValid: false,
+        error: `Body type must be one of: ${validBodyTypes.join(", ")}. Found: "${monster.appearance.bodyType}"`,
+      };
+    }
+
+    return { isValid: true };
   }
 
   /**
