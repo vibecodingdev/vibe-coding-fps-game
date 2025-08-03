@@ -211,13 +211,28 @@ export class JsonDemonManager {
       warnings.push("Attack damage should be between 1 and 100 for balance");
     }
 
-    // Body type validation
+    // Body type validation - Updated to support all 20 body types
     const validBodyTypes = [
       "humanoid",
       "quadruped",
       "dragon",
       "small_biped",
       "floating",
+      "serpentine",
+      "arachnid",
+      "tentacled",
+      "insectoid",
+      "amorphous",
+      "centauroid",
+      "multi_headed",
+      "elemental",
+      "mechanical",
+      "plant_like",
+      "crystalline",
+      "swarm",
+      "giant_humanoid",
+      "winged_humanoid",
+      "aquatic",
     ];
     if (!validBodyTypes.includes(jsonDemon.appearance.bodyType)) {
       errors.push(`Body type must be one of: ${validBodyTypes.join(", ")}`);

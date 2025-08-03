@@ -2239,6 +2239,54 @@ export class DemonManagerUI {
       case "small_biped":
         bodyGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 8);
         break;
+
+      // NEW BODY TYPES for preview
+      case "serpentine":
+        bodyGeometry = new THREE.CylinderGeometry(0.15, 0.2, 2.0, 8);
+        break;
+      case "arachnid":
+        bodyGeometry = new THREE.SphereGeometry(0.5, 8, 6);
+        break;
+      case "tentacled":
+        bodyGeometry = new THREE.SphereGeometry(0.7, 12, 8);
+        break;
+      case "insectoid":
+        bodyGeometry = new THREE.CylinderGeometry(0.15, 0.25, 0.8, 6);
+        break;
+      case "amorphous":
+        bodyGeometry = new THREE.SphereGeometry(0.9, 8, 6); // Blob-like
+        break;
+      case "centauroid":
+        bodyGeometry = new THREE.BoxGeometry(1.0, 0.5, 0.7);
+        break;
+      case "multi_headed":
+        bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.0, 8);
+        break;
+      case "elemental":
+        bodyGeometry = new THREE.SphereGeometry(0.6, 12, 8);
+        break;
+      case "mechanical":
+        bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.4);
+        break;
+      case "plant_like":
+        bodyGeometry = new THREE.CylinderGeometry(0.2, 0.4, 1.5, 8);
+        break;
+      case "crystalline":
+        bodyGeometry = new THREE.ConeGeometry(0.5, 1.2, 8);
+        break;
+      case "swarm":
+        bodyGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+        break;
+      case "giant_humanoid":
+        bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.8, 8);
+        break;
+      case "winged_humanoid":
+        bodyGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);
+        break;
+      case "aquatic":
+        bodyGeometry = new THREE.SphereGeometry(0.6, 12, 8);
+        break;
+
       case "humanoid":
       default:
         bodyGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);

@@ -169,6 +169,26 @@ client-ts/
 4. **Community Sharing**: Share demon configurations between players
 5. **Boss Generation**: Specialized templates for boss-level demons
 
+## Recent Updates (2025-08-03)
+
+### ✅ Fixed Body Type Integration Issue
+
+- **Problem**: client-ts JsonDemonManager only accepted original 5 body types
+- **Solution**: Updated validation to accept all 20 new body types
+- **Impact**: Generated demons with new body types (serpentine, amorphous, etc.) now import successfully
+
+### ✅ Enhanced Rendering Support
+
+- Added basic rendering methods for all 15 new body types in DemonSystem
+- Updated preview system in DemonManagerUI to display new body types
+- Amorphous demons (like slime creatures) now render with blob-like appearance
+
+### ✅ Import/Export Functionality
+
+- Users can now import JSON files with new body types
+- Export functionality supports all expanded body type features
+- Seamless workflow from demon-gen to client-ts game integration
+
 ## Conclusion
 
-The integration between demon-gen and client-ts creates a powerful ecosystem for infinite demon variety while maintaining gameplay balance and visual consistency. The AI-powered generation combined with the robust game integration provides endless entertainment value and creative possibilities.
+The integration between demon-gen and client-ts creates a powerful ecosystem for infinite demon variety while maintaining gameplay balance and visual consistency. With the recent body type expansion from 5 to 20 types, the AI-powered generation combined with the robust game integration now provides **4x more creative possibilities** and endless entertainment value.

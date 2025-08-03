@@ -1605,7 +1605,7 @@ export class DemonSystem implements IDemonSystem {
     demonGroup.add(leftEye);
     demonGroup.add(rightEye);
 
-    // Build demon based on body type for better modularity
+    // Build demon based on body type for better modularity - EXPANDED for 20 body types
     switch (typeData.bodyType) {
       case "floating":
         if (demonType === "CACODEMON") {
@@ -1623,6 +1623,54 @@ export class DemonSystem implements IDemonSystem {
       case "small_biped":
         this.addSmallBipedFeatures(demonGroup, typeData, demonType);
         break;
+
+      // NEW BODY TYPES - Use existing features as base with unique modifications
+      case "serpentine":
+        this.addSerpentineFeatures(demonGroup, typeData, demonType);
+        break;
+      case "arachnid":
+        this.addArachnidFeatures(demonGroup, typeData, demonType);
+        break;
+      case "tentacled":
+        this.addTentacledFeatures(demonGroup, typeData, demonType);
+        break;
+      case "insectoid":
+        this.addInsectoidFeatures(demonGroup, typeData, demonType);
+        break;
+      case "amorphous":
+        this.addAmorphousFeatures(demonGroup, typeData, demonType);
+        break;
+      case "centauroid":
+        this.addCentauroidFeatures(demonGroup, typeData, demonType);
+        break;
+      case "multi_headed":
+        this.addMultiHeadedFeatures(demonGroup, typeData, demonType);
+        break;
+      case "elemental":
+        this.addElementalFeatures(demonGroup, typeData, demonType);
+        break;
+      case "mechanical":
+        this.addMechanicalFeatures(demonGroup, typeData, demonType);
+        break;
+      case "plant_like":
+        this.addPlantLikeFeatures(demonGroup, typeData, demonType);
+        break;
+      case "crystalline":
+        this.addCrystallineFeatures(demonGroup, typeData, demonType);
+        break;
+      case "swarm":
+        this.addSwarmFeatures(demonGroup, typeData, demonType);
+        break;
+      case "giant_humanoid":
+        this.addGiantHumanoidFeatures(demonGroup, typeData, demonType);
+        break;
+      case "winged_humanoid":
+        this.addWingedHumanoidFeatures(demonGroup, typeData, demonType);
+        break;
+      case "aquatic":
+        this.addAquaticFeatures(demonGroup, typeData, demonType);
+        break;
+
       case "humanoid":
       default:
         if (demonType === "ARCHVILE") {
@@ -2976,6 +3024,249 @@ export class DemonSystem implements IDemonSystem {
       );
       claw.rotation.x = Math.PI;
       demonGroup.add(claw);
+    }
+  }
+
+  // NEW BODY TYPE RENDERING METHODS - Basic implementations that reuse existing features
+
+  /**
+   * Add serpentine (snake-like) features
+   */
+  private addSerpentineFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use floating body as base but elongated
+    this.addFloatingFeatures(demonGroup, typeData, demonType);
+
+    // Add tail if specified in visual features
+    if (typeData.visualFeatures?.hasTail) {
+      this.addTail(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add arachnid (spider-like) features
+   */
+  private addArachnidFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use quadruped as base
+    this.addQuadrupedFeatures(demonGroup, typeData, demonType);
+
+    // Add spikes for leg-like appearance
+    if (typeData.visualFeatures?.hasSpikes) {
+      this.addSpikes(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add tentacled (octopus-like) features
+   */
+  private addTentacledFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use floating as base
+    this.addFloatingFeatures(demonGroup, typeData, demonType);
+
+    // Add multiple tails for tentacle effect
+    if (typeData.visualFeatures?.hasTail) {
+      this.addTail(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add insectoid (bug-like) features
+   */
+  private addInsectoidFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use small_biped as base
+    this.addSmallBipedFeatures(demonGroup, typeData, demonType);
+
+    // Add spikes for segmented appearance
+    if (typeData.visualFeatures?.hasSpikes) {
+      this.addSpikes(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add amorphous (blob-like) features - FOR THE USER'S SLIME DEMON
+   */
+  private addAmorphousFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use floating but with different geometry for blob-like appearance
+    this.addFloatingFeatures(demonGroup, typeData, demonType);
+
+    // Modify the body to be more blob-like (this can be enhanced later)
+    const bodyMesh = demonGroup.children.find((child) => child.name === "body");
+    if (bodyMesh && bodyMesh instanceof THREE.Mesh) {
+      // Scale to make it more blob-like
+      bodyMesh.scale.set(1.2, 0.8, 1.2);
+    }
+  }
+
+  /**
+   * Add centauroid (half-beast) features
+   */
+  private addCentauroidFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Combine quadruped lower with humanoid upper
+    this.addQuadrupedFeatures(demonGroup, typeData, demonType);
+    this.addHumanoidFeatures(demonGroup, typeData, demonType);
+  }
+
+  /**
+   * Add multi-headed features
+   */
+  private addMultiHeadedFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use humanoid as base
+    this.addHumanoidFeatures(demonGroup, typeData, demonType);
+
+    // Add horns for multiple head effect
+    if (typeData.visualFeatures?.hasHorns) {
+      this.addHorns(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add elemental (energy being) features
+   */
+  private addElementalFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use floating as base for energy beings
+    this.addFloatingFeatures(demonGroup, typeData, demonType);
+  }
+
+  /**
+   * Add mechanical (cybernetic) features
+   */
+  private addMechanicalFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use humanoid as base
+    this.addHumanoidFeatures(demonGroup, typeData, demonType);
+
+    // Add armor for mechanical look
+    if (typeData.visualFeatures?.hasArmor) {
+      this.addArmor(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add plant-like features
+   */
+  private addPlantLikeFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use humanoid as base but taller
+    this.addHumanoidFeatures(demonGroup, typeData, demonType);
+
+    // Add spikes for thorn effect
+    if (typeData.visualFeatures?.hasSpikes) {
+      this.addSpikes(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add crystalline (gem-based) features
+   */
+  private addCrystallineFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use floating for crystal beings
+    this.addFloatingFeatures(demonGroup, typeData, demonType);
+
+    // Add spikes for crystal formations
+    if (typeData.visualFeatures?.hasSpikes) {
+      this.addSpikes(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add swarm (collective) features
+   */
+  private addSwarmFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use small_biped as base for individual units
+    this.addSmallBipedFeatures(demonGroup, typeData, demonType);
+  }
+
+  /**
+   * Add giant humanoid features
+   */
+  private addGiantHumanoidFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use humanoid but scaled up
+    this.addHumanoidFeatures(demonGroup, typeData, demonType);
+
+    // Scale the entire group up
+    demonGroup.scale.multiplyScalar(1.5);
+  }
+
+  /**
+   * Add winged humanoid features
+   */
+  private addWingedHumanoidFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use humanoid as base
+    this.addHumanoidFeatures(demonGroup, typeData, demonType);
+
+    // Add wings
+    if (typeData.visualFeatures?.hasWings) {
+      this.addWings(demonGroup, typeData);
+    }
+  }
+
+  /**
+   * Add aquatic (sea creature) features
+   */
+  private addAquaticFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    demonType: string
+  ): void {
+    // Use floating for water-based movement
+    this.addFloatingFeatures(demonGroup, typeData, demonType);
+
+    // Add tail for swimming
+    if (typeData.visualFeatures?.hasTail) {
+      this.addTail(demonGroup, typeData);
     }
   }
 }
