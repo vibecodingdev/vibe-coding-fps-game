@@ -53,6 +53,7 @@ export class DemonSystem implements IDemonSystem {
   private readonly timeBetweenWaves = 5000; // 5 seconds between waves
   private isMultiplayerMode = false; // Track if we're in multiplayer mode
   private jsonDemonManager: JsonDemonManager | null = null; // JSON demon management
+  private jsonDemonSpawnChance = 0.3; // 30% chance to spawn JSON demons by default
 
   public async initialize(): Promise<void> {
     console.log("🔥 DemonSystem initialized with enhanced DOOM-style models");
@@ -113,6 +114,164 @@ export class DemonSystem implements IDemonSystem {
   }
 
   /**
+   * Set the spawn chance for JSON demons (0.0 to 1.0)
+   */
+  public setJsonDemonSpawnChance(chance: number): void {
+    this.jsonDemonSpawnChance = Math.max(0, Math.min(1, chance));
+    console.log(
+      `🎯 JSON demon spawn chance set to: ${(
+        this.jsonDemonSpawnChance * 100
+      ).toFixed(1)}%`
+    );
+  }
+
+  /**
+   * Get the current JSON demon spawn chance
+   */
+  public getJsonDemonSpawnChance(): number {
+    return this.jsonDemonSpawnChance;
+  }
+
+  /**
+   * Force spawn a JSON demon for testing/debugging purposes
+   */
+  public forceSpawnJsonDemon(demonType: DemonType = "IMP"): boolean {
+    if (!this.jsonDemonManager) {
+      console.error("❌ No JSON demon manager available for forced spawn");
+      return false;
+    }
+
+    const jsonDemons = this.jsonDemonManager.getLoadedDemons();
+    if (jsonDemons.size === 0) {
+      console.error("❌ No JSON demons loaded for forced spawn");
+      return false;
+    }
+
+    // Get first available JSON demon
+    const firstDemonId = jsonDemons.keys().next().value;
+    if (!firstDemonId) {
+      console.error("❌ No JSON demon IDs found");
+      return false;
+    }
+
+    console.log(`🎯 Force spawning JSON demon: ${firstDemonId}`);
+
+    try {
+      this.spawnSpecificJsonDemon(demonType, firstDemonId);
+      return true;
+    } catch (error) {
+      console.error("❌ Failed to force spawn JSON demon:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Spawn a specific JSON demon by ID
+   */
+  private spawnSpecificJsonDemon(
+    demonType: DemonType,
+    jsonDemonId: string
+  ): void {
+    const config = DEMON_CONFIGS[demonType];
+    let actualConfig = config;
+
+    // Get JSON demon config
+    if (this.jsonDemonManager) {
+      const originalJsonConfig =
+        this.jsonDemonManager.getOriginalJsonDemon(jsonDemonId);
+      if (originalJsonConfig) {
+        actualConfig = originalJsonConfig as any;
+        console.log(
+          `🎮 Spawning specific JSON demon: ${
+            originalJsonConfig.name || jsonDemonId
+          }`
+        );
+      }
+    }
+
+    const demon = this.createDemonModel(demonType, jsonDemonId);
+
+    // Position demon randomly around the map edges, respecting boundaries
+    const angle = Math.random() * Math.PI * 2;
+    let distance: number;
+
+    if (this.sceneManager) {
+      // Use SceneManager's boundary system for spawn positioning
+      const boundarySize = this.sceneManager.BOUNDARY_SIZE;
+      const spawnMargin = 10; // Keep demons away from the walls
+      distance = boundarySize / 2 - spawnMargin - Math.random() * 15; // Spawn 10-25 units inside boundary
+    } else {
+      // Fallback spawn distance
+      distance = 35 + Math.random() * 10; // 35-45 units from center
+    }
+
+    // Calculate proper ground position based on demon geometry with terrain awareness
+    const spawnPosition = new THREE.Vector3(
+      Math.cos(angle) * distance,
+      0, // Temporary Y position
+      Math.sin(angle) * distance
+    );
+    const groundHeight = this.calculateTerrainAwareGroundHeight(
+      demonType,
+      spawnPosition
+    );
+    spawnPosition.y = groundHeight;
+
+    demon.position.copy(spawnPosition);
+    demon.scale.setScalar(actualConfig.scale);
+
+    const demonInstance: DemonInstance = {
+      id: `demon_${Date.now()}_${Math.random()}`,
+      type: demonType,
+      mesh: demon,
+      state: "idle",
+      health: actualConfig.health,
+      position: spawnPosition,
+      targetPosition: spawnPosition.clone(),
+      patrolCenter: spawnPosition.clone(),
+      patrolRadius: 10,
+      lastAttackTime: 0,
+      lastStateChange: Date.now(),
+      movementSpeed: actualConfig.speed,
+    };
+
+    // Store JSON demon ID for reference
+    (demonInstance as any).jsonDemonId = jsonDemonId;
+
+    // Set up user data
+    demon.userData = {
+      demonType,
+      detectRange: actualConfig.detectRange,
+      attackRange: actualConfig.attackRange,
+      chaseRange: actualConfig.chaseRange,
+      attackDamage: actualConfig.attackDamage,
+      walkSpeed: actualConfig.speed, // Add walk speed from config
+      attackCooldown: 0,
+      isAttacking: false,
+      isFalling: false,
+      isDead: false,
+      attackScaleSet: false,
+      originalScale: actualConfig.scale,
+      wanderDirection: Math.random() * Math.PI * 2, // Add initial wander direction
+      wanderTimer: Math.random() * 120, // Add initial wander timer
+    };
+
+    this.demons.push(demonInstance);
+    this.scene.add(demon);
+
+    // Play spawn sound
+    if (this.audioSystem) {
+      this.audioSystem.playDemonSpawnSound(demonType);
+    }
+
+    console.log(
+      `👹 Force spawned JSON demon ${jsonDemonId} at position (${spawnPosition.x.toFixed(
+        1
+      )}, ${spawnPosition.z.toFixed(1)})`
+    );
+  }
+
+  /**
    * Select a random JSON demon based on spawn weights
    */
   private selectRandomJsonDemon(): string | null {
@@ -133,7 +292,7 @@ export class DemonSystem implements IDemonSystem {
     const weightedDemons: Array<{ id: string; weight: number }> = [];
 
     jsonDemons.forEach((config, id) => {
-      const weight = (config as any).spawnWeight || 1;
+      const weight = (config as any).behavior?.spawnWeight || 1;
       weightedDemons.push({ id, weight });
     });
 
@@ -143,8 +302,8 @@ export class DemonSystem implements IDemonSystem {
       0
     );
 
-    // 30% chance to spawn a JSON demon (adjustable)
-    const spawnChance = 0.3;
+    // Spawn chance for JSON demons (adjustable via setJsonDemonSpawnChance)
+    const spawnChance = this.jsonDemonSpawnChance;
     const random = Math.random();
     console.log(
       `🎯 Spawn chance check: ${random.toFixed(3)} vs ${spawnChance} threshold`
@@ -768,7 +927,7 @@ export class DemonSystem implements IDemonSystem {
   private playAttackAnimation(
     meshObject: THREE.Object3D,
     animation: DemonAnimation,
-    demonType: string,
+    demonType: DemonType,
     time: number
   ): void {
     animation.currentState = "attacking";
@@ -810,7 +969,7 @@ export class DemonSystem implements IDemonSystem {
   private playWalkAnimation(
     meshObject: THREE.Object3D,
     animation: DemonAnimation,
-    demonType: string,
+    demonType: DemonType,
     time: number
   ): void {
     animation.currentState = "walking";
@@ -851,7 +1010,7 @@ export class DemonSystem implements IDemonSystem {
   private playIdleAnimation(
     meshObject: THREE.Object3D,
     animation: DemonAnimation,
-    demonType: string,
+    demonType: DemonType,
     time: number
   ): void {
     animation.currentState = "idle";
@@ -896,7 +1055,7 @@ export class DemonSystem implements IDemonSystem {
     leftEye: any,
     rightEye: any,
     time: number,
-    demonType: string
+    demonType: DemonType
   ): void {
     if (!leftEye || !rightEye) return;
 
@@ -1393,12 +1552,12 @@ export class DemonSystem implements IDemonSystem {
 
     // Get JSON demon config if selected
     if (jsonDemonId && this.jsonDemonManager) {
-      const jsonDemons = this.jsonDemonManager.getLoadedDemons();
-      const jsonConfig = jsonDemons.get(jsonDemonId);
-      if (jsonConfig) {
-        actualConfig = jsonConfig as any;
+      const originalJsonConfig =
+        this.jsonDemonManager.getOriginalJsonDemon(jsonDemonId);
+      if (originalJsonConfig) {
+        actualConfig = originalJsonConfig as any;
         console.log(
-          `🎮 Spawning JSON demon: ${jsonConfig.name || jsonDemonId}`
+          `🎮 Spawning JSON demon: ${originalJsonConfig.name || jsonDemonId}`
         );
       }
     }
@@ -1459,13 +1618,10 @@ export class DemonSystem implements IDemonSystem {
     // Set up user data
     demon.userData = {
       demonType,
-      detectRange:
-        actualConfig.behavior?.detectRange || actualConfig.detectRange,
-      attackRange:
-        actualConfig.behavior?.attackRange || actualConfig.attackRange,
-      chaseRange: actualConfig.behavior?.chaseRange || actualConfig.chaseRange,
-      attackDamage:
-        actualConfig.behavior?.attackDamage || actualConfig.attackDamage,
+      detectRange: actualConfig.detectRange,
+      attackRange: actualConfig.attackRange,
+      chaseRange: actualConfig.chaseRange,
+      attackDamage: actualConfig.attackDamage,
       walkSpeed: actualConfig.speed, // Add walk speed from config
       attackCooldown: 0,
       isAttacking: false,
@@ -1506,11 +1662,14 @@ export class DemonSystem implements IDemonSystem {
 
     // Check if this is a JSON demon first
     if (jsonDemonId && this.jsonDemonManager) {
-      const jsonDemons = this.jsonDemonManager.getLoadedDemons();
-      const jsonDemonConfig = jsonDemons.get(jsonDemonId);
-      if (jsonDemonConfig) {
-        typeData = jsonDemonConfig;
-        console.log(`🎮 Creating JSON demon model: ${jsonDemonConfig.name}`);
+      const originalJsonConfig =
+        this.jsonDemonManager.getOriginalJsonDemon(jsonDemonId);
+      if (originalJsonConfig) {
+        typeData = originalJsonConfig;
+        console.log(
+          `🎮 Creating JSON demon model: ${originalJsonConfig.name} with visual features:`,
+          originalJsonConfig.appearance?.visualFeatures
+        );
       } else {
         console.warn(
           `❌ JSON demon not found: ${jsonDemonId}, falling back to standard config`
@@ -1530,16 +1689,20 @@ export class DemonSystem implements IDemonSystem {
     const headColor = typeData.colors?.head || typeData.headColor || "#ff0000";
     const eyeColor = typeData.colors?.eyes || typeData.eyeColor || "#ffff00";
 
-    const bodyMaterial = new THREE.MeshPhongMaterial({
-      color: bodyColor,
-      shininess: 10,
-      specular: 0x222222,
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(bodyColor),
+      emissive: new THREE.Color(bodyColor),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
     });
 
-    const headMaterial = new THREE.MeshPhongMaterial({
-      color: headColor,
-      shininess: 15,
-      specular: 0x333333,
+    const headMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(headColor),
+      emissive: new THREE.Color(headColor),
+      emissiveIntensity: 0.15,
+      metalness: 0.3,
+      roughness: 0.6,
     });
 
     // Create enhanced body geometry based on demon type
@@ -1580,10 +1743,12 @@ export class DemonSystem implements IDemonSystem {
 
     // Enhanced glowing eyes
     const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
-    const eyeMaterial = new THREE.MeshLambertMaterial({
-      color: eyeColor,
+    const eyeMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(eyeColor),
       emissive: new THREE.Color(eyeColor),
-      emissiveIntensity: 0.8,
+      emissiveIntensity: 1.0,
+      metalness: 0.1,
+      roughness: 0.3,
     });
 
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
@@ -1606,83 +1771,98 @@ export class DemonSystem implements IDemonSystem {
     demonGroup.add(rightEye);
 
     // Build demon based on body type for better modularity - EXPANDED for 20 body types
-    switch (typeData.bodyType) {
-      case "floating":
-        if (demonType === "CACODEMON") {
-          this.addCacodemonFeatures(demonGroup, typeData);
-        } else {
-          this.addFloatingFeatures(demonGroup, typeData, demonType);
-        }
-        break;
-      case "dragon":
-        this.addDragonFeatures(demonGroup, typeData, demonType);
-        break;
-      case "quadruped":
-        this.addQuadrupedFeatures(demonGroup, typeData, demonType);
-        break;
-      case "small_biped":
-        this.addSmallBipedFeatures(demonGroup, typeData, demonType);
-        break;
+    // For JSON demons, use the body type from appearance config; for standard demons, use bodyType field
+    const actualBodyType =
+      typeData.appearance?.bodyType || typeData.bodyType || "humanoid";
 
-      // NEW BODY TYPES - Use existing features as base with unique modifications
-      case "serpentine":
-        this.addSerpentineFeatures(demonGroup, typeData, demonType);
-        break;
-      case "arachnid":
-        this.addArachnidFeatures(demonGroup, typeData, demonType);
-        break;
-      case "tentacled":
-        this.addTentacledFeatures(demonGroup, typeData, demonType);
-        break;
-      case "insectoid":
-        this.addInsectoidFeatures(demonGroup, typeData, demonType);
-        break;
-      case "amorphous":
-        this.addAmorphousFeatures(demonGroup, typeData, demonType);
-        break;
-      case "centauroid":
-        this.addCentauroidFeatures(demonGroup, typeData, demonType);
-        break;
-      case "multi_headed":
-        this.addMultiHeadedFeatures(demonGroup, typeData, demonType);
-        break;
-      case "elemental":
-        this.addElementalFeatures(demonGroup, typeData, demonType);
-        break;
-      case "mechanical":
-        this.addMechanicalFeatures(demonGroup, typeData, demonType);
-        break;
-      case "plant_like":
-        this.addPlantLikeFeatures(demonGroup, typeData, demonType);
-        break;
-      case "crystalline":
-        this.addCrystallineFeatures(demonGroup, typeData, demonType);
-        break;
-      case "swarm":
-        this.addSwarmFeatures(demonGroup, typeData, demonType);
-        break;
-      case "giant_humanoid":
-        this.addGiantHumanoidFeatures(demonGroup, typeData, demonType);
-        break;
-      case "winged_humanoid":
-        this.addWingedHumanoidFeatures(demonGroup, typeData, demonType);
-        break;
-      case "aquatic":
-        this.addAquaticFeatures(demonGroup, typeData, demonType);
-        break;
+    // Skip standard body type features for JSON demons - they will be handled by JSON feature system
+    if (!jsonDemonId) {
+      switch (actualBodyType) {
+        case "floating":
+          if (demonType === "CACODEMON") {
+            this.addCacodemonFeatures(demonGroup, typeData);
+          } else {
+            this.addFloatingFeatures(demonGroup, typeData, demonType);
+          }
+          break;
+        case "dragon":
+          this.addDragonFeatures(demonGroup, typeData, demonType);
+          break;
+        case "quadruped":
+          this.addQuadrupedFeatures(demonGroup, typeData, demonType);
+          break;
+        case "small_biped":
+          this.addSmallBipedFeatures(demonGroup, typeData, demonType);
+          break;
 
-      case "humanoid":
-      default:
-        if (demonType === "ARCHVILE") {
-          this.addArchvileFeatures(demonGroup, typeData);
-        } else {
-          this.addHumanoidFeatures(demonGroup, typeData, demonType);
-        }
-        break;
+        // NEW BODY TYPES - Use existing features as base with unique modifications
+        case "serpentine":
+          this.addSerpentineFeatures(demonGroup, typeData, demonType);
+          break;
+        case "arachnid":
+          this.addArachnidFeatures(demonGroup, typeData, demonType);
+          break;
+        case "tentacled":
+          this.addTentacledFeatures(demonGroup, typeData, demonType);
+          break;
+        case "insectoid":
+          this.addInsectoidFeatures(demonGroup, typeData, demonType);
+          break;
+        case "amorphous":
+          this.addAmorphousFeatures(demonGroup, typeData, demonType);
+          break;
+        case "centauroid":
+          this.addCentauroidFeatures(demonGroup, typeData, demonType);
+          break;
+        case "multi_headed":
+          this.addMultiHeadedFeatures(demonGroup, typeData, demonType);
+          break;
+        case "elemental":
+          this.addElementalFeatures(demonGroup, typeData, demonType);
+          break;
+        case "mechanical":
+          this.addMechanicalFeatures(demonGroup, typeData, demonType);
+          break;
+        case "plant_like":
+          this.addPlantLikeFeatures(demonGroup, typeData, demonType);
+          break;
+        case "crystalline":
+          this.addCrystallineFeatures(demonGroup, typeData, demonType);
+          break;
+        case "swarm":
+          this.addSwarmFeatures(demonGroup, typeData, demonType);
+          break;
+        case "giant_humanoid":
+          this.addGiantHumanoidFeatures(demonGroup, typeData, demonType);
+          break;
+        case "winged_humanoid":
+          this.addWingedHumanoidFeatures(demonGroup, typeData, demonType);
+          break;
+        case "aquatic":
+          this.addAquaticFeatures(demonGroup, typeData, demonType);
+          break;
+
+        case "humanoid":
+        default:
+          if (demonType === "ARCHVILE") {
+            this.addArchvileFeatures(demonGroup, typeData);
+          } else {
+            this.addHumanoidFeatures(demonGroup, typeData, demonType);
+          }
+          break;
+      }
     }
 
-    // Add demon-specific details
-    this.addDemonDetails(demonGroup, demonType, typeData, eyeColor);
+    // Add demon-specific details (skip for JSON demons as they have their own feature system)
+    if (!jsonDemonId) {
+      this.addDemonDetails(demonGroup, demonType, typeData, eyeColor);
+    }
+
+    // Add JSON demon visual features if this is a JSON demon
+    if (jsonDemonId) {
+      // Always add basic JSON demon features (limbs, etc.)
+      this.addJsonDemonVisualFeatures(demonGroup, typeData, bodyMaterial);
+    }
 
     // Add theme-specific enhancements
     if (themeName) {
@@ -2289,7 +2469,7 @@ export class DemonSystem implements IDemonSystem {
     });
   }
 
-  public getDemonDamage(demonType: string): number {
+  public getDemonDamage(demonType: DemonType): number {
     const config = DEMON_CONFIGS[demonType as DemonType];
     return config ? config.attackDamage : 10;
   }
@@ -3035,7 +3215,7 @@ export class DemonSystem implements IDemonSystem {
   private addSerpentineFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use floating body as base but elongated
     this.addFloatingFeatures(demonGroup, typeData, demonType);
@@ -3046,13 +3226,363 @@ export class DemonSystem implements IDemonSystem {
     }
   }
 
+  // Visual feature methods for standard demons (used by body type systems)
+  private addTail(demonGroup: THREE.Group, typeData: any): void {
+    const tailMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(typeData.color || "#ff0000"),
+      shininess: 10,
+    });
+
+    const tailGeometry = new THREE.CylinderGeometry(0.06, 0.12, 1.0, 8);
+    const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+    tail.position.set(0, 0.3, -0.7);
+    tail.rotation.x = Math.PI / 2.2;
+    tail.name = "tail";
+    tail.castShadow = true;
+    tail.receiveShadow = true;
+    demonGroup.add(tail);
+  }
+
+  private addSpikes(demonGroup: THREE.Group, typeData: any): void {
+    const spikeMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color("#1a1a1a"),
+      shininess: 30,
+    });
+
+    const spikeGeometry = new THREE.ConeGeometry(0.04, 0.18, 6);
+
+    // Add spikes along the back
+    for (let i = 0; i < 4; i++) {
+      const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+      spike.position.set(0, 0.7 + i * 0.15, -0.25);
+      spike.rotation.x = Math.PI;
+      spike.name = `spike_${i}`;
+      spike.castShadow = true;
+      spike.receiveShadow = true;
+      demonGroup.add(spike);
+    }
+  }
+
+  private addHorns(demonGroup: THREE.Group, typeData: any): void {
+    const hornMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color("#2a2a2a"),
+      shininess: 20,
+    });
+
+    const hornGeometry = new THREE.ConeGeometry(0.06, 0.35, 8);
+    const leftHorn = new THREE.Mesh(hornGeometry, hornMaterial);
+    const rightHorn = new THREE.Mesh(hornGeometry, hornMaterial);
+
+    leftHorn.position.set(-0.18, 1.65, 0);
+    rightHorn.position.set(0.18, 1.65, 0);
+    leftHorn.rotation.z = -Math.PI / 10;
+    rightHorn.rotation.z = Math.PI / 10;
+
+    leftHorn.name = "leftHorn";
+    rightHorn.name = "rightHorn";
+    leftHorn.castShadow = true;
+    rightHorn.castShadow = true;
+    leftHorn.receiveShadow = true;
+    rightHorn.receiveShadow = true;
+
+    demonGroup.add(leftHorn);
+    demonGroup.add(rightHorn);
+  }
+
+  private addArmor(demonGroup: THREE.Group, typeData: any): void {
+    const armorMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color("#404040"),
+      shininess: 60,
+      specular: 0x555555,
+    });
+
+    const chestGeometry = new THREE.BoxGeometry(0.6, 0.25, 0.08);
+    const chestArmor = new THREE.Mesh(chestGeometry, armorMaterial);
+    chestArmor.position.set(0, 0.9, 0.32);
+    chestArmor.name = "chestArmor";
+    chestArmor.castShadow = true;
+    chestArmor.receiveShadow = true;
+    demonGroup.add(chestArmor);
+  }
+
+  private addWings(demonGroup: THREE.Group, typeData: any): void {
+    const wingMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(typeData.color || "#ff0000"),
+      shininess: 5,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    const wingGeometry = new THREE.PlaneGeometry(0.7, 0.5);
+    const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+    const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+
+    leftWing.position.set(-0.55, 1.1, -0.25);
+    rightWing.position.set(0.55, 1.1, -0.25);
+    leftWing.rotation.y = Math.PI / 4;
+    rightWing.rotation.y = -Math.PI / 4;
+    leftWing.rotation.x = -Math.PI / 8;
+    rightWing.rotation.x = -Math.PI / 8;
+
+    leftWing.name = "leftWing";
+    rightWing.name = "rightWing";
+    leftWing.castShadow = true;
+    rightWing.castShadow = true;
+    leftWing.receiveShadow = true;
+    rightWing.receiveShadow = true;
+
+    demonGroup.add(leftWing);
+    demonGroup.add(rightWing);
+  }
+
+  /**
+   * Add visual features specific to JSON demons (matching demon-gen implementation)
+   */
+  private addJsonDemonVisualFeatures(
+    demonGroup: THREE.Group,
+    typeData: any,
+    baseMaterial: THREE.Material
+  ): void {
+    const features = typeData.appearance?.visualFeatures;
+
+    // Create accent material matching demon-gen
+    const accentMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(
+        typeData.colors?.accent || typeData.colors?.secondary || "#ff8800"
+      ),
+      emissive: new THREE.Color(typeData.colors?.accent || "#ff4400"),
+      emissiveIntensity: 0.2,
+      metalness: 0.4,
+      roughness: 0.5,
+    });
+
+    // Add wings - improved to match demon-gen style
+    if (features && features.hasWings) {
+      const bodyType = typeData.appearance?.bodyType || "humanoid";
+
+      if (bodyType === "dragon") {
+        // Dragon wings: More angular, like demon-gen dragon features
+        const wingGeometry = new THREE.CylinderGeometry(0.05, 0.3, 1.2, 8);
+        const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
+
+        leftWing.position.set(-0.8, 1.0, -0.2);
+        rightWing.position.set(0.8, 1.0, -0.2);
+        leftWing.rotation.z = Math.PI / 4;
+        leftWing.rotation.x = -Math.PI / 6;
+        rightWing.rotation.z = -Math.PI / 4;
+        rightWing.rotation.x = -Math.PI / 6;
+
+        leftWing.castShadow = true;
+        rightWing.castShadow = true;
+        demonGroup.add(leftWing);
+        demonGroup.add(rightWing);
+      } else {
+        // Standard wings: Plane geometry like demon-gen
+        const wingGeometry = new THREE.PlaneGeometry(0.8, 0.4);
+        const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
+
+        leftWing.position.set(-0.6, 1.2, -0.2);
+        rightWing.position.set(0.6, 1.2, -0.2);
+        leftWing.rotation.z = 0.3;
+        rightWing.rotation.z = -0.3;
+
+        leftWing.castShadow = true;
+        rightWing.castShadow = true;
+        leftWing.name = "leftWing";
+        rightWing.name = "rightWing";
+        demonGroup.add(leftWing);
+        demonGroup.add(rightWing);
+      }
+    }
+
+    // Add horns - matching demon-gen
+    if (features && features.hasHorns) {
+      const hornGeometry = new THREE.ConeGeometry(0.05, 0.3, 6);
+      const leftHorn = new THREE.Mesh(hornGeometry, accentMaterial);
+      const rightHorn = new THREE.Mesh(hornGeometry, accentMaterial);
+
+      leftHorn.position.set(-0.15, 1.6, 0);
+      rightHorn.position.set(0.15, 1.6, 0);
+
+      leftHorn.castShadow = true;
+      rightHorn.castShadow = true;
+      leftHorn.name = "leftHorn";
+      rightHorn.name = "rightHorn";
+      demonGroup.add(leftHorn);
+      demonGroup.add(rightHorn);
+    }
+
+    // Add tail - matching demon-gen
+    if (features && features.hasTail) {
+      const tailGeometry = new THREE.CylinderGeometry(0.05, 0.02, 0.8, 6);
+      const tail = new THREE.Mesh(tailGeometry, accentMaterial);
+      tail.position.set(0, 0.4, -0.4);
+      tail.rotation.x = 0.5;
+      tail.castShadow = true;
+      tail.name = "tail";
+      demonGroup.add(tail);
+    }
+
+    // Add spikes - matching demon-gen circular arrangement
+    if (features && features.hasSpikes) {
+      for (let i = 0; i < 5; i++) {
+        const spikeGeometry = new THREE.ConeGeometry(0.03, 0.15, 4);
+        const spike = new THREE.Mesh(spikeGeometry, accentMaterial);
+        const angle = (i / 5) * Math.PI * 2;
+        spike.position.set(
+          Math.cos(angle) * 0.3,
+          1.0 + Math.random() * 0.4,
+          Math.sin(angle) * 0.3
+        );
+        spike.castShadow = true;
+        spike.name = `spike_${i}`;
+        demonGroup.add(spike);
+      }
+    }
+
+    // Add armor pieces
+    if (features && features.hasArmor) {
+      const armorGeometry = new THREE.BoxGeometry(0.7, 0.3, 0.1);
+      const armorMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#404040"),
+        emissive: new THREE.Color("#202020"),
+        emissiveIntensity: 0.1,
+        metalness: 0.8,
+        roughness: 0.3,
+      });
+
+      const chestArmor = new THREE.Mesh(armorGeometry, armorMaterial);
+      chestArmor.position.set(0, 1.0, 0.35);
+      chestArmor.castShadow = true;
+      chestArmor.receiveShadow = true;
+      chestArmor.name = "chestArmor";
+      demonGroup.add(chestArmor);
+    }
+
+    // Add basic limbs for humanoid types (matching demon-gen) - ALWAYS add limbs for JSON demons
+    const actualBodyType = typeData.appearance?.bodyType || "humanoid";
+    if (actualBodyType === "humanoid" || actualBodyType === "small_biped") {
+      this.addBasicLimbsToJsonDemon(
+        demonGroup,
+        typeData,
+        features && features.hasClaws
+      );
+    }
+  }
+
+  /**
+   * Add basic limbs to JSON demons (matching demon-gen implementation)
+   */
+  private addBasicLimbsToJsonDemon(
+    demonGroup: THREE.Group,
+    typeData: any,
+    hasClaws: boolean = false
+  ): void {
+    const bodyType = typeData.appearance?.bodyType || "humanoid";
+
+    // Create arm material - matching demon-gen
+    const armMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(typeData.colors?.head || "#ff0000"),
+      emissive: new THREE.Color(typeData.colors?.head || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
+    });
+
+    // Create leg material - matching demon-gen
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(typeData.colors?.primary || "#ff0000"),
+      emissive: new THREE.Color(typeData.colors?.primary || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
+    });
+
+    // Add arms
+    const armGeometry =
+      bodyType === "small_biped"
+        ? new THREE.CylinderGeometry(0.06, 0.08, 0.4, 6)
+        : new THREE.CylinderGeometry(0.06, 0.1, 0.7, 6);
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+
+    if (bodyType === "small_biped") {
+      leftArm.position.set(-0.25, 0.5, 0);
+      rightArm.position.set(0.25, 0.5, 0);
+    } else {
+      leftArm.position.set(-0.35, 0.8, 0);
+      rightArm.position.set(0.35, 0.8, 0);
+      leftArm.rotation.z = 0.3;
+      rightArm.rotation.z = -0.3;
+    }
+
+    leftArm.castShadow = true;
+    rightArm.castShadow = true;
+    leftArm.name = "leftArm";
+    rightArm.name = "rightArm";
+    demonGroup.add(leftArm);
+    demonGroup.add(rightArm);
+
+    // Add legs
+    const legGeometry =
+      bodyType === "small_biped"
+        ? new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6)
+        : new THREE.CylinderGeometry(0.08, 0.12, 0.8, 6);
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+
+    if (bodyType === "small_biped") {
+      leftLeg.position.set(-0.1, 0.0, 0);
+      rightLeg.position.set(0.1, 0.0, 0);
+    } else {
+      leftLeg.position.set(-0.15, -0.2, 0);
+      rightLeg.position.set(0.15, -0.2, 0);
+    }
+
+    leftLeg.castShadow = true;
+    rightLeg.castShadow = true;
+    leftLeg.name = "leftLeg";
+    rightLeg.name = "rightLeg";
+    demonGroup.add(leftLeg);
+    demonGroup.add(rightLeg);
+
+    // Add claws if specified
+    if (hasClaws) {
+      const clawGeometry = new THREE.ConeGeometry(0.02, 0.1, 6);
+      const clawMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#1a1a1a"),
+        emissive: new THREE.Color("#0a0a0a"),
+        emissiveIntensity: 0.1,
+        metalness: 0.8,
+        roughness: 0.2,
+      });
+
+      for (let hand = 0; hand < 2; hand++) {
+        for (let finger = 0; finger < 4; finger++) {
+          const claw = new THREE.Mesh(clawGeometry, clawMaterial);
+          const xPos = (hand === 0 ? -0.35 : 0.35) + (finger - 1.5) * 0.03;
+          const yPos = bodyType === "small_biped" ? 0.3 : 0.5;
+          claw.position.set(xPos, yPos, 0.1);
+          claw.rotation.x = Math.PI;
+          claw.castShadow = true;
+          claw.name = `claw_${hand}_${finger}`;
+          demonGroup.add(claw);
+        }
+      }
+    }
+  }
+
   /**
    * Add arachnid (spider-like) features
    */
   private addArachnidFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use quadruped as base
     this.addQuadrupedFeatures(demonGroup, typeData, demonType);
@@ -3069,7 +3599,7 @@ export class DemonSystem implements IDemonSystem {
   private addTentacledFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use floating as base
     this.addFloatingFeatures(demonGroup, typeData, demonType);
@@ -3086,7 +3616,7 @@ export class DemonSystem implements IDemonSystem {
   private addInsectoidFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use small_biped as base
     this.addSmallBipedFeatures(demonGroup, typeData, demonType);
@@ -3103,7 +3633,7 @@ export class DemonSystem implements IDemonSystem {
   private addAmorphousFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use floating but with different geometry for blob-like appearance
     this.addFloatingFeatures(demonGroup, typeData, demonType);
@@ -3122,7 +3652,7 @@ export class DemonSystem implements IDemonSystem {
   private addCentauroidFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Combine quadruped lower with humanoid upper
     this.addQuadrupedFeatures(demonGroup, typeData, demonType);
@@ -3135,7 +3665,7 @@ export class DemonSystem implements IDemonSystem {
   private addMultiHeadedFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use humanoid as base
     this.addHumanoidFeatures(demonGroup, typeData, demonType);
@@ -3152,7 +3682,7 @@ export class DemonSystem implements IDemonSystem {
   private addElementalFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use floating as base for energy beings
     this.addFloatingFeatures(demonGroup, typeData, demonType);
@@ -3164,7 +3694,7 @@ export class DemonSystem implements IDemonSystem {
   private addMechanicalFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use humanoid as base
     this.addHumanoidFeatures(demonGroup, typeData, demonType);
@@ -3181,7 +3711,7 @@ export class DemonSystem implements IDemonSystem {
   private addPlantLikeFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use humanoid as base but taller
     this.addHumanoidFeatures(demonGroup, typeData, demonType);
@@ -3198,7 +3728,7 @@ export class DemonSystem implements IDemonSystem {
   private addCrystallineFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use floating for crystal beings
     this.addFloatingFeatures(demonGroup, typeData, demonType);
@@ -3215,7 +3745,7 @@ export class DemonSystem implements IDemonSystem {
   private addSwarmFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use small_biped as base for individual units
     this.addSmallBipedFeatures(demonGroup, typeData, demonType);
@@ -3227,7 +3757,7 @@ export class DemonSystem implements IDemonSystem {
   private addGiantHumanoidFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use humanoid but scaled up
     this.addHumanoidFeatures(demonGroup, typeData, demonType);
@@ -3242,7 +3772,7 @@ export class DemonSystem implements IDemonSystem {
   private addWingedHumanoidFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use humanoid as base
     this.addHumanoidFeatures(demonGroup, typeData, demonType);
@@ -3259,7 +3789,7 @@ export class DemonSystem implements IDemonSystem {
   private addAquaticFeatures(
     demonGroup: THREE.Group,
     typeData: any,
-    demonType: string
+    demonType: DemonType
   ): void {
     // Use floating for water-based movement
     this.addFloatingFeatures(demonGroup, typeData, demonType);

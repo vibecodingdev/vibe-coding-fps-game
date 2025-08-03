@@ -1433,7 +1433,7 @@ export class DemonManagerUI {
    * Switch between tabs
    */
   private switchTab(tabName: DemonManagerState["activeTab"]): void {
-    this.state.activeTab = tabName;
+    this.state = { ...this.state, activeTab: tabName };
 
     // Update tab buttons
     this.container?.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -1656,12 +1656,16 @@ export class DemonManagerUI {
           .value,
         head: (form.querySelector("#color-head") as HTMLInputElement).value,
         eyes: (form.querySelector("#color-eyes") as HTMLInputElement).value,
-        secondary:
-          (form.querySelector("#color-secondary") as HTMLInputElement).value ||
-          undefined,
-        accent:
-          (form.querySelector("#color-accent") as HTMLInputElement).value ||
-          undefined,
+        ...((form.querySelector("#color-secondary") as HTMLInputElement)
+          .value && {
+          secondary: (
+            form.querySelector("#color-secondary") as HTMLInputElement
+          ).value,
+        }),
+        ...((form.querySelector("#color-accent") as HTMLInputElement).value && {
+          accent: (form.querySelector("#color-accent") as HTMLInputElement)
+            .value,
+        }),
       },
       behavior: {
         detectRange: parseInt(
@@ -1681,27 +1685,24 @@ export class DemonManagerUI {
         ),
         isRanged: (form.querySelector("#is-ranged") as HTMLInputElement)
           .checked,
-        fireballSpeed: (
-          form.querySelector("#fireball-speed") as HTMLInputElement
-        ).value
-          ? parseFloat(
-              (form.querySelector("#fireball-speed") as HTMLInputElement).value
-            )
-          : undefined,
-        fireballRange: (
-          form.querySelector("#fireball-range") as HTMLInputElement
-        ).value
-          ? parseInt(
-              (form.querySelector("#fireball-range") as HTMLInputElement).value
-            )
-          : undefined,
-        attackCooldown: (
-          form.querySelector("#attack-cooldown") as HTMLInputElement
-        ).value
-          ? parseInt(
-              (form.querySelector("#attack-cooldown") as HTMLInputElement).value
-            )
-          : undefined,
+        ...((form.querySelector("#fireball-speed") as HTMLInputElement)
+          .value && {
+          fireballSpeed: parseFloat(
+            (form.querySelector("#fireball-speed") as HTMLInputElement).value
+          ),
+        }),
+        ...((form.querySelector("#fireball-range") as HTMLInputElement)
+          .value && {
+          fireballRange: parseInt(
+            (form.querySelector("#fireball-range") as HTMLInputElement).value
+          ),
+        }),
+        ...((form.querySelector("#attack-cooldown") as HTMLInputElement)
+          .value && {
+          attackCooldown: parseInt(
+            (form.querySelector("#attack-cooldown") as HTMLInputElement).value
+          ),
+        }),
       },
       appearance: {
         bodyType: (form.querySelector("#body-type") as HTMLSelectElement)
@@ -2209,17 +2210,21 @@ export class DemonManagerUI {
     const demonGroup = new THREE.Group();
     const colors = demon.colors;
 
-    // Create materials
-    const bodyMaterial = new THREE.MeshPhongMaterial({
+    // Create materials - matching demon-gen standard materials
+    const bodyMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(colors.primary || "#ff0000"),
-      shininess: 10,
-      specular: 0x222222,
+      emissive: new THREE.Color(colors.primary || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
     });
 
-    const headMaterial = new THREE.MeshPhongMaterial({
+    const headMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(colors.head || "#ff0000"),
-      shininess: 15,
-      specular: 0x333333,
+      emissive: new THREE.Color(colors.head || "#ff0000"),
+      emissiveIntensity: 0.15,
+      metalness: 0.3,
+      roughness: 0.6,
     });
 
     // Create body based on body type
@@ -2315,12 +2320,14 @@ export class DemonManagerUI {
     head.receiveShadow = true;
     demonGroup.add(head);
 
-    // Add eyes
+    // Add eyes - matching demon-gen
     const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-    const eyeMaterial = new THREE.MeshLambertMaterial({
+    const eyeMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(colors.eyes || "#ffff00"),
       emissive: new THREE.Color(colors.eyes || "#ffff00"),
-      emissiveIntensity: 0.6,
+      emissiveIntensity: 1.0,
+      metalness: 0.1,
+      roughness: 0.3,
     });
 
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
@@ -2343,7 +2350,7 @@ export class DemonManagerUI {
   }
 
   /**
-   * Add visual features to the preview model
+   * Add visual features to the preview model (matching demon-gen implementation)
    */
   private addPreviewFeatures(
     demonGroup: THREE.Group,
@@ -2353,100 +2360,199 @@ export class DemonManagerUI {
     const features = demon.appearance?.visualFeatures;
     if (!features) return;
 
-    const featureMaterial = baseMaterial.clone();
+    // Create accent material matching demon-gen
+    const accentMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(
+        demon.colors?.accent || demon.colors?.secondary || "#ff8800"
+      ),
+      emissive: new THREE.Color(demon.colors?.accent || "#ff4400"),
+      emissiveIntensity: 0.2,
+      metalness: 0.4,
+      roughness: 0.5,
+    });
 
-    // Add wings
+    // Add wings - improved to match demon-gen style
     if (features.hasWings) {
-      const wingGeometry = new THREE.PlaneGeometry(0.6, 0.4);
-      const leftWing = new THREE.Mesh(wingGeometry, featureMaterial);
-      const rightWing = new THREE.Mesh(wingGeometry, featureMaterial);
+      const bodyType = demon.appearance?.bodyType || "humanoid";
 
-      leftWing.position.set(-0.5, 1.0, -0.2);
-      rightWing.position.set(0.5, 1.0, -0.2);
-      leftWing.rotation.y = Math.PI / 4;
-      rightWing.rotation.y = -Math.PI / 4;
+      if (bodyType === "dragon") {
+        // Dragon wings: More angular, like demon-gen dragon features
+        const wingGeometry = new THREE.CylinderGeometry(0.05, 0.3, 1.2, 8);
+        const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
 
-      demonGroup.add(leftWing);
-      demonGroup.add(rightWing);
+        leftWing.position.set(-0.8, 1.0, -0.2);
+        rightWing.position.set(0.8, 1.0, -0.2);
+        leftWing.rotation.z = Math.PI / 4;
+        leftWing.rotation.x = -Math.PI / 6;
+        rightWing.rotation.z = -Math.PI / 4;
+        rightWing.rotation.x = -Math.PI / 6;
+
+        leftWing.castShadow = true;
+        rightWing.castShadow = true;
+        demonGroup.add(leftWing);
+        demonGroup.add(rightWing);
+      } else {
+        // Standard wings: Plane geometry
+        const wingGeometry = new THREE.PlaneGeometry(0.8, 0.4);
+        const leftWing = new THREE.Mesh(wingGeometry, accentMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, accentMaterial);
+
+        leftWing.position.set(-0.6, 1.2, -0.2);
+        rightWing.position.set(0.6, 1.2, -0.2);
+        leftWing.rotation.z = 0.3;
+        rightWing.rotation.z = -0.3;
+
+        leftWing.castShadow = true;
+        rightWing.castShadow = true;
+        demonGroup.add(leftWing);
+        demonGroup.add(rightWing);
+      }
     }
 
     // Add horns
     if (features.hasHorns) {
       const hornGeometry = new THREE.ConeGeometry(0.05, 0.3, 6);
-      const leftHorn = new THREE.Mesh(hornGeometry, featureMaterial);
-      const rightHorn = new THREE.Mesh(hornGeometry, featureMaterial);
+      const leftHorn = new THREE.Mesh(hornGeometry, accentMaterial);
+      const rightHorn = new THREE.Mesh(hornGeometry, accentMaterial);
 
       leftHorn.position.set(-0.15, 1.6, 0);
       rightHorn.position.set(0.15, 1.6, 0);
 
+      leftHorn.castShadow = true;
+      rightHorn.castShadow = true;
       demonGroup.add(leftHorn);
       demonGroup.add(rightHorn);
     }
 
     // Add tail
     if (features.hasTail) {
-      const tailGeometry = new THREE.CylinderGeometry(0.05, 0.1, 0.8, 6);
-      const tail = new THREE.Mesh(tailGeometry, featureMaterial);
-      tail.position.set(0, 0.3, -0.6);
-      tail.rotation.x = Math.PI / 3;
+      const tailGeometry = new THREE.CylinderGeometry(0.05, 0.02, 0.8, 6);
+      const tail = new THREE.Mesh(tailGeometry, accentMaterial);
+      tail.position.set(0, 0.4, -0.4);
+      tail.rotation.x = 0.5;
+      tail.castShadow = true;
       demonGroup.add(tail);
+    }
+
+    // Add spikes - matching demon-gen circular arrangement
+    if (features.hasSpikes) {
+      for (let i = 0; i < 5; i++) {
+        const spikeGeometry = new THREE.ConeGeometry(0.03, 0.15, 4);
+        const spike = new THREE.Mesh(spikeGeometry, accentMaterial);
+        const angle = (i / 5) * Math.PI * 2;
+        spike.position.set(
+          Math.cos(angle) * 0.3,
+          1.0 + Math.random() * 0.4,
+          Math.sin(angle) * 0.3
+        );
+        spike.castShadow = true;
+        demonGroup.add(spike);
+      }
     }
 
     // Add basic limbs for humanoid types
     const bodyType = demon.appearance?.bodyType || "humanoid";
     if (bodyType === "humanoid" || bodyType === "small_biped") {
-      this.addBasicLimbs(demonGroup, featureMaterial, features.hasClaws);
+      this.addBasicLimbs(demonGroup, demon, features.hasClaws);
     }
   }
 
   /**
-   * Add basic limbs to humanoid demons
+   * Add basic limbs to humanoid demons (matching demon-gen implementation)
    */
   private addBasicLimbs(
     demonGroup: THREE.Group,
-    material: THREE.Material,
+    demon: any,
     hasClaws: boolean
   ): void {
-    // Arms
-    const armGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.6, 6);
-    const leftArm = new THREE.Mesh(armGeometry, material);
-    const rightArm = new THREE.Mesh(armGeometry, material);
+    const bodyType = demon.appearance?.bodyType || "humanoid";
 
-    leftArm.position.set(-0.35, 0.8, 0);
-    rightArm.position.set(0.35, 0.8, 0);
-    leftArm.rotation.z = 0.3;
-    rightArm.rotation.z = -0.3;
+    // Create arm material - matching demon-gen
+    const armMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(demon.colors?.head || "#ff0000"),
+      emissive: new THREE.Color(demon.colors?.head || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
+    });
 
+    // Create leg material - matching demon-gen
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(demon.colors?.primary || "#ff0000"),
+      emissive: new THREE.Color(demon.colors?.primary || "#ff0000"),
+      emissiveIntensity: 0.1,
+      metalness: 0.2,
+      roughness: 0.7,
+    });
+
+    // Add arms
+    const armGeometry =
+      bodyType === "small_biped"
+        ? new THREE.CylinderGeometry(0.06, 0.08, 0.4, 6)
+        : new THREE.CylinderGeometry(0.06, 0.1, 0.7, 6);
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+
+    if (bodyType === "small_biped") {
+      leftArm.position.set(-0.25, 0.5, 0);
+      rightArm.position.set(0.25, 0.5, 0);
+    } else {
+      leftArm.position.set(-0.35, 0.8, 0);
+      rightArm.position.set(0.35, 0.8, 0);
+      leftArm.rotation.z = 0.3;
+      rightArm.rotation.z = -0.3;
+    }
+
+    leftArm.castShadow = true;
+    rightArm.castShadow = true;
     demonGroup.add(leftArm);
     demonGroup.add(rightArm);
 
-    // Legs
-    const legGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.8, 6);
-    const leftLeg = new THREE.Mesh(legGeometry, material);
-    const rightLeg = new THREE.Mesh(legGeometry, material);
+    // Add legs
+    const legGeometry =
+      bodyType === "small_biped"
+        ? new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6)
+        : new THREE.CylinderGeometry(0.08, 0.12, 0.8, 6);
 
-    leftLeg.position.set(-0.15, -0.2, 0);
-    rightLeg.position.set(0.15, -0.2, 0);
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
 
+    if (bodyType === "small_biped") {
+      leftLeg.position.set(-0.1, 0.0, 0);
+      rightLeg.position.set(0.1, 0.0, 0);
+    } else {
+      leftLeg.position.set(-0.15, -0.2, 0);
+      rightLeg.position.set(0.15, -0.2, 0);
+    }
+
+    leftLeg.castShadow = true;
+    rightLeg.castShadow = true;
     demonGroup.add(leftLeg);
     demonGroup.add(rightLeg);
 
     // Add claws if specified
     if (hasClaws) {
       const clawGeometry = new THREE.ConeGeometry(0.02, 0.1, 6);
-      const clawMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+      const clawMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#1a1a1a"),
+        emissive: new THREE.Color("#0a0a0a"),
+        emissiveIntensity: 0.1,
+        metalness: 0.8,
+        roughness: 0.2,
+      });
 
-      for (let i = 0; i < 3; i++) {
-        const leftClaw = new THREE.Mesh(clawGeometry, clawMaterial);
-        const rightClaw = new THREE.Mesh(clawGeometry, clawMaterial);
-
-        leftClaw.position.set(-0.35 + i * 0.03, 0.5, 0.1);
-        rightClaw.position.set(0.35 - i * 0.03, 0.5, 0.1);
-        leftClaw.rotation.x = Math.PI;
-        rightClaw.rotation.x = Math.PI;
-
-        demonGroup.add(leftClaw);
-        demonGroup.add(rightClaw);
+      for (let hand = 0; hand < 2; hand++) {
+        for (let finger = 0; finger < 4; finger++) {
+          const claw = new THREE.Mesh(clawGeometry, clawMaterial);
+          const xPos = (hand === 0 ? -0.35 : 0.35) + (finger - 1.5) * 0.03;
+          const yPos = bodyType === "small_biped" ? 0.3 : 0.5;
+          claw.position.set(xPos, yPos, 0.1);
+          claw.rotation.x = Math.PI;
+          claw.castShadow = true;
+          demonGroup.add(claw);
+        }
       }
     }
   }

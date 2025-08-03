@@ -375,6 +375,26 @@ export class JsonDemonManager {
   }
 
   /**
+   * Get original JSON demon config by ID (preserves appearance.visualFeatures structure)
+   */
+  public getOriginalJsonDemon(demonId: string): JsonDemonConfig | null {
+    // Check individual demons first
+    if (this.storageData.individualDemons[demonId]) {
+      return this.storageData.individualDemons[demonId];
+    }
+
+    // Check collections
+    for (const collection of Object.values(this.storageData.collections)) {
+      const demon = collection.demons.find((d) => d.id === demonId);
+      if (demon) {
+        return demon;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Get all collections
    */
   public getCollections(): JsonDemonCollection[] {

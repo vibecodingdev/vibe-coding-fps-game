@@ -2125,4 +2125,33 @@ export class Game {
     const theme = this.sceneManager.getCurrentTheme();
     return theme ? theme.getConfig().name : null;
   }
+
+  // JSON Demon debugging methods
+  /**
+   * Force spawn a JSON demon for testing
+   */
+  public forceSpawnJsonDemon(demonType?: any): boolean {
+    return this.demonSystem.forceSpawnJsonDemon(demonType);
+  }
+
+  /**
+   * Set JSON demon spawn chance (0.0 to 1.0)
+   */
+  public setJsonDemonSpawnChance(chance: number): void {
+    this.demonSystem.setJsonDemonSpawnChance(chance);
+  }
+
+  /**
+   * Get current JSON demon spawn chance
+   */
+  public getJsonDemonSpawnChance(): number {
+    return this.demonSystem.getJsonDemonSpawnChance();
+  }
+
+  /**
+   * Get JSON demon manager for debugging
+   */
+  public getJsonDemonManager(): any {
+    return this.demonSystem.getJsonDemonManager();
+  }
 }

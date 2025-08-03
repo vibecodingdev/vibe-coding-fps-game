@@ -99,10 +99,10 @@ export const DEMON_CONFIGS: Record<DemonType, DemonConfig> = {
     detectRange: 120,
     attackRange: 120.0,
     chaseRange: 20,
-    attackDamage: 25,
+    attackDamage: 15,
     spawnWeight: 15,
     isRanged: true,
-    fireballSpeed: 500.0,
+    fireballSpeed: 200.0,
     fireballRange: 120.0,
     attackCooldown: 180, // 3 seconds at 60fps
     bodyType: "humanoid",
@@ -432,6 +432,20 @@ export const THEME_DEMON_CONFIGS: Record<
       headColor: 0x4a4a4a, // Medium dark gray
       secondaryColor: 0x696969, // Dim gray
     },
+  },
+  doomMap: {
+    // Use base configs for doom map theme
+    ...(Object.fromEntries(Object.entries(DEMON_CONFIGS)) as Record<
+      DemonType,
+      DemonConfig
+    >),
+  },
+  bspMap: {
+    // Use base configs for BSP map theme
+    ...(Object.fromEntries(Object.entries(DEMON_CONFIGS)) as Record<
+      DemonType,
+      DemonConfig
+    >),
   },
 };
 
