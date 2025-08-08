@@ -213,7 +213,9 @@ export class DemonSystem implements IDemonSystem {
     );
     const groundHeight = this.calculateTerrainAwareGroundHeight(
       demonType,
-      spawnPosition
+      spawnPosition,
+      undefined,
+      (demon as any)?.userData?.bodyType
     );
     spawnPosition.y = groundHeight;
 
@@ -1438,7 +1440,10 @@ export class DemonSystem implements IDemonSystem {
         normalizedX * strafeDirection * config.speed * 0.008;
 
       // Ensure demon stays at proper ground height during strafing
-      const groundHeight = this.calculateDemonGroundHeight(demonType);
+      const groundHeight = this.calculateDemonGroundHeight(
+        demonType,
+        (meshObject as any)?.userData?.bodyType
+      );
       meshObject.position.y = groundHeight;
 
       // Face the player while strafing
@@ -1460,7 +1465,10 @@ export class DemonSystem implements IDemonSystem {
     meshObject.position.z += normalizedZ * moveDirection * moveDistance;
 
     // Ensure demon stays at proper ground height
-    const groundHeight = this.calculateDemonGroundHeight(demonType);
+    const groundHeight = this.calculateDemonGroundHeight(
+      demonType,
+      (meshObject as any)?.userData?.bodyType
+    );
     meshObject.position.y = groundHeight;
 
     // Always face the player
@@ -1705,44 +1713,66 @@ export class DemonSystem implements IDemonSystem {
       roughness: 0.6,
     });
 
-    // Create enhanced body geometry based on demon type
+    // Create enhanced body geometry based on body type (for consistency with previews and demon-gen)
+    const actualBodyType =
+      typeData.appearance?.bodyType ||
+      typeData.bodyType ||
+      (demonType === "CACODEMON"
+        ? "floating"
+        : demonType === "BARON"
+        ? "dragon"
+        : "humanoid");
+
     let bodyGeometry: THREE.BufferGeometry;
-    if (demonType === "CACODEMON") {
-      // Cacodemon: Large floating sphere
-      bodyGeometry = new THREE.SphereGeometry(0.8, 16, 12);
-    } else if (demonType === "BARON") {
-      // Baron: Tall imposing figure
-      bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.6, 12);
-    } else {
-      // Imp/Demon: More muscular torso
-      bodyGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);
+    switch (actualBodyType) {
+      case "floating":
+        // Floating demons: Large sphere
+        bodyGeometry = new THREE.SphereGeometry(0.8, 16, 12);
+        break;
+      case "dragon":
+        // Dragon: Tall imposing figure
+        bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.6, 12);
+        break;
+      case "quadruped":
+        // Quadruped: Horizontal body
+        bodyGeometry = new THREE.BoxGeometry(1.2, 0.6, 0.8);
+        break;
+      case "small_biped":
+        // Small biped: Compact cylindrical body
+        bodyGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 8);
+        break;
+      case "humanoid":
+      default:
+        // Humanoid: Muscular torso
+        bodyGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);
+        break;
     }
 
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = demonType === "CACODEMON" ? 1.0 : 0.6;
+    body.position.y = actualBodyType === "floating" ? 1.0 : 0.6;
     body.name = "body";
     demonGroup.add(body);
 
-    // Head with demon-specific features
+    // Head with body-type specific features
     let headGeometry: THREE.BufferGeometry;
-    if (demonType === "CACODEMON") {
-      // Cacodemon: Small head on top of sphere
+    if (actualBodyType === "floating") {
+      // Floating demons: Small head on top of sphere
       headGeometry = new THREE.SphereGeometry(0.3, 12, 8);
-    } else if (demonType === "BARON") {
-      // Baron: Angular, menacing head
+    } else if (actualBodyType === "dragon") {
+      // Dragon: Angular, menacing head
       headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     } else {
-      // Imp/Demon: Rounded but angular
+      // Humanoid/small_biped: Rounded but angular
       headGeometry = new THREE.CylinderGeometry(0.2, 0.25, 0.4, 8);
     }
 
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = demonType === "CACODEMON" ? 1.5 : 1.4;
+    head.position.y = actualBodyType === "floating" ? 1.5 : 1.4;
     head.name = "head";
     demonGroup.add(head);
 
-    // Enhanced glowing eyes
-    const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+    // Enhanced glowing eyes (size consistent with previews)
+    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
     const eyeMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(eyeColor),
       emissive: new THREE.Color(eyeColor),
@@ -1754,15 +1784,12 @@ export class DemonSystem implements IDemonSystem {
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
 
-    if (demonType === "CACODEMON") {
-      leftEye.position.set(-0.15, 1.55, 0.25);
-      rightEye.position.set(0.15, 1.55, 0.25);
-    } else if (demonType === "ARCHVILE") {
-      leftEye.position.set(-0.12, 1.6, 0.3);
-      rightEye.position.set(0.12, 1.6, 0.3);
+    if (actualBodyType === "floating") {
+      leftEye.position.set(-0.15, head.position.y + 0.05, 0.25);
+      rightEye.position.set(0.15, head.position.y + 0.05, 0.25);
     } else {
-      leftEye.position.set(-0.1, 1.45, 0.3);
-      rightEye.position.set(0.1, 1.45, 0.3);
+      leftEye.position.set(-0.1, head.position.y + 0.05, 0.3);
+      rightEye.position.set(0.1, head.position.y + 0.05, 0.3);
     }
 
     leftEye.name = "leftEye";
@@ -1771,9 +1798,7 @@ export class DemonSystem implements IDemonSystem {
     demonGroup.add(rightEye);
 
     // Build demon based on body type for better modularity - EXPANDED for 20 body types
-    // For JSON demons, use the body type from appearance config; for standard demons, use bodyType field
-    const actualBodyType =
-      typeData.appearance?.bodyType || typeData.bodyType || "humanoid";
+    // Note: body/head/eyes above already use actualBodyType for consistency
 
     // Skip standard body type features for JSON demons - they will be handled by JSON feature system
     if (!jsonDemonId) {
@@ -1887,6 +1912,12 @@ export class DemonSystem implements IDemonSystem {
       }
     });
 
+    // Store bodyType for downstream systems (grounding, networking)
+    demonGroup.userData = {
+      ...(demonGroup.userData || {}),
+      bodyType: actualBodyType,
+    };
+
     return demonGroup;
   }
 
@@ -1894,22 +1925,32 @@ export class DemonSystem implements IDemonSystem {
    * Calculate the proper ground height for a demon based on its geometry
    * to ensure feet touch the ground instead of body center
    */
-  private calculateDemonGroundHeight(demonType: DemonType): number {
-    switch (demonType) {
-      case "CACODEMON":
-        // Cacodemon floats, so keep it slightly above ground
+  private calculateDemonGroundHeight(
+    demonType: DemonType,
+    bodyType?: string
+  ): number {
+    const actualType =
+      bodyType ||
+      (demonType === "CACODEMON"
+        ? "floating"
+        : demonType === "BARON"
+        ? "dragon"
+        : "humanoid");
+
+    switch (actualType) {
+      case "floating":
+        // Floating types hover
         return 0.5;
-      case "BARON":
-        // Baron has legs that extend to -0.4 - 0.5 (leg height/2), so need to offset upward
-        return 0.9; // 0.4 (leg bottom) + 0.5 (leg height/2) = 0.9
-      case "ARCHVILE":
-        // Similar to other humanoid demons but slightly taller
-        return 0.8;
-      case "DEMON":
-      case "IMP":
+      case "dragon":
+        // Taller legs
+        return 0.9;
+      case "quadruped":
+        return 0.6;
+      case "small_biped":
+        return 0.7;
+      case "humanoid":
       default:
-        // Standard humanoid demons: legs extend to -0.4 - 0.4 (leg height/2)
-        return 0.8; // 0.4 (leg bottom) + 0.4 (leg height/2) = 0.8
+        return 0.8;
     }
   }
 
@@ -1919,12 +1960,13 @@ export class DemonSystem implements IDemonSystem {
   private calculateTerrainAwareGroundHeight(
     demonType: DemonType,
     position: THREE.Vector3,
-    currentHeight?: number
+    currentHeight?: number,
+    bodyType?: string
   ): number {
-    const baseHeight = this.calculateDemonGroundHeight(demonType);
+    const baseHeight = this.calculateDemonGroundHeight(demonType, bodyType);
 
     // Special handling for floating demons
-    if (demonType === "CACODEMON") {
+    if (demonType === "CACODEMON" || bodyType === "floating") {
       // Floating demons can have slight variation but stay near ground
       const minFloat = 0.3;
       const maxFloat = 1.2;

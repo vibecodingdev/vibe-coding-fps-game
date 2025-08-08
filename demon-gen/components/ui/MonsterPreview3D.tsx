@@ -450,6 +450,96 @@ export default function MonsterPreview3D({
         demonGroup.add(spike);
       }
     }
+
+    // Add armor plate (to match in-game)
+    if (features.hasArmor) {
+      const armorMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#404040"),
+        emissive: new THREE.Color("#202020"),
+        emissiveIntensity: 0.1,
+        metalness: 0.8,
+        roughness: 0.3,
+      });
+      const chestArmor = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7, 0.3, 0.1),
+        armorMaterial
+      );
+      chestArmor.position.set(0, 1.0, 0.35);
+      chestArmor.castShadow = true;
+      chestArmor.receiveShadow = true;
+      demonGroup.add(chestArmor);
+    }
+
+    // Special features for mechanicals and others
+    const specials = features.specialFeatures || [];
+    if (specials.includes("shoulder_turrets")) {
+      const turretMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        metalness: 0.9,
+        roughness: 0.2,
+      });
+      const baseGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.25, 12);
+      const leftTurret = new THREE.Mesh(baseGeo, turretMat);
+      const rightTurret = new THREE.Mesh(baseGeo, turretMat);
+      leftTurret.position.set(-0.35, 1.25, 0.0);
+      rightTurret.position.set(0.35, 1.25, 0.0);
+      leftTurret.rotation.z = Math.PI / 2;
+      rightTurret.rotation.z = Math.PI / 2;
+      demonGroup.add(leftTurret);
+      demonGroup.add(rightTurret);
+    }
+
+    if (specials.includes("laser_cannons")) {
+      const barrelMat = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        metalness: 0.95,
+        roughness: 0.15,
+      });
+      const barrelGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 12);
+      const leftCannon = new THREE.Mesh(barrelGeo, barrelMat);
+      const rightCannon = new THREE.Mesh(barrelGeo, barrelMat);
+      leftCannon.position.set(-0.45, 0.9, 0.35);
+      rightCannon.position.set(0.45, 0.9, 0.35);
+      leftCannon.rotation.x = Math.PI / 2;
+      rightCannon.rotation.x = Math.PI / 2;
+      demonGroup.add(leftCannon);
+      demonGroup.add(rightCannon);
+    }
+
+    if (specials.includes("radar_dish")) {
+      const dishMat = new THREE.MeshStandardMaterial({
+        color: 0x2f4f4f,
+        metalness: 0.5,
+        roughness: 0.4,
+      });
+      const dish = new THREE.Mesh(
+        new THREE.ConeGeometry(0.15, 0.2, 12),
+        dishMat
+      );
+      dish.position.set(0.0, 1.4, -0.25);
+      dish.rotation.x = -Math.PI / 2;
+      demonGroup.add(dish);
+    }
+
+    if (specials.includes("exhaust_flares")) {
+      const exhaustMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(monster.colors.accent || "#ff6347"),
+      });
+      const leftExhaust = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.12, 8),
+        exhaustMat
+      );
+      const rightExhaust = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.12, 8),
+        exhaustMat
+      );
+      leftExhaust.position.set(-0.2, 0.6, -0.35);
+      rightExhaust.position.set(0.2, 0.6, -0.35);
+      leftExhaust.rotation.x = Math.PI;
+      rightExhaust.rotation.x = Math.PI;
+      demonGroup.add(leftExhaust);
+      demonGroup.add(rightExhaust);
+    }
   };
 
   const startAnimation = () => {

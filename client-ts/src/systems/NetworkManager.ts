@@ -2838,12 +2838,15 @@ export class NetworkManager implements NetworkState {
   private calculateTerrainAwareGroundHeight(
     demonType: string,
     position: THREE.Vector3,
-    currentHeight?: number
+    currentHeight?: number,
+    bodyType?: string
   ): number {
-    const baseHeight = this.calculateDemonGroundHeight(demonType);
+    const baseHeight = this.calculateDemonGroundHeight(
+      bodyType === "floating" ? "CACODEMON" : demonType
+    );
 
     // Special handling for floating demons
-    if (demonType === "CACODEMON") {
+    if (demonType === "CACODEMON" || bodyType === "floating") {
       // Floating demons can have slight variation but stay near ground
       const minFloat = 0.3;
       const maxFloat = 1.2;

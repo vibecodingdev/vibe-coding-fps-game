@@ -2271,7 +2271,8 @@ export class DemonManagerUI {
         bodyGeometry = new THREE.SphereGeometry(0.6, 12, 8);
         break;
       case "mechanical":
-        bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.4);
+        // Mechanical uses humanoid torso base for consistency with game and demon-gen
+        bodyGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);
         break;
       case "plant_like":
         bodyGeometry = new THREE.CylinderGeometry(0.2, 0.4, 1.5, 8);
@@ -2304,14 +2305,14 @@ export class DemonManagerUI {
     body.receiveShadow = true;
     demonGroup.add(body);
 
-    // Create head
+    // Create head (align with demon-gen and in-game DemonSystem)
     let headGeometry: THREE.BufferGeometry;
     if (bodyType === "floating") {
       headGeometry = new THREE.SphereGeometry(0.3, 12, 8);
     } else if (bodyType === "dragon") {
-      headGeometry = new THREE.ConeGeometry(0.3, 0.6, 8);
+      headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     } else {
-      headGeometry = new THREE.SphereGeometry(0.25, 12, 8);
+      headGeometry = new THREE.CylinderGeometry(0.2, 0.25, 0.4, 8);
     }
 
     const head = new THREE.Mesh(headGeometry, headMaterial);
@@ -2339,8 +2340,81 @@ export class DemonManagerUI {
     demonGroup.add(leftEye);
     demonGroup.add(rightEye);
 
+    // Add basic limbs for humanoid and small_biped types (align with demon-gen)
+    if (bodyType === "humanoid" || bodyType === "small_biped") {
+      const armMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(colors.head || "#ff0000"),
+        emissive: new THREE.Color(colors.head || "#ff0000"),
+        emissiveIntensity: 0.1,
+        metalness: 0.2,
+        roughness: 0.7,
+      });
+
+      const legMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(colors.primary || "#ff0000"),
+        emissive: new THREE.Color(colors.primary || "#ff0000"),
+        emissiveIntensity: 0.1,
+        metalness: 0.2,
+        roughness: 0.7,
+      });
+
+      // Arms
+      const armGeometry =
+        bodyType === "small_biped"
+          ? new THREE.CylinderGeometry(0.06, 0.08, 0.4, 6)
+          : new THREE.CylinderGeometry(0.06, 0.1, 0.7, 6);
+
+      const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+      const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+
+      if (bodyType === "small_biped") {
+        leftArm.position.set(-0.25, 0.5, 0);
+        rightArm.position.set(0.25, 0.5, 0);
+        leftArm.rotation.z = 0.2;
+        rightArm.rotation.z = -0.2;
+      } else {
+        leftArm.position.set(-0.45, 0.8, 0);
+        rightArm.position.set(0.45, 0.8, 0);
+        leftArm.rotation.z = 0.3;
+        rightArm.rotation.z = -0.3;
+      }
+
+      leftArm.castShadow = true;
+      rightArm.castShadow = true;
+      demonGroup.add(leftArm);
+      demonGroup.add(rightArm);
+
+      // Legs
+      const legGeometry =
+        bodyType === "small_biped"
+          ? new THREE.CylinderGeometry(0.1, 0.12, 0.5, 6)
+          : new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+
+      const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+      const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+
+      if (bodyType === "small_biped") {
+        leftLeg.position.set(-0.15, -0.25, 0);
+        rightLeg.position.set(0.15, -0.25, 0);
+      } else {
+        leftLeg.position.set(-0.2, -0.4, 0);
+        rightLeg.position.set(0.2, -0.4, 0);
+      }
+
+      leftLeg.castShadow = true;
+      rightLeg.castShadow = true;
+      demonGroup.add(leftLeg);
+      demonGroup.add(rightLeg);
+    }
+
     // Add visual features based on demon config
     this.addPreviewFeatures(demonGroup, demon, bodyMaterial);
+
+    // Preserve bodyType for consistency with game grounding
+    demonGroup.userData = {
+      ...(demonGroup.userData || {}),
+      bodyType,
+    };
 
     // Scale the model
     const scale = demon.scale || 1.0;
@@ -2408,6 +2482,96 @@ export class DemonManagerUI {
         demonGroup.add(leftWing);
         demonGroup.add(rightWing);
       }
+    }
+
+    // Add armor pieces similar to demon-gen/game when hasArmor
+    if (features.hasArmor) {
+      const armorMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#404040"),
+        emissive: new THREE.Color("#202020"),
+        emissiveIntensity: 0.1,
+        metalness: 0.8,
+        roughness: 0.3,
+      });
+      const chestArmor = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7, 0.3, 0.1),
+        armorMaterial
+      );
+      chestArmor.position.set(0, 1.0, 0.35);
+      chestArmor.castShadow = true;
+      chestArmor.receiveShadow = true;
+      demonGroup.add(chestArmor);
+    }
+
+    // Special features
+    const specials: string[] = features.specialFeatures || [];
+    if (specials.includes("shoulder_turrets")) {
+      const turretMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        metalness: 0.9,
+        roughness: 0.2,
+      });
+      const baseGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.25, 12);
+      const leftTurret = new THREE.Mesh(baseGeo, turretMat);
+      const rightTurret = new THREE.Mesh(baseGeo, turretMat);
+      leftTurret.position.set(-0.35, 1.25, 0.0);
+      rightTurret.position.set(0.35, 1.25, 0.0);
+      leftTurret.rotation.z = Math.PI / 2;
+      rightTurret.rotation.z = Math.PI / 2;
+      demonGroup.add(leftTurret);
+      demonGroup.add(rightTurret);
+    }
+
+    if (specials.includes("laser_cannons")) {
+      const barrelMat = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        metalness: 0.95,
+        roughness: 0.15,
+      });
+      const barrelGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 12);
+      const leftCannon = new THREE.Mesh(barrelGeo, barrelMat);
+      const rightCannon = new THREE.Mesh(barrelGeo, barrelMat);
+      leftCannon.position.set(-0.45, 0.9, 0.35);
+      rightCannon.position.set(0.45, 0.9, 0.35);
+      leftCannon.rotation.x = Math.PI / 2;
+      rightCannon.rotation.x = Math.PI / 2;
+      demonGroup.add(leftCannon);
+      demonGroup.add(rightCannon);
+    }
+
+    if (specials.includes("radar_dish")) {
+      const dishMat = new THREE.MeshStandardMaterial({
+        color: 0x2f4f4f,
+        metalness: 0.5,
+        roughness: 0.4,
+      });
+      const dish = new THREE.Mesh(
+        new THREE.ConeGeometry(0.15, 0.2, 12),
+        dishMat
+      );
+      dish.position.set(0.0, 1.4, -0.25);
+      dish.rotation.x = -Math.PI / 2;
+      demonGroup.add(dish);
+    }
+
+    if (specials.includes("exhaust_flares")) {
+      const exhaustMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(demon.colors?.accent || "#ff6347"),
+      });
+      const leftExhaust = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.12, 8),
+        exhaustMat
+      );
+      const rightExhaust = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.12, 8),
+        exhaustMat
+      );
+      leftExhaust.position.set(-0.2, 0.6, -0.35);
+      rightExhaust.position.set(0.2, 0.6, -0.35);
+      leftExhaust.rotation.x = Math.PI;
+      rightExhaust.rotation.x = Math.PI;
+      demonGroup.add(leftExhaust);
+      demonGroup.add(rightExhaust);
     }
 
     // Add horns
